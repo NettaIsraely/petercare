@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  # 1. Core Relational Database
+  postgres_db:
+    image: postgres:15-alpine
+    container_name: stablehands_postgres
+    environment:
+      POSTGRES_USER: ranch_owner
+      POSTGRES_PASSWORD: stable_crypto_pass123
+      POSTGRES_DB: stablehands
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - stable_network
+
+  # 2. In-Memory Queue / Cache for Notifications
+  redis_cache:
+    image: redis:7-alpine
+    container_name: stablehands_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - stable_network
+
+networks:
+  stable_network:
+    driver: bridge
+
+volumes:
+  pgdata:
+    driver: local
