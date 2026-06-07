@@ -4,4 +4,5 @@ import { CreateUserDto } from './create-user.dto';
 export class UpdateUserDto extends PartialType(CreateUserDto) {
     morning_alert_time?: string;
     evening_alert_time?: string;
+    expo_push_token?: string;
 }

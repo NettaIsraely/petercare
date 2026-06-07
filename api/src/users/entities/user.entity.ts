@@ -30,6 +30,10 @@ export class User {
   @Column({ type: 'time', default: '18:00:00' })
   evening_alert_time!: string;
 
+  // The device address for push notifications
+  @Column({ type: 'varchar', nullable: true })
+  expo_push_token?: string;
+
   @CreateDateColumn()
   created_at!: Date;
 
