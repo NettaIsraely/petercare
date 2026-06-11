@@ -27,6 +27,13 @@ import {
   normalizeDateString,
   parseTimeToMinutes,
 } from '../../utils/dateHelpers';
+import RideSchedulingConflictBanner from './RideSchedulingConflictBanner';
+import {
+  getApiErrorMessage,
+  getConflictHorseNames,
+  parseRideSchedulingConflict,
+  RideConflictDetails,
+} from '../../utils/rideConflictHelpers';
 
 type EditEventKind = 'ride' | 'treatment';
 
@@ -87,6 +94,7 @@ export default function EditEventModal({
   onSubmitTreatment,
 }: EditEventModalProps) {
   const [error, setError] = useState<string | null>(null);
+  const [rideConflict, setRideConflict] = useState<RideConflictDetails | null>(null);
 
   const userOptions = useMemo(() => users.map((u) => ({ id: u.id, label: u.name })), [users]);
   const horseOptions = useMemo(
@@ -117,6 +125,7 @@ export default function EditEventModal({
     }
 
     setError(null);
+    setRideConflict(null);
 
     if (kind === 'ride' && ride) {
       setRideDate(normalizeDateString(ride.date));
@@ -163,6 +172,7 @@ export default function EditEventModal({
 
   const handleSubmit = async () => {
     setError(null);
+    setRideConflict(null);
     try {
       if (kind === 'ride' && ride) {
         if (!primaryRiderId) {
@@ -217,12 +227,28 @@ export default function EditEventModal({
         });
       }
       onClose();
-    } catch {
-      setError('Failed to update event. Please try again.');
+    } catch (err: unknown) {
+      if (kind === 'ride') {
+        const conflicts = parseRideSchedulingConflict(err);
+        if (conflicts) {
+          setRideConflict(conflicts);
+          return;
+        }
+      }
+
+      setError(
+        getApiErrorMessage(
+          err,
+          kind === 'ride'
+            ? 'One or more horses or riders are already scheduled for this time.'
+            : 'Failed to update event. Please try again.'
+        )
+      );
     }
   };
 
   const title = kind === 'ride' ? 'Edit Ride' : kind === 'treatment' ? 'Edit Treatment' : 'Edit Event';
+  const conflictHorseNames = rideConflict ? getConflictHorseNames(rideConflict) : new Set<string>();
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -247,28 +273,34 @@ export default function EditEventModal({
                   selectedId={primaryRiderId}
                   onSelect={(id) => setPrimaryRiderId(id ?? '')}
                 />
+                {rideConflict && <RideSchedulingConflictBanner conflicts={rideConflict} />}
                 <View style={styles.field}>
                   <Text style={styles.label}>Horses</Text>
                   <View style={styles.rowWrap}>
-                    {horseOptions.map((horse) => (
-                      <TouchableOpacity
-                        key={horse.id}
-                        style={[
-                          styles.chip,
-                          selectedHorseIds.includes(horse.id) && styles.chipSelected,
-                        ]}
-                        onPress={() => toggleHorse(horse.id)}
-                      >
-                        <Text
+                    {horseOptions.map((horse) => {
+                      const isConflicted = conflictHorseNames.has(horse.label);
+                      return (
+                        <TouchableOpacity
+                          key={horse.id}
                           style={[
-                            styles.chipText,
-                            selectedHorseIds.includes(horse.id) && styles.chipTextSelected,
+                            styles.chip,
+                            selectedHorseIds.includes(horse.id) && styles.chipSelected,
+                            isConflicted && styles.chipConflict,
                           ]}
+                          onPress={() => toggleHorse(horse.id)}
                         >
-                          {horse.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                          <Text
+                            style={[
+                              styles.chipText,
+                              selectedHorseIds.includes(horse.id) && styles.chipTextSelected,
+                              isConflicted && styles.chipTextConflict,
+                            ]}
+                          >
+                            {horse.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 </View>
                 <View style={styles.field}>
@@ -382,7 +414,7 @@ export default function EditEventModal({
               </>
             )}
 
-            {error && <Text style={styles.errorText}>{error}</Text>}
+            {error && !rideConflict && <Text style={styles.errorText}>{error}</Text>}
 
             <TouchableOpacity
               style={styles.primaryButton}
@@ -481,6 +513,14 @@ const styles = StyleSheet.create({
   },
   chipTextSelected: {
     color: '#FFFFFF',
+  },
+  chipConflict: {
+    backgroundColor: '#FDEDEC',
+    borderColor: '#E74C3C',
+  },
+  chipTextConflict: {
+    color: '#922B21',
+    fontWeight: '700',
   },
   primaryButton: {
     backgroundColor: '#3498DB',

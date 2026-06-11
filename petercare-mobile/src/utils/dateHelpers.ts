@@ -205,3 +205,38 @@ export function dateToTimeString(date: Date): string {
   const minutes = String(date.getMinutes()).padStart(2, '0');
   return `${hours}:${minutes}`;
 }
+
+export const RIDE_DEFAULT_DURATION_MINUTES = 60;
+export const END_OF_DAY_TIME = '23:59';
+
+const END_OF_DAY_MINUTES = 23 * 60 + 59;
+
+export function minutesToTimeString(minutes: number): string {
+  const clamped = Math.max(0, Math.min(END_OF_DAY_MINUTES, minutes));
+  const hours = Math.floor(clamped / 60);
+  const mins = clamped % 60;
+  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+}
+
+export function addMinutesToTime(time: string, deltaMinutes: number): string {
+  return minutesToTimeString(parseTimeToMinutes(time) + deltaMinutes);
+}
+
+export function clampRideEndTime(start: string, end: string): string {
+  const startMinutes = parseTimeToMinutes(start);
+  let endMinutes = parseTimeToMinutes(end);
+  endMinutes = Math.min(endMinutes, END_OF_DAY_MINUTES);
+  if (endMinutes <= startMinutes) {
+    endMinutes = Math.min(startMinutes + 1, END_OF_DAY_MINUTES);
+  }
+  return minutesToTimeString(endMinutes);
+}
+
+export function deriveRideEndFromStart(start: string, durationMinutes: number): string {
+  const proposedEnd = parseTimeToMinutes(start) + durationMinutes;
+  return clampRideEndTime(start, minutesToTimeString(proposedEnd));
+}
+
+export function deriveMaxRideStartTime(durationMinutes: number): string {
+  return minutesToTimeString(END_OF_DAY_MINUTES - durationMinutes);
+}

@@ -24,13 +24,31 @@ import { Horse } from '../../types/horse';
 import { UserSummary } from '../../types/user';
 import DatePickerField from './DatePickerField';
 import TimePickerField from '../common/TimePickerField';
-import { formatTimeForApi, parseTimeToMinutes, formatShiftLabel, formatWeekDayHeader } from '../../utils/dateHelpers';
+import {
+  clampRideEndTime,
+  deriveMaxRideStartTime,
+  deriveRideEndFromStart,
+  END_OF_DAY_TIME,
+  formatTimeForApi,
+  formatShiftLabel,
+  formatWeekDayHeader,
+  minutesToTimeString,
+  parseTimeToMinutes,
+  RIDE_DEFAULT_DURATION_MINUTES,
+} from '../../utils/dateHelpers';
 import {
   TaskFormFields,
   TaskFormValues,
   formValuesToCreatePayload,
   taskToFormValues,
 } from '../tasks/TaskFormModal';
+import RideSchedulingConflictBanner from './RideSchedulingConflictBanner';
+import {
+  getApiErrorMessage,
+  getConflictHorseNames,
+  parseRideSchedulingConflict,
+  RideConflictDetails,
+} from '../../utils/rideConflictHelpers';
 
 interface CreateEventModalProps {
   visible: boolean;
@@ -117,6 +135,7 @@ export default function CreateEventModal({
 }: CreateEventModalProps) {
   const [category, setCategory] = useState<CreateEventCategory | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [rideConflict, setRideConflict] = useState<RideConflictDetails | null>(null);
   const [selectedFeedingIds, setSelectedFeedingIds] = useState<string[]>([]);
 
   const userOptions = users.map((u) => ({ id: u.id, label: u.name }));
@@ -128,6 +147,7 @@ export default function CreateEventModal({
   const [rideDate, setRideDate] = useState(defaultDate);
   const [rideStart, setRideStart] = useState('09:00');
   const [rideEnd, setRideEnd] = useState('10:00');
+  const [rideDurationMinutes, setRideDurationMinutes] = useState(RIDE_DEFAULT_DURATION_MINUTES);
   const [primaryRiderId, setPrimaryRiderId] = useState(currentUserId ?? '');
   const [selectedHorseIds, setSelectedHorseIds] = useState<string[]>([]);
   const [additionalRiderIds, setAdditionalRiderIds] = useState<string[]>([]);
@@ -145,11 +165,13 @@ export default function CreateEventModal({
   const resetForm = () => {
     setCategory(null);
     setError(null);
+    setRideConflict(null);
     setSelectedFeedingIds([]);
     setTaskValues(taskToFormValues());
     setRideDate(defaultDate);
     setRideStart('09:00');
     setRideEnd('10:00');
+    setRideDurationMinutes(RIDE_DEFAULT_DURATION_MINUTES);
     setPrimaryRiderId(currentUserId ?? '');
     setSelectedHorseIds([]);
     setAdditionalRiderIds([]);
@@ -202,8 +224,22 @@ export default function CreateEventModal({
     );
   };
 
+  const handleRideStartChange = (newStart: string) => {
+    setRideStart(newStart);
+    const newEnd = deriveRideEndFromStart(newStart, rideDurationMinutes);
+    setRideEnd(newEnd);
+    setRideDurationMinutes(parseTimeToMinutes(newEnd) - parseTimeToMinutes(newStart));
+  };
+
+  const handleRideEndChange = (newEnd: string) => {
+    const clampedEnd = clampRideEndTime(rideStart, newEnd);
+    setRideEnd(clampedEnd);
+    setRideDurationMinutes(parseTimeToMinutes(clampedEnd) - parseTimeToMinutes(rideStart));
+  };
+
   const handleSubmit = async () => {
     setError(null);
+    setRideConflict(null);
     try {
       if (category === 'feeding') {
         if (selectedFeedingIds.length === 0) {
@@ -271,11 +307,24 @@ export default function CreateEventModal({
         });
       }
       handleClose();
-    } catch {
+    } catch (err: unknown) {
+      if (category === 'ride') {
+        const conflicts = parseRideSchedulingConflict(err);
+        if (conflicts) {
+          setRideConflict(conflicts);
+          return;
+        }
+      }
+
       setError(
-        category === 'feeding'
-          ? 'Failed to volunteer for feeding shifts. Please try again.'
-          : 'Failed to create event. Please check your inputs and try again.'
+        getApiErrorMessage(
+          err,
+          category === 'feeding'
+            ? 'Failed to volunteer for feeding shifts. Please try again.'
+            : category === 'ride'
+              ? 'One or more horses or riders are already scheduled for this time.'
+              : 'Failed to create event. Please check your inputs and try again.'
+        )
       );
     }
   };
@@ -293,6 +342,7 @@ export default function CreateEventModal({
   const isSubmitting = category === 'feeding' ? volunteering : creating;
   const submitLabel = category === 'feeding' ? 'Volunteer' : 'Create';
   const canSubmitFeeding = !isGuest && selectedFeedingIds.length > 0 && !volunteering;
+  const conflictHorseNames = rideConflict ? getConflictHorseNames(rideConflict) : new Set<string>();
 
   const actionButtons = category ? (
     <View style={styles.actions}>
@@ -411,36 +461,53 @@ export default function CreateEventModal({
               {category === 'ride' && (
               <>
                 <DatePickerField label="Date" value={rideDate} onChange={setRideDate} />
-                <TimePickerField label="Start Time" value={rideStart} onChange={setRideStart} />
-                <TimePickerField label="End Time" value={rideEnd} onChange={setRideEnd} />
+                <TimePickerField
+                  label="Start Time"
+                  value={rideStart}
+                  onChange={handleRideStartChange}
+                  maximumTime={deriveMaxRideStartTime(rideDurationMinutes)}
+                />
+                <TimePickerField
+                  label="End Time"
+                  value={rideEnd}
+                  onChange={handleRideEndChange}
+                  minimumTime={minutesToTimeString(parseTimeToMinutes(rideStart) + 1)}
+                  maximumTime={END_OF_DAY_TIME}
+                />
                 <PickerRow
                   label="Primary Rider"
                   options={userOptions}
                   selectedId={primaryRiderId}
                   onSelect={(id) => setPrimaryRiderId(id ?? '')}
                 />
+                {rideConflict && <RideSchedulingConflictBanner conflicts={rideConflict} />}
                 <View style={styles.field}>
                   <Text style={styles.label}>Horses</Text>
                   <View style={styles.rowWrap}>
-                    {horseOptions.map((horse) => (
-                      <TouchableOpacity
-                        key={horse.id}
-                        style={[
-                          styles.chip,
-                          selectedHorseIds.includes(horse.id) && styles.chipSelected,
-                        ]}
-                        onPress={() => toggleHorse(horse.id)}
-                      >
-                        <Text
+                    {horseOptions.map((horse) => {
+                      const isConflicted = conflictHorseNames.has(horse.label);
+                      return (
+                        <TouchableOpacity
+                          key={horse.id}
                           style={[
-                            styles.chipText,
-                            selectedHorseIds.includes(horse.id) && styles.chipTextSelected,
+                            styles.chip,
+                            selectedHorseIds.includes(horse.id) && styles.chipSelected,
+                            isConflicted && styles.chipConflict,
                           ]}
+                          onPress={() => toggleHorse(horse.id)}
                         >
-                          {horse.label}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                          <Text
+                            style={[
+                              styles.chipText,
+                              selectedHorseIds.includes(horse.id) && styles.chipTextSelected,
+                              isConflicted && styles.chipTextConflict,
+                            ]}
+                          >
+                            {horse.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 </View>
                 <View style={styles.field}>
@@ -554,7 +621,7 @@ export default function CreateEventModal({
               </>
             )}
 
-            {error && <Text style={styles.errorText}>{error}</Text>}
+            {error && !rideConflict && <Text style={styles.errorText}>{error}</Text>}
 
             {actionButtons && <View style={styles.scrollActions}>{actionButtons}</View>}
                 </>
@@ -689,6 +756,14 @@ const styles = StyleSheet.create({
   },
   chipTextSelected: {
     color: '#FFFFFF',
+  },
+  chipConflict: {
+    backgroundColor: '#FDEDEC',
+    borderColor: '#E74C3C',
+  },
+  chipTextConflict: {
+    color: '#922B21',
+    fontWeight: '700',
   },
   actions: {
     flexDirection: 'row',

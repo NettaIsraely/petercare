@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   StyleSheet,
   Platform,
   TextInput,
+  Modal,
+  Pressable,
 } from 'react-native';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { Clock, ChevronDown, ChevronUp } from 'lucide-react-native';
@@ -20,6 +22,29 @@ interface TimePickerFieldProps {
   value: string;
   onChange: (time: string) => void;
   optional?: boolean;
+  minimumTime?: string;
+  maximumTime?: string;
+}
+
+let activeClosePicker: (() => void) | null = null;
+
+function closeActiveTimePicker() {
+  if (activeClosePicker) {
+    const close = activeClosePicker;
+    activeClosePicker = null;
+    close();
+  }
+}
+
+function registerActiveTimePicker(close: () => void) {
+  closeActiveTimePicker();
+  activeClosePicker = close;
+}
+
+function unregisterActiveTimePicker(close: () => void) {
+  if (activeClosePicker === close) {
+    activeClosePicker = null;
+  }
 }
 
 export default function TimePickerField({
@@ -27,20 +52,42 @@ export default function TimePickerField({
   value,
   onChange,
   optional = false,
+  minimumTime,
+  maximumTime,
 }: TimePickerFieldProps) {
   const [expanded, setExpanded] = useState(false);
   const [showAndroidPicker, setShowAndroidPicker] = useState(false);
+
+  const collapse = useCallback(() => setExpanded(false), []);
 
   const pickerDate = useMemo(
     () => timeStringToDate(value || '08:00'),
     [value]
   );
 
+  const pickerBounds = useMemo(() => {
+    if (!minimumTime && !maximumTime) {
+      return undefined;
+    }
+    return {
+      minimumDate: timeStringToDate(minimumTime ?? '00:00'),
+      maximumDate: timeStringToDate(maximumTime ?? '23:59'),
+    };
+  }, [minimumTime, maximumTime]);
+
   const displayText = value
     ? formatTimeLabel(value)
     : optional
       ? 'No time selected'
       : 'Select a time';
+
+  useEffect(() => {
+    if (!expanded) {
+      return;
+    }
+    registerActiveTimePicker(collapse);
+    return () => unregisterActiveTimePicker(collapse);
+  }, [expanded, collapse]);
 
   const handlePickerChange = (event: DateTimePickerEvent, selectedDate?: Date) => {
     if (Platform.OS === 'android') {
@@ -61,7 +108,13 @@ export default function TimePickerField({
       setShowAndroidPicker(true);
       return;
     }
-    setExpanded((prev) => !prev);
+    setExpanded((prev) => {
+      if (prev) {
+        return false;
+      }
+      closeActiveTimePicker();
+      return true;
+    });
   };
 
   const handleClear = () => {
@@ -115,15 +168,31 @@ export default function TimePickerField({
         </TouchableOpacity>
       ) : null}
 
-      {Platform.OS === 'ios' && expanded && (
-        <DateTimePicker
-          value={pickerDate}
-          mode="time"
-          display="spinner"
-          is24Hour={false}
-          onChange={handlePickerChange}
-          style={styles.picker}
-        />
+      {Platform.OS === 'ios' && (
+        <Modal
+          visible={expanded}
+          transparent
+          animationType="fade"
+          onRequestClose={collapse}
+        >
+          <View style={styles.modalRoot}>
+            <Pressable style={styles.modalBackdrop} onPress={collapse} />
+            <Pressable style={styles.pickerSheet} onPress={() => {}}>
+              <DateTimePicker
+                value={pickerDate}
+                mode="time"
+                display="spinner"
+                is24Hour={false}
+                onChange={handlePickerChange}
+                themeVariant="light"
+                textColor="#000000"
+                style={styles.picker}
+                minimumDate={pickerBounds?.minimumDate}
+                maximumDate={pickerBounds?.maximumDate}
+              />
+            </Pressable>
+          </View>
+        </Modal>
       )}
 
       {Platform.OS === 'android' && showAndroidPicker && (
@@ -132,6 +201,8 @@ export default function TimePickerField({
           mode="time"
           is24Hour={false}
           onChange={handlePickerChange}
+          minimumDate={pickerBounds?.minimumDate}
+          maximumDate={pickerBounds?.maximumDate}
         />
       )}
     </View>
@@ -185,7 +256,21 @@ const styles = StyleSheet.create({
     color: '#2C3E50',
     fontWeight: '500',
   },
+  modalRoot: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  pickerSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 24,
+  },
   picker: {
-    marginTop: 8,
+    height: 216,
   },
 });

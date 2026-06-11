@@ -24,6 +24,7 @@ import {
 import { toDateString, normalizeDateString, getNext14DayStrings } from '../utils/dateHelpers';
 import { completingKey } from '../utils/completionKeys';
 import { confirmFeedingCompletionIfNeeded } from '../utils/feedingCompletionHelpers';
+import { isExpectedRideSchedulingError } from '../utils/rideConflictHelpers';
 
 interface RawScheduleData {
   feedings: Feeding[];
@@ -320,7 +321,9 @@ export function useScheduleData() {
         await rideService.createRide(payload);
         await refresh(true);
       } catch (error) {
-        console.error('Failed to create ride:', error);
+        if (!isExpectedRideSchedulingError(error)) {
+          console.error('Failed to create ride:', error);
+        }
         throw error;
       } finally {
         setCreating(false);
@@ -368,7 +371,9 @@ export function useScheduleData() {
         await rideService.updateRide(id, payload);
         await refresh(true);
       } catch (error) {
-        console.error('Failed to update ride:', error);
+        if (!isExpectedRideSchedulingError(error)) {
+          console.error('Failed to update ride:', error);
+        }
         throw error;
       } finally {
         setUpdating(false);
