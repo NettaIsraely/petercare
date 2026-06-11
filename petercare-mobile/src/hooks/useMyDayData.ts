@@ -6,20 +6,20 @@ import * as taskService from '../services/taskService';
 import * as rideService from '../services/rideService';
 import * as treatmentService from '../services/treatmentService';
 import * as userService from '../services/userService';
-import { MyDayData, TimelineEvent } from '../types/events';
+import { MyWeekData, TimelineEvent } from '../types/events';
 import { Feeding } from '../types/feeding';
 import { Task } from '../types/task';
 import { Ride } from '../types/ride';
 import { Treatment } from '../types/treatment';
 import { UserSummary } from '../types/user';
 import { completingKey } from '../utils/completionKeys';
-import { computeMyDay, mergeUserAlertTimes } from '../utils/myDayHelpers';
+import { computeMyWeek, mergeUserAlertTimes } from '../utils/myDayHelpers';
 
-const EMPTY_MY_DAY: MyDayData = {
+const EMPTY_MY_WEEK: MyWeekData = {
   summaryCounts: { feedings: 0, rides: 0, tasks: 0 },
   unassignedFeedings: [],
   overdueFeedings: [],
-  itinerary: [],
+  daySections: [],
   openTasks: [],
 };
 
@@ -33,7 +33,7 @@ interface RawData {
 
 export function useMyDayData() {
   const { user } = useAuth();
-  const [myDay, setMyDay] = useState<MyDayData>(EMPTY_MY_DAY);
+  const [myWeek, setMyWeek] = useState<MyWeekData>(EMPTY_MY_WEEK);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [volunteeringId, setVolunteeringId] = useState<string | null>(null);
@@ -43,14 +43,14 @@ export function useMyDayData() {
   const applyRawData = useCallback(
     (raw: RawData) => {
       if (!user) {
-        setMyDay(EMPTY_MY_DAY);
+        setMyWeek(EMPTY_MY_WEEK);
         return;
       }
 
       const times = mergeUserAlertTimes(raw.profile);
       setAlertTimes(times);
-      setMyDay(
-        computeMyDay(user.userId, raw.feedings, raw.tasks, raw.rides, raw.treatments, times)
+      setMyWeek(
+        computeMyWeek(user.userId, raw.feedings, raw.tasks, raw.rides, raw.treatments, times)
       );
     },
     [user]
@@ -79,7 +79,7 @@ export function useMyDayData() {
 
         applyRawData({ feedings, tasks, rides, treatments, profile });
       } catch (error) {
-        console.error('Failed to load My Day data:', error);
+        console.error('Failed to load My Week data:', error);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -138,7 +138,7 @@ export function useMyDayData() {
   );
 
   return {
-    myDay,
+    myWeek,
     loading,
     refreshing,
     alertTimes,

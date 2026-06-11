@@ -9,7 +9,14 @@ export type TimelineEvent =
   | { kind: 'treatment'; data: Treatment; sortMinutes: number }
   | { kind: 'task'; data: Task; sortMinutes: number };
 
-export interface MyDayData {
+export interface WeekDaySection {
+  date: string;
+  dayName: string;
+  dateLabel: string;
+  events: TimelineEvent[];
+}
+
+export interface MyWeekData {
   summaryCounts: {
     feedings: number;
     rides: number;
@@ -17,7 +24,7 @@ export interface MyDayData {
   };
   unassignedFeedings: Feeding[];
   overdueFeedings: Feeding[];
-  itinerary: TimelineEvent[];
+  daySections: WeekDaySection[];
   openTasks: Task[];
 }
 

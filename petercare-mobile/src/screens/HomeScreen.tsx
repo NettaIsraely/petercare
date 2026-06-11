@@ -16,7 +16,7 @@ import OpenTasksList from '../components/home/OpenTasksList';
 export default function HomeScreen() {
   const { user } = useAuth();
   const {
-    myDay,
+    myWeek,
     loading,
     refreshing,
     alertTimes,
@@ -49,27 +49,27 @@ export default function HomeScreen() {
     >
       <WelcomeHeader
         name={user?.name ?? 'there'}
-        feedings={myDay.summaryCounts.feedings}
-        rides={myDay.summaryCounts.rides}
-        tasks={myDay.summaryCounts.tasks}
+        feedings={myWeek.summaryCounts.feedings}
+        rides={myWeek.summaryCounts.rides}
+        tasks={myWeek.summaryCounts.tasks}
       />
 
       <AlertBanner
-        unassignedFeedings={myDay.unassignedFeedings}
-        overdueFeedings={myDay.overdueFeedings}
+        unassignedFeedings={myWeek.unassignedFeedings}
+        overdueFeedings={myWeek.overdueFeedings}
         onVolunteer={volunteerForFeeding}
         volunteeringId={volunteeringId}
       />
 
       <ItineraryTimeline
-        events={myDay.itinerary}
+        daySections={myWeek.daySections}
         onMarkComplete={markEventComplete}
         completingIds={completingIds}
         alertTimes={alertTimes}
       />
 
       <OpenTasksList
-        tasks={myDay.openTasks}
+        tasks={myWeek.openTasks}
         onMarkComplete={(task) =>
           markEventComplete({ kind: 'task', data: task, sortMinutes: 0 })
         }

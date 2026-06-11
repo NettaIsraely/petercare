@@ -28,7 +28,7 @@ export default function LoginScreen({ navigation }: any) {
     setIsLoading(true);
     try {
         await login(email, password);
-        Alert.alert('Success!', 'Wristband secured. Welcome to the Stable.');
+        Alert.alert('Success!', 'Welcome to the Stable!');
     } catch (error: any) {
       Alert.alert('Login Failed', 'Invalid email or password.');
       console.log(error);

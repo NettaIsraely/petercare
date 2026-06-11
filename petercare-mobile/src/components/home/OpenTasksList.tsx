@@ -17,10 +17,10 @@ export default function OpenTasksList({
 }: OpenTasksListProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>My Open Tasks</Text>
+      <Text style={styles.sectionTitle}>Additional Tasks</Text>
       {tasks.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>No open tasks without deadlines.</Text>
+          <Text style={styles.emptyText}>No other tasks</Text>
         </View>
       ) : (
         tasks.map((task) => (

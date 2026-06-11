@@ -1,12 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { TimelineEvent } from '../../types/events';
+import { WeekDaySection } from '../../types/events';
 import { isCompletingKey } from '../../utils/completionKeys';
 import EventCard from './EventCard';
 
 interface ItineraryTimelineProps {
-  events: TimelineEvent[];
-  onMarkComplete: (event: TimelineEvent) => void;
+  daySections: WeekDaySection[];
+  onMarkComplete: (event: WeekDaySection['events'][number]) => void;
   completingIds: Set<string>;
   alertTimes?: {
     morningTime?: string;
@@ -15,42 +15,52 @@ interface ItineraryTimelineProps {
 }
 
 export default function ItineraryTimeline({
-  events,
+  daySections,
   onMarkComplete,
   completingIds,
   alertTimes,
 }: ItineraryTimelineProps) {
+  if (daySections.length === 0) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyText}>No events scheduled for you this week.</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Today&apos;s Itinerary</Text>
-      {events.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>No events scheduled for you today.</Text>
-        </View>
-      ) : (
-        events.map((event) => {
-          const showCheckbox = event.kind === 'feeding' || event.kind === 'task';
-          const isCompleting =
-            event.kind === 'feeding'
-              ? isCompletingKey(completingIds, 'feeding', event.data.id)
-              : event.kind === 'task'
-                ? isCompletingKey(completingIds, 'task', event.data.id)
-                : false;
+      {daySections.map((section) => (
+        <View key={section.date} style={styles.daySection}>
+          <Text style={styles.dayHeader}>
+            {section.dayName} · {section.dateLabel}
+          </Text>
+          {section.events.map((event) => {
+            const showCheckbox = event.kind === 'feeding' || event.kind === 'task';
+            const isCompleting =
+              event.kind === 'feeding'
+                ? isCompletingKey(completingIds, 'feeding', event.data.id)
+                : event.kind === 'task'
+                  ? isCompletingKey(completingIds, 'task', event.data.id)
+                  : false;
 
-          return (
-            <EventCard
-              key={`${event.kind}-${event.data.id}`}
-              event={event}
-              showCheckbox={showCheckbox}
-              isCompleting={isCompleting}
-              alertTimes={alertTimes}
-              onToggleComplete={
-                showCheckbox ? () => onMarkComplete(event) : undefined
-              }
-            />
-          );
-        })
-      )}
+            return (
+              <EventCard
+                key={`${event.kind}-${event.data.id}`}
+                event={event}
+                showCheckbox={showCheckbox}
+                isCompleting={isCompleting}
+                alertTimes={alertTimes}
+                onToggleComplete={
+                  showCheckbox ? () => onMarkComplete(event) : undefined
+                }
+              />
+            );
+          })}
+        </View>
+      ))}
     </View>
   );
 }
@@ -59,11 +69,14 @@ const styles = StyleSheet.create({
   container: {
     marginBottom: 24,
   },
-  sectionTitle: {
-    fontSize: 18,
+  daySection: {
+    marginBottom: 20,
+  },
+  dayHeader: {
+    fontSize: 16,
     fontWeight: '700',
     color: '#2C3E50',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   emptyState: {
     backgroundColor: '#FFFFFF',

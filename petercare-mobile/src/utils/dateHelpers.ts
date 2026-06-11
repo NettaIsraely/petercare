@@ -18,6 +18,44 @@ export function isToday(value: string | Date): boolean {
   return normalizeDateString(value) === toDateString(new Date());
 }
 
+export function getNext7DayStrings(): string[] {
+  const days: string[] = [];
+  const today = new Date();
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    days.push(toDateString(date));
+  }
+  return days;
+}
+
+export function isWithinNext7Days(value: string | Date): boolean {
+  const dateStr = normalizeDateString(value);
+  return getNext7DayStrings().includes(dateStr);
+}
+
+export function formatWeekDayHeader(dateStr: string): { dayName: string; dateLabel: string } {
+  const weekDays = getNext7DayStrings();
+  const index = weekDays.indexOf(normalizeDateString(dateStr));
+  const date = new Date(`${normalizeDateString(dateStr)}T00:00:00`);
+
+  let dayName: string;
+  if (index === 0) {
+    dayName = 'Today';
+  } else if (index === 1) {
+    dayName = 'Tomorrow';
+  } else {
+    dayName = date.toLocaleDateString(undefined, { weekday: 'long' });
+  }
+
+  const dateLabel = date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+  });
+
+  return { dayName, dateLabel };
+}
+
 export function parseTimeToMinutes(timeStr: string): number {
   const normalized = timeStr.split(':');
   const hours = parseInt(normalized[0], 10);
