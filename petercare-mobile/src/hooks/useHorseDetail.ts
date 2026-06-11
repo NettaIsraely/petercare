@@ -30,7 +30,9 @@ export function useHorseDetail(horseId: string) {
         ]);
 
         const horseRides = filterRidesForHorse(rides, horseId);
-        const horseTreatments = filterTreatmentsForHorse(treatments, horseId);
+        const horseTreatments = filterTreatmentsForHorse(treatments, horseId).filter(
+          (treatment) => treatment.is_complete ?? false
+        );
         const separated = buildSeparatedHorseHistory(horseRides, horseTreatments);
         setRides(separated.rides);
         setTreatments(separated.treatments);

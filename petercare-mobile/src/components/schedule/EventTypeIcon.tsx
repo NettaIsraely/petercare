@@ -35,7 +35,7 @@ export default function EventTypeIcon({
     case 'treatment':
       return (
         <HorseIconRow
-          colors={[event.data.horse.color]}
+          colors={event.data.horses.map((h) => h.color)}
           size={horseSize}
           maxVisible={maxHorseVisible}
         />

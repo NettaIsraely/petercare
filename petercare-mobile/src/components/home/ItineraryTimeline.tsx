@@ -38,13 +38,16 @@ export default function ItineraryTimeline({
             {section.dayName} · {section.dateLabel}
           </Text>
           {section.events.map((event) => {
-            const showCheckbox = event.kind === 'feeding' || event.kind === 'task';
+            const showCheckbox =
+              event.kind === 'feeding' || event.kind === 'task' || event.kind === 'treatment';
             const isCompleting =
               event.kind === 'feeding'
                 ? isCompletingKey(completingIds, 'feeding', event.data.id)
                 : event.kind === 'task'
                   ? isCompletingKey(completingIds, 'task', event.data.id)
-                  : false;
+                  : event.kind === 'treatment'
+                    ? isCompletingKey(completingIds, 'treatment', event.data.id)
+                    : false;
 
             return (
               <EventCard

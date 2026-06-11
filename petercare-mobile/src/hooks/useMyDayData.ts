@@ -111,7 +111,7 @@ export function useMyDayData() {
 
   const markEventComplete = useCallback(
     async (event: TimelineEvent) => {
-      if (event.kind !== 'feeding' && event.kind !== 'task') {
+      if (event.kind !== 'feeding' && event.kind !== 'task' && event.kind !== 'treatment') {
         return;
       }
 
@@ -120,8 +120,10 @@ export function useMyDayData() {
       try {
         if (event.kind === 'feeding') {
           await feedingService.markFeedingComplete(event.data.id);
-        } else {
+        } else if (event.kind === 'task') {
           await taskService.markTaskComplete(event.data.id);
+        } else {
+          await treatmentService.markTreatmentComplete(event.data.id);
         }
         await refresh(true);
       } catch (error) {

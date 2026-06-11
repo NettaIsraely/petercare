@@ -79,6 +79,7 @@ function getDetailLines(event: TimelineEvent): string[] {
         event.data.duration_minutes
           ? `Duration: ${event.data.duration_minutes} min`
           : '',
+        `Complete: ${event.data.is_complete ? 'Yes' : 'No'}`,
       ].filter(Boolean);
     default:
       return [];
@@ -94,8 +95,8 @@ function getHorseDetailSection(event: TimelineEvent): { colors: HorseColor[]; na
   }
   if (event.kind === 'treatment') {
     return {
-      colors: [event.data.horse.color],
-      names: event.data.horse.name,
+      colors: event.data.horses.map((h) => h.color),
+      names: event.data.horses.map((h) => h.name).join(', '),
     };
   }
   return null;
@@ -132,18 +133,23 @@ export default function EventDetailModal({
     event.kind === 'task' &&
     !!event.data.assigned_user &&
     !(event.data.is_complete ?? false);
+  const isTreatmentAssignedIncomplete =
+    event.kind === 'treatment' &&
+    event.data.user.id === currentUserId &&
+    !(event.data.is_complete ?? false);
 
   const eventId = event.data.id;
   const isVolunteering = volunteeringId === eventId;
   const isClaiming = claimingId === eventId;
   const isCompleting =
-    (event.kind === 'feeding' || event.kind === 'task') &&
+    (event.kind === 'feeding' || event.kind === 'task' || event.kind === 'treatment') &&
     isCompletingKey(completingIds, event.kind, eventId);
 
   const canCompleteFeeding =
     isFeedingAssignedIncomplete && event.data.assigned_user?.id === currentUserId;
   const canCompleteTask =
     isTaskAssignedIncomplete && event.data.assigned_user?.id === currentUserId;
+  const canCompleteTreatment = isTreatmentAssignedIncomplete;
 
   const horseDetail = getHorseDetailSection(event);
 
@@ -184,7 +190,7 @@ export default function EventDetailModal({
                   optional
                 />
                 <TouchableOpacity
-                  style={[styles.primaryButton, styles.volunteerButton]}
+                  style={styles.primaryButton}
                   onPress={() =>
                     onVolunteer(eventId, formatTimeForApi(notificationTime))
                   }
@@ -237,6 +243,20 @@ export default function EventDetailModal({
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
                   <Text style={styles.primaryButtonText}>Mark Task Complete</Text>
+                )}
+              </TouchableOpacity>
+            )}
+
+            {canCompleteTreatment && (
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={() => onMarkComplete(event)}
+                disabled={isCompleting}
+              >
+                {isCompleting ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Mark Treatment Complete</Text>
                 )}
               </TouchableOpacity>
             )}
@@ -339,9 +359,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
     marginBottom: 10,
-  },
-  volunteerButton: {
-    backgroundColor: '#E74C3C',
   },
   claimButton: {
     backgroundColor: '#27AE60',

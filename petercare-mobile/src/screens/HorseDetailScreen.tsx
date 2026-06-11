@@ -25,7 +25,8 @@ type Props = NativeStackScreenProps<HorsesStackParamList, 'HorseDetail'>;
 export default function HorseDetailScreen({ route, navigation }: Props) {
   const { horseId } = route.params;
   const { user } = useAuth();
-  const { rides, treatments, loading, refreshing, refresh } = useHorseDetail(horseId);
+  const { rides, treatments, loading, refreshing, refresh: refreshHistory } =
+    useHorseDetail(horseId);
 
   const [horseName, setHorseName] = useState(route.params.horseName);
   const [horseColor, setHorseColor] = useState(route.params.horseColor);
@@ -51,6 +52,19 @@ export default function HorseDetailScreen({ route, navigation }: Props) {
         : undefined,
     });
   }, [navigation, horseName, isOwner]);
+
+  const refresh = useCallback(
+    async (isPullRefresh = false) => {
+      await refreshHistory(isPullRefresh);
+      try {
+        const horse = await horseService.getHorse(horseId);
+        setLastShoeingDate(horse.last_shoeing_date);
+      } catch (error) {
+        console.error('Failed to refresh horse profile:', error);
+      }
+    },
+    [horseId, refreshHistory]
+  );
 
   const handleUpdateHorse = useCallback(
     async (payload: UpdateHorsePayload) => {

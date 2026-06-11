@@ -72,7 +72,10 @@ function getEventsForDate(
 
   const dayTreatments = treatments
     .filter(
-      (t) => normalizeDateString(t.date) === normalizedDate && t.user.id === userId
+      (t) =>
+        normalizeDateString(t.date) === normalizedDate &&
+        t.user.id === userId &&
+        !(t.is_complete ?? false)
     )
     .map((treatment) => ({
       kind: 'treatment' as const,

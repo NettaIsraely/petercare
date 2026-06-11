@@ -6,6 +6,11 @@ export async function getAllHorses(): Promise<Horse[]> {
   return response.data;
 }
 
+export async function getHorse(id: string): Promise<Horse> {
+  const response = await apiClient.get<Horse>(`/horses/${id}`);
+  return response.data;
+}
+
 export async function createHorse(payload: CreateHorsePayload): Promise<Horse> {
   const response = await apiClient.post<Horse>('/horses', payload);
   return response.data;

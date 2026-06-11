@@ -14,7 +14,9 @@ export function filterTreatmentsForHorse(
   treatments: Treatment[],
   horseId: string
 ): Treatment[] {
-  return treatments.filter((treatment) => treatment.horse.id === horseId);
+  return treatments.filter((treatment) =>
+    treatment.horses.some((horse) => horse.id === horseId)
+  );
 }
 
 function getRideSortKey(ride: Ride): number {

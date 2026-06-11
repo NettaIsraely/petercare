@@ -1,6 +1,6 @@
 import { Horse } from "src/horses/entities/horse.entity";
 import { User } from "src/users/entities/user.entity";
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 @Entity('treatments')
 export class Treatment {
@@ -13,9 +13,9 @@ export class Treatment {
     @Column({type:'int', nullable: true})
     duration_minutes?: number;
 
-    @ManyToOne(()=>Horse)
-    @JoinColumn({name:'horse_id'})
-    horse!: Horse;
+    @ManyToMany(() => Horse)
+    @JoinTable({ name: 'treatment_horses' })
+    horses!: Horse[];
 
     @ManyToOne(()=>User)
     @JoinColumn({name:'user_id'})
@@ -23,6 +23,9 @@ export class Treatment {
 
     @Column({ type: 'date', default: () => 'CURRENT_DATE'})
     date!: Date;
+
+    @Column({ type: 'boolean', default: false })
+    is_complete!: boolean;
 
     @CreateDateColumn()
     created_at!: Date;

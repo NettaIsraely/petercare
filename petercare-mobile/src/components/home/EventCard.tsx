@@ -47,7 +47,7 @@ function getEventTitle(event: TimelineEvent): string {
     case 'ride':
       return `Ride with ${event.data.horses.map((h) => h.name).join(', ')}`;
     case 'treatment':
-      return `${event.data.name} — ${event.data.horse.name}`;
+      return `${event.data.name} — ${event.data.horses.map((h) => h.name).join(', ')}`;
     case 'task':
       return event.data.name;
     default:

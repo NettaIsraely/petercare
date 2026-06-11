@@ -10,3 +10,10 @@ export async function createTreatment(payload: CreateTreatmentPayload): Promise<
   const response = await apiClient.post<Treatment>('/treatments', payload);
   return response.data;
 }
+
+export async function markTreatmentComplete(id: string): Promise<Treatment> {
+  const response = await apiClient.patch<Treatment>(`/treatments/${id}`, {
+    is_complete: true,
+  });
+  return response.data;
+}

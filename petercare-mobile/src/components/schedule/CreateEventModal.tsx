@@ -14,7 +14,11 @@ import { CreateEventCategory } from '../../types/events';
 import { CreateFeedingPayload, ShiftType } from '../../types/feeding';
 import { CreateTaskPayload } from '../../types/task';
 import { CreateRidePayload } from '../../types/ride';
-import { CreateTreatmentPayload } from '../../types/treatment';
+import {
+  CreateTreatmentPayload,
+  PREDEFINED_TREATMENT_NAMES,
+  PredefinedTreatmentName,
+} from '../../types/treatment';
 import { Horse } from '../../types/horse';
 import { UserSummary } from '../../types/user';
 import DatePickerField from './DatePickerField';
@@ -123,10 +127,13 @@ export default function CreateEventModal({
   const [selectedHorseIds, setSelectedHorseIds] = useState<string[]>([]);
   const [additionalRiderIds, setAdditionalRiderIds] = useState<string[]>([]);
 
-  const [treatmentName, setTreatmentName] = useState('');
+  const [treatmentNamePreset, setTreatmentNamePreset] = useState<PredefinedTreatmentName | null>(
+    null
+  );
+  const [treatmentCustomName, setTreatmentCustomName] = useState('');
   const [treatmentDate, setTreatmentDate] = useState(defaultDate);
   const [treatmentDuration, setTreatmentDuration] = useState('');
-  const [treatmentHorseId, setTreatmentHorseId] = useState('');
+  const [treatmentHorseIds, setTreatmentHorseIds] = useState<string[]>([]);
   const [treatmentUserId, setTreatmentUserId] = useState(currentUserId ?? '');
 
   const resetForm = () => {
@@ -142,10 +149,11 @@ export default function CreateEventModal({
     setPrimaryRiderId(currentUserId ?? '');
     setSelectedHorseIds([]);
     setAdditionalRiderIds([]);
-    setTreatmentName('');
+    setTreatmentNamePreset(null);
+    setTreatmentCustomName('');
     setTreatmentDate(defaultDate);
     setTreatmentDuration('');
-    setTreatmentHorseId('');
+    setTreatmentHorseIds([]);
     setTreatmentUserId(currentUserId ?? '');
   };
 
@@ -172,6 +180,12 @@ export default function CreateEventModal({
   const toggleAdditionalRider = (userId: string) => {
     setAdditionalRiderIds((prev) =>
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
+    );
+  };
+
+  const toggleTreatmentHorse = (horseId: string) => {
+    setTreatmentHorseIds((prev) =>
+      prev.includes(horseId) ? prev.filter((id) => id !== horseId) : [...prev, horseId]
     );
   };
 
@@ -219,12 +233,13 @@ export default function CreateEventModal({
             additionalRiderIds.length > 0 ? additionalRiderIds : undefined,
         });
       } else if (category === 'treatment') {
-        if (!treatmentName.trim()) {
+        const resolvedTreatmentName = treatmentNamePreset ?? treatmentCustomName.trim();
+        if (!resolvedTreatmentName) {
           setError('Treatment name is required.');
           return;
         }
-        if (!treatmentHorseId) {
-          setError('Select a horse.');
+        if (treatmentHorseIds.length === 0) {
+          setError('Select at least one horse.');
           return;
         }
         if (!treatmentUserId) {
@@ -232,12 +247,12 @@ export default function CreateEventModal({
           return;
         }
         await onCreateTreatment({
-          name: treatmentName.trim(),
+          name: resolvedTreatmentName,
           date: treatmentDate.trim() || undefined,
           duration_minutes: treatmentDuration.trim()
             ? parseInt(treatmentDuration, 10)
             : undefined,
-          horse_id: treatmentHorseId,
+          horse_ids: treatmentHorseIds,
           user_id: treatmentUserId,
         });
       }
@@ -380,10 +395,36 @@ export default function CreateEventModal({
             {category === 'treatment' && (
               <>
                 <Text style={styles.label}>Name</Text>
+                <View style={styles.rowWrap}>
+                  {PREDEFINED_TREATMENT_NAMES.map((name) => (
+                    <TouchableOpacity
+                      key={name}
+                      style={[styles.chip, treatmentNamePreset === name && styles.chipSelected]}
+                      onPress={() => {
+                        setTreatmentNamePreset(name);
+                        setTreatmentCustomName('');
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.chipText,
+                          treatmentNamePreset === name && styles.chipTextSelected,
+                        ]}
+                      >
+                        {name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
                 <TextInput
                   style={styles.input}
-                  value={treatmentName}
-                  onChangeText={setTreatmentName}
+                  value={treatmentCustomName}
+                  onChangeText={(text) => {
+                    setTreatmentCustomName(text);
+                    setTreatmentNamePreset(null);
+                  }}
+                  placeholder="Or enter custom name"
+                  placeholderTextColor="#BDC3C7"
                 />
                 <DatePickerField label="Date" value={treatmentDate} onChange={setTreatmentDate} />
                 <Text style={styles.label}>Duration (minutes, optional)</Text>
@@ -393,12 +434,30 @@ export default function CreateEventModal({
                   onChangeText={setTreatmentDuration}
                   keyboardType="number-pad"
                 />
-                <PickerRow
-                  label="Horse"
-                  options={horseOptions}
-                  selectedId={treatmentHorseId}
-                  onSelect={(id) => setTreatmentHorseId(id ?? '')}
-                />
+                <View style={styles.field}>
+                  <Text style={styles.label}>Horses</Text>
+                  <View style={styles.rowWrap}>
+                    {horseOptions.map((horse) => (
+                      <TouchableOpacity
+                        key={horse.id}
+                        style={[
+                          styles.chip,
+                          treatmentHorseIds.includes(horse.id) && styles.chipSelected,
+                        ]}
+                        onPress={() => toggleTreatmentHorse(horse.id)}
+                      >
+                        <Text
+                          style={[
+                            styles.chipText,
+                            treatmentHorseIds.includes(horse.id) && styles.chipTextSelected,
+                          ]}
+                        >
+                          {horse.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
                 <PickerRow
                   label="Staff"
                   options={userOptions}
