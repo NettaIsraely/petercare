@@ -4,7 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Home, CalendarDays, Warehouse, BarChart3, User } from 'lucide-react-native';
 import HomeScreen from '../screens/HomeScreen';
 import ScheduleScreen from '../screens/ScheduleScreen';
-import HorsesScreen from '../screens/HorsesScreen';
+import HorsesStackNavigator from './HorsesStackNavigator';
 import InsightsScreen from '../screens/InsightsScreen';
 import { MainTabParamList } from './types';
 
@@ -58,7 +58,7 @@ export default function MainTabNavigator() {
       />
       <Tab.Screen
         name="Horses"
-        component={HorsesScreen}
+        component={HorsesStackNavigator}
         options={{
           title: 'The Barn',
           tabBarLabel: 'Barn',

@@ -5,10 +5,19 @@ export type AuthStackParamList = {
   SignUp: undefined;
 };
 
+export type HorsesStackParamList = {
+  HorsesList: undefined;
+  HorseDetail: {
+    horseId: string;
+    horseName: string;
+    lastShoeingDate?: string | null;
+  };
+};
+
 export type MainTabParamList = {
   Home: undefined;
   Schedule: undefined;
-  Horses: undefined;
+  Horses: NavigatorScreenParams<HorsesStackParamList>;
   Insights: undefined;
 };
 
