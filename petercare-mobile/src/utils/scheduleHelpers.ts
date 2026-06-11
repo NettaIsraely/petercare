@@ -1,4 +1,5 @@
 import { ScheduleSectionData, TimelineEvent } from '../types/events';
+import { getRollingWeekDateStrings } from './dateHelpers';
 import { Feeding } from '../types/feeding';
 import { Ride } from '../types/ride';
 import { Task } from '../types/task';
@@ -8,13 +9,17 @@ import {
   normalizeDateString,
   parseTimeToMinutes,
 } from './dateHelpers';
-import { mergeUserAlertTimes } from './myDayHelpers';
 import { UserSummary } from '../types/user';
 
 interface AlertTimes {
   morningTime?: string;
   eveningTime?: string;
 }
+
+export const CALENDAR_FEEDING_ALERT_TIMES: AlertTimes = {
+  morningTime: '07:00:00',
+  eveningTime: '19:00:00',
+};
 
 export type CalendarMarkedDates = Record<
   string,
@@ -76,6 +81,89 @@ function compareByDateThenSortMinutes(a: TimelineEvent, b: TimelineEvent): numbe
   return a.sortMinutes - b.sortMinutes;
 }
 
+export interface EventTimeSlot {
+  hasTime: boolean;
+  hour: number;
+  endHour?: number;
+}
+
+export function getAssignedUserId(event: TimelineEvent): string | undefined {
+  switch (event.kind) {
+    case 'feeding':
+      return event.data.assigned_user?.id;
+    case 'task':
+      return event.data.assigned_user?.id;
+    case 'ride':
+      return event.data.primary_rider.id;
+    case 'treatment':
+      return event.data.user.id;
+    default:
+      return undefined;
+  }
+}
+
+export function getAssigneeName(event: TimelineEvent): string | undefined {
+  switch (event.kind) {
+    case 'feeding':
+      return event.data.feeding_status === 'UNASSIGNED'
+        ? 'Unassigned'
+        : event.data.assigned_user?.name;
+    case 'task':
+      return event.data.assigned_user?.name;
+    case 'ride':
+      return event.data.primary_rider.name;
+    case 'treatment':
+      return event.data.user.name;
+    default:
+      return undefined;
+  }
+}
+
+export function isUnassignedFeeding(event: TimelineEvent): boolean {
+  return event.kind === 'feeding' && event.data.feeding_status === 'UNASSIGNED';
+}
+
+export function isEventOwnedByUser(
+  event: TimelineEvent,
+  currentUserId?: string
+): boolean {
+  if (!currentUserId) {
+    return false;
+  }
+  return getAssignedUserId(event) === currentUserId;
+}
+
+export function getEventTimeSlot(
+  event: TimelineEvent,
+  alertTimes: AlertTimes
+): EventTimeSlot {
+  switch (event.kind) {
+    case 'feeding': {
+      const deadline = getShiftDeadlineTime(
+        event.data.shift_type,
+        alertTimes.morningTime,
+        alertTimes.eveningTime
+      );
+      const minutes = parseTimeToMinutes(deadline);
+      return { hasTime: true, hour: Math.floor(minutes / 60) };
+    }
+    case 'ride': {
+      const startMinutes = parseTimeToMinutes(event.data.start_time);
+      const endMinutes = parseTimeToMinutes(event.data.end_time);
+      return {
+        hasTime: true,
+        hour: Math.floor(startMinutes / 60),
+        endHour: Math.floor(endMinutes / 60),
+      };
+    }
+    case 'treatment':
+    case 'task':
+      return { hasTime: false, hour: 0 };
+    default:
+      return { hasTime: false, hour: 0 };
+  }
+}
+
 export function getEventDateString(event: TimelineEvent): string {
   switch (event.kind) {
     case 'feeding':
@@ -128,6 +216,31 @@ export function buildCalendarMarkedDates(
   return marked;
 }
 
+export function getEventsForWeek(
+  anchorDate: string,
+  feedings: Feeding[],
+  tasks: Task[],
+  rides: Ride[],
+  treatments: Treatment[],
+  profile?: UserSummary
+): Record<string, TimelineEvent[]> {
+  const weekDates = getRollingWeekDateStrings(anchorDate);
+  const result: Record<string, TimelineEvent[]> = {};
+
+  weekDates.forEach((date) => {
+    result[date] = getEventsForDate(
+      date,
+      feedings,
+      tasks,
+      rides,
+      treatments,
+      profile
+    );
+  });
+
+  return result;
+}
+
 export function getEventsForDate(
   date: string,
   feedings: Feeding[],
@@ -136,7 +249,7 @@ export function getEventsForDate(
   treatments: Treatment[],
   profile?: UserSummary
 ): TimelineEvent[] {
-  const alertTimes = mergeUserAlertTimes(profile);
+  const alertTimes = CALENDAR_FEEDING_ALERT_TIMES;
   const normalizedDate = normalizeDateString(date);
 
   const dayFeedings = feedings
@@ -167,7 +280,7 @@ export function buildScheduleListSections(
   treatments: Treatment[],
   profile?: UserSummary
 ): ScheduleSectionData {
-  const alertTimes = mergeUserAlertTimes(profile);
+  const alertTimes = CALENDAR_FEEDING_ALERT_TIMES;
 
   const feedingEvents = feedings
     .map((f) => toFeedingEvent(f, alertTimes))
@@ -205,7 +318,7 @@ export function feedingToTimelineEvent(
   feeding: Feeding,
   profile?: UserSummary
 ): TimelineEvent {
-  return toFeedingEvent(feeding, mergeUserAlertTimes(profile));
+  return toFeedingEvent(feeding, CALENDAR_FEEDING_ALERT_TIMES);
 }
 
 export function rideToTimelineEvent(ride: Ride): TimelineEvent {

@@ -38,4 +38,6 @@ export interface ScheduleSectionData {
 
 export type ScheduleViewMode = 'calendar' | 'list';
 
+export type CalendarViewMode = 'weekly' | 'monthly';
+
 export type CreateEventCategory = 'feeding' | 'task' | 'ride' | 'treatment';

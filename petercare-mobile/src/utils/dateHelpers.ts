@@ -18,6 +18,50 @@ export function isToday(value: string | Date): boolean {
   return normalizeDateString(value) === toDateString(new Date());
 }
 
+export function getRollingWeekDateStrings(anchorDate: string): string[] {
+  const anchor = new Date(`${normalizeDateString(anchorDate)}T00:00:00`);
+  const days: string[] = [];
+  for (let i = 0; i < 7; i += 1) {
+    const date = new Date(anchor);
+    date.setDate(anchor.getDate() + i);
+    days.push(toDateString(date));
+  }
+  return days;
+}
+
+export function getWeekRangeLabel(dates: string[]): string {
+  if (dates.length === 0) {
+    return '';
+  }
+
+  const start = new Date(`${dates[0]}T00:00:00`);
+  const end = new Date(`${dates[dates.length - 1]}T00:00:00`);
+
+  const startLabel = start.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+  });
+  const endLabel = end.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: start.getFullYear() !== end.getFullYear() ? 'numeric' : undefined,
+  });
+
+  return `${startLabel} – ${endLabel}`;
+}
+
+export function shiftDateByWeeks(dateStr: string, weeks: number): string {
+  const date = new Date(`${normalizeDateString(dateStr)}T00:00:00`);
+  date.setDate(date.getDate() + weeks * 7);
+  return toDateString(date);
+}
+
+export function formatHourLabel(hour: number): string {
+  const period = hour >= 12 ? 'PM' : 'AM';
+  const hours12 = hour % 12 || 12;
+  return `${hours12} ${period}`;
+}
+
 export function getNext7DayStrings(): string[] {
   const days: string[] = [];
   const today = new Date();

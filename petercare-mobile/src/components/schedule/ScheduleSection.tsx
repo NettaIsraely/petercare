@@ -10,6 +10,7 @@ interface ScheduleSectionProps {
   icon: React.ComponentType<{ size?: number; color?: string }>;
   events: TimelineEvent[];
   onEventPress: (event: TimelineEvent) => void;
+  currentUserId?: string;
   alertTimes?: {
     morningTime?: string;
     eveningTime?: string;
@@ -22,6 +23,7 @@ export default function ScheduleSection({
   icon: Icon,
   events,
   onEventPress,
+  currentUserId,
   alertTimes,
   emptyMessage = 'No items yet.',
 }: ScheduleSectionProps) {
@@ -41,6 +43,8 @@ export default function ScheduleSection({
             key={`${event.kind}-${event.data.id}`}
             event={event}
             onPress={() => onEventPress(event)}
+            currentUserId={currentUserId}
+            showAssignee
             alertTimes={alertTimes}
           />
         ))
@@ -52,9 +56,11 @@ export default function ScheduleSection({
 export function DatelessTasksSection({
   tasks,
   onTaskPress,
+  currentUserId,
 }: {
   tasks: Task[];
   onTaskPress: (event: TimelineEvent) => void;
+  currentUserId?: string;
 }) {
   if (tasks.length === 0) {
     return null;
@@ -73,6 +79,8 @@ export function DatelessTasksSection({
           onPress={() =>
             onTaskPress({ kind: 'task', data: task, sortMinutes: 0 })
           }
+          currentUserId={currentUserId}
+          showAssignee
         />
       ))}
     </View>

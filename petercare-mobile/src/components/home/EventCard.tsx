@@ -7,10 +7,16 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { Wheat, ClipboardList } from 'lucide-react-native';
+import { ClipboardList } from 'lucide-react-native';
 import { TimelineEvent } from '../../types/events';
 import { getEventCardStyle } from '../../utils/userColors';
-import HorseIconRow from '../horses/HorseIconRow';
+import {
+  getAssigneeName,
+  getAssignedUserId,
+  isEventOwnedByUser,
+  isUnassignedFeeding,
+} from '../../utils/scheduleHelpers';
+import EventTypeIcon from '../schedule/EventTypeIcon';
 import {
   formatShiftLabel,
   formatTimeLabel,
@@ -29,21 +35,8 @@ interface EventCardProps {
     morningTime?: string;
     eveningTime?: string;
   };
-}
-
-function getAssignedUserId(event: TimelineEvent): string | undefined {
-  switch (event.kind) {
-    case 'feeding':
-      return event.data.assigned_user?.id;
-    case 'task':
-      return event.data.assigned_user?.id;
-    case 'ride':
-      return event.data.primary_rider.id;
-    case 'treatment':
-      return event.data.user.id;
-    default:
-      return undefined;
-  }
+  currentUserId?: string;
+  showAssignee?: boolean;
 }
 
 function getEventTitle(event: TimelineEvent): string {
@@ -99,24 +92,6 @@ function getEventSubtitle(event: TimelineEvent, alertTimes?: EventCardProps['ale
   }
 }
 
-function EventIconColumn({ event }: { event: TimelineEvent }) {
-  const size = 22;
-  const color = '#2C3E50';
-
-  switch (event.kind) {
-    case 'feeding':
-      return <Wheat size={size} color={color} />;
-    case 'task':
-      return <ClipboardList size={size} color={color} />;
-    case 'ride':
-      return <HorseIconRow colors={event.data.horses.map((h) => h.color)} size={28} />;
-    case 'treatment':
-      return <HorseIconRow colors={[event.data.horse.color]} size={28} />;
-    default:
-      return null;
-  }
-}
-
 export default function EventCard({
   event,
   showCheckbox = false,
@@ -124,18 +99,36 @@ export default function EventCard({
   onToggleComplete,
   onPress,
   alertTimes,
+  currentUserId,
+  showAssignee = false,
 }: EventCardProps) {
   const assignedUserId = getAssignedUserId(event);
-  const cardStyle = getEventCardStyle(assignedUserId);
+  const isCurrentUser = isEventOwnedByUser(event, currentUserId);
+  const cardStyle = getEventCardStyle({
+    assignedUserId,
+    isUnassignedFeeding: isUnassignedFeeding(event),
+    isCurrentUser: showAssignee ? isCurrentUser : false,
+  });
+  const assigneeName = showAssignee ? getAssigneeName(event) : undefined;
+  const titleWeight = showAssignee
+    ? isCurrentUser
+      ? '700'
+      : '500'
+    : '600';
 
   const content = (
     <>
       <View style={styles.iconColumn}>
-        <EventIconColumn event={event} />
+        <EventTypeIcon event={event} />
       </View>
       <View style={styles.content}>
-        <Text style={styles.title}>{getEventTitle(event)}</Text>
+        <Text style={[styles.title, { fontWeight: titleWeight }]}>
+          {getEventTitle(event)}
+        </Text>
         <Text style={styles.subtitle}>{getEventSubtitle(event, alertTimes)}</Text>
+        {assigneeName ? (
+          <Text style={styles.assignee}>{assigneeName}</Text>
+        ) : null}
       </View>
       {showCheckbox && (
         <TouchableOpacity
@@ -177,7 +170,7 @@ export function OpenTaskCard({
   isCompleting: boolean;
   onToggleComplete: () => void;
 }) {
-  const cardStyle = getEventCardStyle(assignedUserId);
+  const cardStyle = getEventCardStyle({ assignedUserId });
 
   return (
     <View style={[styles.card, cardStyle]}>
@@ -227,6 +220,11 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 13,
     color: '#7F8C8D',
+  },
+  assignee: {
+    fontSize: 12,
+    color: '#95A5A6',
+    marginTop: 4,
   },
   checkbox: {
     width: 26,

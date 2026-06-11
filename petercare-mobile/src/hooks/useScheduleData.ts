@@ -17,11 +17,12 @@ import { ScheduleSectionData, TimelineEvent } from '../types/events';
 import {
   buildCalendarMarkedDates,
   buildScheduleListSections,
+  CALENDAR_FEEDING_ALERT_TIMES,
   getEventsForDate,
+  getEventsForWeek,
 } from '../utils/scheduleHelpers';
 import { toDateString } from '../utils/dateHelpers';
 import { completingKey } from '../utils/completionKeys';
-import { mergeUserAlertTimes } from '../utils/myDayHelpers';
 
 interface RawScheduleData {
   feedings: Feeding[];
@@ -59,10 +60,7 @@ export function useScheduleData() {
   const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
 
-  const alertTimes = useMemo(
-    () => mergeUserAlertTimes(raw.profile),
-    [raw.profile]
-  );
+  const alertTimes = useMemo(() => CALENDAR_FEEDING_ALERT_TIMES, []);
 
   const listSections = useMemo(
     () =>
@@ -91,6 +89,19 @@ export function useScheduleData() {
   const selectedDateEvents = useMemo(
     () =>
       getEventsForDate(
+        selectedDate,
+        raw.feedings,
+        raw.tasks,
+        raw.rides,
+        raw.treatments,
+        raw.profile
+      ),
+    [raw, selectedDate]
+  );
+
+  const weekEvents = useMemo(
+    () =>
+      getEventsForWeek(
         selectedDate,
         raw.feedings,
         raw.tasks,
@@ -271,6 +282,7 @@ export function useScheduleData() {
     selectedDate,
     setSelectedDate,
     selectedDateEvents,
+    weekEvents,
     alertTimes,
     loading,
     refreshing,

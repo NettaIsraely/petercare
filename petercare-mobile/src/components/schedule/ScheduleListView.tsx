@@ -7,6 +7,7 @@ import ScheduleSection, { DatelessTasksSection } from './ScheduleSection';
 interface ScheduleListViewProps {
   sections: ScheduleSectionData;
   onEventPress: (event: TimelineEvent) => void;
+  currentUserId?: string;
   alertTimes?: {
     morningTime?: string;
     eveningTime?: string;
@@ -16,6 +17,7 @@ interface ScheduleListViewProps {
 export default function ScheduleListView({
   sections,
   onEventPress,
+  currentUserId,
   alertTimes,
 }: ScheduleListViewProps) {
   return (
@@ -25,6 +27,7 @@ export default function ScheduleListView({
         icon={Wheat}
         events={sections.feedings}
         onEventPress={onEventPress}
+        currentUserId={currentUserId}
         alertTimes={alertTimes}
         emptyMessage="No feedings scheduled."
       />
@@ -33,6 +36,7 @@ export default function ScheduleListView({
         icon={Route}
         events={sections.rides}
         onEventPress={onEventPress}
+        currentUserId={currentUserId}
         alertTimes={alertTimes}
         emptyMessage="No rides scheduled."
       />
@@ -41,6 +45,7 @@ export default function ScheduleListView({
         icon={Stethoscope}
         events={sections.treatments}
         onEventPress={onEventPress}
+        currentUserId={currentUserId}
         alertTimes={alertTimes}
         emptyMessage="No treatments scheduled."
       />
@@ -49,12 +54,14 @@ export default function ScheduleListView({
         icon={ClipboardList}
         events={sections.tasksWithDeadlines}
         onEventPress={onEventPress}
+        currentUserId={currentUserId}
         alertTimes={alertTimes}
         emptyMessage="No tasks with deadlines."
       />
       <DatelessTasksSection
         tasks={sections.datelessTasks}
         onTaskPress={onEventPress}
+        currentUserId={currentUserId}
       />
     </View>
   );

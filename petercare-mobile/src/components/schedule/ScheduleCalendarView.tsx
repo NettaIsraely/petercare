@@ -1,16 +1,24 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Calendar } from 'react-native-calendars';
-import { TimelineEvent } from '../../types/events';
+import { View, StyleSheet } from 'react-native';
+import { CalendarViewMode, TimelineEvent } from '../../types/events';
 import { CalendarMarkedDates } from '../../utils/scheduleHelpers';
-import EventCard from '../home/EventCard';
+import { UserSummary } from '../../types/user';
+import CalendarModeToggle from './CalendarModeToggle';
+import UserColorLegend from './UserColorLegend';
+import ScheduleWeeklyView from './ScheduleWeeklyView';
+import ScheduleMonthlyView from './ScheduleMonthlyView';
 
 interface ScheduleCalendarViewProps {
+  calendarViewMode: CalendarViewMode;
+  onCalendarViewModeChange: (mode: CalendarViewMode) => void;
   markedDates: CalendarMarkedDates;
   selectedDate: string;
   onSelectDate: (date: string) => void;
-  events: TimelineEvent[];
+  selectedDateEvents: TimelineEvent[];
+  weekEvents: Record<string, TimelineEvent[]>;
+  users: UserSummary[];
   onEventPress: (event: TimelineEvent) => void;
+  currentUserId?: string;
   alertTimes?: {
     morningTime?: string;
     eveningTime?: string;
@@ -18,40 +26,45 @@ interface ScheduleCalendarViewProps {
 }
 
 export default function ScheduleCalendarView({
+  calendarViewMode,
+  onCalendarViewModeChange,
   markedDates,
   selectedDate,
   onSelectDate,
-  events,
+  selectedDateEvents,
+  weekEvents,
+  users,
   onEventPress,
+  currentUserId,
   alertTimes,
 }: ScheduleCalendarViewProps) {
   return (
     <View style={styles.container}>
-      <Calendar
-        markedDates={markedDates}
-        onDayPress={(day) => onSelectDate(day.dateString)}
-        theme={{
-          todayTextColor: '#3498DB',
-          arrowColor: '#3498DB',
-          selectedDayBackgroundColor: '#3498DB',
-          dotColor: '#3498DB',
-        }}
-        style={styles.calendar}
+      <CalendarModeToggle
+        mode={calendarViewMode}
+        onChange={onCalendarViewModeChange}
       />
-      <Text style={styles.sectionTitle}>Events on {selectedDate}</Text>
-      {events.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>No events scheduled for this date.</Text>
-        </View>
+      <UserColorLegend users={users} currentUserId={currentUserId} />
+
+      {calendarViewMode === 'weekly' ? (
+        <ScheduleWeeklyView
+          selectedDate={selectedDate}
+          onSelectDate={onSelectDate}
+          weekEvents={weekEvents}
+          onEventPress={onEventPress}
+          currentUserId={currentUserId}
+          alertTimes={alertTimes}
+        />
       ) : (
-        events.map((event) => (
-          <EventCard
-            key={`${event.kind}-${event.data.id}`}
-            event={event}
-            onPress={() => onEventPress(event)}
-            alertTimes={alertTimes}
-          />
-        ))
+        <ScheduleMonthlyView
+          markedDates={markedDates}
+          selectedDate={selectedDate}
+          onSelectDate={onSelectDate}
+          events={selectedDateEvents}
+          onEventPress={onEventPress}
+          currentUserId={currentUserId}
+          alertTimes={alertTimes}
+        />
       )}
     </View>
   );
@@ -60,29 +73,5 @@ export default function ScheduleCalendarView({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  calendar: {
-    borderRadius: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E0E6ED',
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#2C3E50',
-    marginBottom: 12,
-  },
-  emptyState: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E0E6ED',
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#7F8C8D',
-    textAlign: 'center',
   },
 });

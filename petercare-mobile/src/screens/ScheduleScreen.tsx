@@ -7,7 +7,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useScheduleData } from '../hooks/useScheduleData';
-import { ScheduleViewMode, TimelineEvent } from '../types/events';
+import { CalendarViewMode, ScheduleViewMode, TimelineEvent } from '../types/events';
 import ViewToggleBar from '../components/schedule/ViewToggleBar';
 import ScheduleCalendarView from '../components/schedule/ScheduleCalendarView';
 import ScheduleListView from '../components/schedule/ScheduleListView';
@@ -17,6 +17,7 @@ import CreateEventModal from '../components/schedule/CreateEventModal';
 
 export default function ScheduleScreen() {
   const [viewMode, setViewMode] = useState<ScheduleViewMode>('calendar');
+  const [calendarViewMode, setCalendarViewMode] = useState<CalendarViewMode>('weekly');
   const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
   const [createVisible, setCreateVisible] = useState(false);
@@ -28,6 +29,7 @@ export default function ScheduleScreen() {
     selectedDate,
     setSelectedDate,
     selectedDateEvents,
+    weekEvents,
     alertTimes,
     loading,
     refreshing,
@@ -95,17 +97,23 @@ export default function ScheduleScreen() {
 
         {viewMode === 'calendar' ? (
           <ScheduleCalendarView
+            calendarViewMode={calendarViewMode}
+            onCalendarViewModeChange={setCalendarViewMode}
             markedDates={markedDates}
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
-            events={selectedDateEvents}
+            selectedDateEvents={selectedDateEvents}
+            weekEvents={weekEvents}
+            users={raw.users}
             onEventPress={handleEventPress}
+            currentUserId={currentUserId}
             alertTimes={alertTimes}
           />
         ) : (
           <ScheduleListView
             sections={listSections}
             onEventPress={handleEventPress}
+            currentUserId={currentUserId}
             alertTimes={alertTimes}
           />
         )}

@@ -1,14 +1,16 @@
 import { ViewStyle } from 'react-native';
 
+export const UNASSIGNED_FEEDING_COLOR = '#FFEB3B';
+
 const USER_COLORS = [
-  '#D6EAF8',
-  '#D5F5E3',
-  '#FCF3CF',
-  '#FADBD8',
-  '#E8DAEF',
-  '#D1F2EB',
-  '#FDEBD0',
-  '#EBDEF0',
+  '#DCE9F5',
+  '#D8F0E0',
+  '#F5D8DE',
+  '#E5D8F0',
+  '#D0EDE5',
+  '#E8D8F0',
+  '#F5D8E8',
+  '#D8E8F5',
 ];
 
 export function getUserColor(userId: string): string {
@@ -20,7 +22,23 @@ export function getUserColor(userId: string): string {
   return USER_COLORS[index];
 }
 
-export function getEventCardStyle(assignedUserId?: string): ViewStyle {
+export interface EventCardStyleOptions {
+  assignedUserId?: string;
+  isUnassignedFeeding?: boolean;
+  isCurrentUser?: boolean;
+}
+
+export function getEventCardStyle(options: EventCardStyleOptions = {}): ViewStyle {
+  const { assignedUserId, isUnassignedFeeding, isCurrentUser } = options;
+
+  if (isUnassignedFeeding) {
+    return {
+      backgroundColor: UNASSIGNED_FEEDING_COLOR,
+      borderWidth: 1,
+      borderColor: '#E6C200',
+    };
+  }
+
   if (!assignedUserId) {
     return {
       backgroundColor: '#FFFFFF',
@@ -31,6 +49,7 @@ export function getEventCardStyle(assignedUserId?: string): ViewStyle {
 
   return {
     backgroundColor: getUserColor(assignedUserId),
-    borderWidth: 0,
+    borderWidth: isCurrentUser ? 2.5 : 0,
+    borderColor: isCurrentUser ? '#3498DB' : undefined,
   };
 }
