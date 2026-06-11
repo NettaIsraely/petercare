@@ -5,3 +5,10 @@ export interface UserSummary {
   morning_alert_time?: string;
   evening_alert_time?: string;
 }
+
+export interface UpdateUserPayload {
+  name?: string;
+  email?: string;
+  morning_alert_time?: string;
+  evening_alert_time?: string;
+}

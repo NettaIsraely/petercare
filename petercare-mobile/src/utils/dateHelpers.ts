@@ -61,3 +61,49 @@ export function formatTimeLabel(timeStr: string): string {
 export function formatShiftLabel(shiftType: ShiftType): string {
   return shiftType === 'MORNING' ? 'Morning Feeding' : 'Evening Feeding';
 }
+
+export function formatTimeForApi(input: string): string | undefined {
+  const trimmed = input.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const parts = trimmed.split(':');
+  if (parts.length >= 3) {
+    return trimmed;
+  }
+  if (parts.length === 2) {
+    return `${trimmed}:00`;
+  }
+  return undefined;
+}
+
+export function formatTimeForInput(apiTime?: string): string {
+  if (!apiTime) {
+    return '';
+  }
+  const parts = apiTime.split(':');
+  if (parts.length >= 2) {
+    return `${parts[0]}:${parts[1]}`;
+  }
+  return apiTime;
+}
+
+const HH_MM_PATTERN = /^([01]?\d|2[0-3]):[0-5]\d$/;
+
+export function isValidTimeInput(input: string): boolean {
+  return HH_MM_PATTERN.test(input.trim());
+}
+
+export function timeStringToDate(time: string): Date {
+  const normalized = formatTimeForInput(time) || '08:00';
+  const [hours, minutes] = normalized.split(':').map((part) => parseInt(part, 10));
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+  return date;
+}
+
+export function dateToTimeString(date: Date): string {
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}

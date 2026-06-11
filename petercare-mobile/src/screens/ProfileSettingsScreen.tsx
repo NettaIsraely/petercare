@@ -1,37 +1,124 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
 import { useAuth } from '../context/AuthContext';
+import { useProfileSettings } from '../hooks/useProfileSettings';
+import TimePickerField from '../components/common/TimePickerField';
 
 export default function ProfileSettingsScreen() {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
+  const {
+    form,
+    loading,
+    saving,
+    error,
+    hasChanges,
+    role,
+    setName,
+    setEmail,
+    setMorningAlertTime,
+    setEveningAlertTime,
+    save,
+  } = useProfileSettings();
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3498DB" />
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       <Text style={styles.title}>Profile Settings</Text>
-      <Text style={styles.subtitle}>Full settings form coming in Step 7</Text>
+      <Text style={styles.subtitle}>Update your account details and alert preferences.</Text>
 
-      <View style={styles.infoCard}>
-        <Text style={[styles.label, styles.firstLabel]}>Name</Text>
-        <Text style={styles.value}>{user?.name ?? '—'}</Text>
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        <Text style={styles.label}>Role</Text>
-        <Text style={styles.value}>{user?.role ?? '—'}</Text>
+      <View style={styles.formCard}>
+        <Text style={styles.fieldLabel}>Name</Text>
+        <TextInput
+          style={styles.input}
+          value={form.name}
+          onChangeText={setName}
+          placeholder="Full Name"
+          placeholderTextColor="#BDC3C7"
+          autoCapitalize="words"
+        />
 
-        <Text style={styles.label}>User ID</Text>
-        <Text style={styles.valueSmall}>{user?.userId ?? '—'}</Text>
+        <Text style={styles.fieldLabel}>Email</Text>
+        <TextInput
+          style={styles.input}
+          value={form.email}
+          onChangeText={setEmail}
+          placeholder="Email Address"
+          placeholderTextColor="#BDC3C7"
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+
+        <Text style={styles.fieldLabel}>Role</Text>
+        <View style={styles.roleBadge}>
+          <Text style={styles.roleText}>{role ?? '—'}</Text>
+        </View>
+
+        <TimePickerField
+          label="Morning Alert Time"
+          value={form.morningAlertTime}
+          onChange={setMorningAlertTime}
+        />
+
+        <TimePickerField
+          label="Evening Alert Time"
+          value={form.eveningAlertTime}
+          onChange={setEveningAlertTime}
+        />
       </View>
+
+      <TouchableOpacity
+        style={[styles.saveButton, (!hasChanges || saving) && styles.saveButtonDisabled]}
+        onPress={save}
+        disabled={!hasChanges || saving}
+      >
+        {saving ? (
+          <ActivityIndicator color="#FFFFFF" />
+        ) : (
+          <Text style={styles.saveButtonText}>Save Changes</Text>
+        )}
+      </TouchableOpacity>
 
       <TouchableOpacity style={styles.logoutButton} onPress={logout}>
         <Text style={styles.logoutText}>Log Out</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#F5F7FA',
+  },
+  content: {
     padding: 20,
+    paddingBottom: 32,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#F5F7FA',
   },
   title: {
@@ -43,35 +130,65 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: '#7F8C8D',
-    marginBottom: 24,
+    marginBottom: 20,
   },
-  infoCard: {
-    backgroundColor: 'white',
+  errorText: {
+    fontSize: 14,
+    color: '#E74C3C',
+    marginBottom: 12,
+  },
+  formCard: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    padding: 20,
-    marginBottom: 24,
+    padding: 16,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#E0E6ED',
   },
-  label: {
+  fieldLabel: {
     fontSize: 12,
     fontWeight: '600',
     color: '#7F8C8D',
     textTransform: 'uppercase',
-    marginBottom: 4,
+    marginBottom: 6,
     marginTop: 12,
   },
-  firstLabel: {
-    marginTop: 0,
-  },
-  value: {
-    fontSize: 18,
+  input: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E0E6ED',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
     color: '#2C3E50',
-    fontWeight: '600',
   },
-  valueSmall: {
+  roleBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#EBF5FB',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  roleText: {
     fontSize: 14,
-    color: '#2C3E50',
+    fontWeight: '600',
+    color: '#3498DB',
+  },
+  saveButton: {
+    backgroundColor: '#3498DB',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  saveButtonDisabled: {
+    opacity: 0.5,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   logoutButton: {
     backgroundColor: '#E74C3C',
@@ -80,7 +197,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoutText: {
-    color: 'white',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
   },

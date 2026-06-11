@@ -18,6 +18,8 @@ import { CreateTreatmentPayload } from '../../types/treatment';
 import { Horse } from '../../types/horse';
 import { UserSummary } from '../../types/user';
 import DatePickerField from './DatePickerField';
+import TimePickerField from '../common/TimePickerField';
+import { formatTimeForApi, parseTimeToMinutes } from '../../utils/dateHelpers';
 
 interface CreateEventModalProps {
   visible: boolean;
@@ -173,14 +175,6 @@ export default function CreateEventModal({
     );
   };
 
-  const formatTimePayload = (time: string) => {
-    const trimmed = time.trim();
-    if (trimmed.split(':').length === 3) {
-      return trimmed;
-    }
-    return `${trimmed}:00`;
-  };
-
   const handleSubmit = async () => {
     setError(null);
     try {
@@ -210,10 +204,20 @@ export default function CreateEventModal({
           setError('Select at least one horse.');
           return;
         }
+        const startTime = formatTimeForApi(rideStart);
+        const endTime = formatTimeForApi(rideEnd);
+        if (!startTime || !endTime) {
+          setError('Start and end times are required.');
+          return;
+        }
+        if (parseTimeToMinutes(endTime) <= parseTimeToMinutes(startTime)) {
+          setError('End time must be after start time.');
+          return;
+        }
         await onCreateRide({
           date: rideDate.trim(),
-          start_time: formatTimePayload(rideStart),
-          end_time: formatTimePayload(rideEnd),
+          start_time: startTime,
+          end_time: endTime,
           primary_rider_id: primaryRiderId,
           horses: selectedHorseIds,
           additional_riders_ids:
@@ -340,10 +344,8 @@ export default function CreateEventModal({
             {category === 'ride' && (
               <>
                 <DatePickerField label="Date" value={rideDate} onChange={setRideDate} />
-                <Text style={styles.label}>Start Time (HH:MM)</Text>
-                <TextInput style={styles.input} value={rideStart} onChangeText={setRideStart} />
-                <Text style={styles.label}>End Time (HH:MM)</Text>
-                <TextInput style={styles.input} value={rideEnd} onChangeText={setRideEnd} />
+                <TimePickerField label="Start Time" value={rideStart} onChange={setRideStart} />
+                <TimePickerField label="End Time" value={rideEnd} onChange={setRideEnd} />
                 <PickerRow
                   label="Primary Rider"
                   options={userOptions}

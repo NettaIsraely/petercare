@@ -4,7 +4,6 @@ import {
   View,
   Text,
   TouchableOpacity,
-  TextInput,
   StyleSheet,
   ScrollView,
   ActivityIndicator,
@@ -12,8 +11,10 @@ import {
 import { X } from 'lucide-react-native';
 import { TimelineEvent } from '../../types/events';
 import EventCard from '../home/EventCard';
+import TimePickerField from '../common/TimePickerField';
 import {
   formatShiftLabel,
+  formatTimeForApi,
   formatTimeLabel,
   normalizeDateString,
 } from '../../utils/dateHelpers';
@@ -119,21 +120,6 @@ export default function EventDetailModal({
   const isClaiming = claimingId === eventId;
   const isCompleting = completingIds.has(eventId);
 
-  const formatNotificationTime = (time: string) => {
-    const trimmed = time.trim();
-    if (!trimmed) {
-      return undefined;
-    }
-    const parts = trimmed.split(':');
-    if (parts.length >= 3) {
-      return trimmed;
-    }
-    if (parts.length === 2) {
-      return `${trimmed}:00`;
-    }
-    return `${trimmed}:00:00`;
-  };
-
   const canCompleteFeeding =
     isFeedingAssignedIncomplete && event.data.assigned_user?.id === currentUserId;
   const canCompleteTask =
@@ -163,18 +149,16 @@ export default function EventDetailModal({
 
             {isFeedingUnassigned && (
               <View style={styles.actionSection}>
-                <Text style={styles.actionLabel}>Notification reminder time (optional)</Text>
-                <TextInput
-                  style={styles.input}
+                <TimePickerField
+                  label="Notification reminder time (optional)"
                   value={notificationTime}
-                  onChangeText={setNotificationTime}
-                  placeholder="HH:MM (e.g. 08:00)"
-                  placeholderTextColor="#BDC3C7"
+                  onChange={setNotificationTime}
+                  optional
                 />
                 <TouchableOpacity
                   style={[styles.primaryButton, styles.volunteerButton]}
                   onPress={() =>
-                    onVolunteer(eventId, formatNotificationTime(notificationTime))
+                    onVolunteer(eventId, formatTimeForApi(notificationTime))
                   }
                   disabled={isVolunteering}
                 >
