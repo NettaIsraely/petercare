@@ -1,10 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { CreateFeedingDto } from './dto/create-feeding.dto';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { UpdateFeedingDto } from './dto/update-feeding.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Feeding, FeedingStatus } from './entities/feeding.entity';
+import { Feeding, FeedingStatus, ShiftType } from './entities/feeding.entity';
 import { Repository } from 'typeorm';
-import { User } from 'src/users/entities/user.entity';
+import { User, UserRole } from 'src/users/entities/user.entity';
 import { FeedingNotificationsService } from '../notifications/feeding-notifications.service';
 
 @Injectable()
@@ -19,27 +23,33 @@ export class FeedingsService {
     private readonly feedingNotifications: FeedingNotificationsService,
   ) {}
 
-  async create(createFeedingDto: CreateFeedingDto): Promise<Feeding> {
-    const isAssigned = !!createFeedingDto.assigned_user_id;
+  async ensureShiftsForDate(dateStr: string): Promise<number> {
+    let created = 0;
 
-    const newShift = this.feedingRepository.create({
-      schedule_date: createFeedingDto.schedule_date,
-      shift_type: createFeedingDto.shift_type,
-      feeding_status: isAssigned ? FeedingStatus.ASSIGNED : FeedingStatus.UNASSIGNED,
-      assigned_user: isAssigned ? { id: createFeedingDto.assigned_user_id } : undefined,
-    });
-    const savedShift = await this.feedingRepository.save(newShift);
-
-    if (isAssigned && createFeedingDto.assigned_user_id) {
-      const assignee = await this.userRepository.findOne({
-        where: { id: createFeedingDto.assigned_user_id },
+    for (const shiftType of [ShiftType.MORNING, ShiftType.EVENING]) {
+      const existing = await this.feedingRepository.findOne({
+        where: {
+          schedule_date: dateStr as unknown as Date,
+          shift_type: shiftType,
+        },
       });
-      if (assignee) {
-        await this.feedingNotifications.scheduleFeedingReminder(savedShift, assignee);
+
+      if (!existing) {
+        await this.createSystemShift(dateStr, shiftType);
+        created += 1;
       }
     }
 
-    return savedShift;
+    return created;
+  }
+
+  async createSystemShift(scheduleDate: string, shiftType: ShiftType): Promise<Feeding> {
+    const newShift = this.feedingRepository.create({
+      schedule_date: scheduleDate,
+      shift_type: shiftType,
+      feeding_status: FeedingStatus.UNASSIGNED,
+    });
+    return this.feedingRepository.save(newShift);
   }
 
   async volunteer(
@@ -56,12 +66,21 @@ export class FeedingsService {
       throw new NotFoundException('Feeding shift not found');
     }
 
-    const previousUserId = shift.assigned_user?.id;
+    if (shift.feeding_status !== FeedingStatus.UNASSIGNED) {
+      throw new BadRequestException('This feeding shift is no longer available to volunteer for');
+    }
+
     const newUser = await this.userRepository.findOne({ where: { id: userId } });
 
     if (!newUser) {
       throw new NotFoundException('User not found');
     }
+
+    if (newUser.role === UserRole.GUEST) {
+      throw new ForbiddenException('Guests cannot volunteer for feeding shifts');
+    }
+
+    const previousUserId = shift.assigned_user?.id;
 
     shift.feeding_status = FeedingStatus.ASSIGNED;
     shift.assigned_user = { id: userId } as User;

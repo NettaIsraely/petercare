@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { FeedingsService } from './feedings.service';
+import { FeedingsSchedulerService } from './feedings-scheduler.service';
 import { FeedingsController } from './feedings.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Feeding } from './entities/feeding.entity';
@@ -12,6 +13,6 @@ import { NotificationsModule } from '../notifications/notifications.module';
     NotificationsModule,
   ],
   controllers: [FeedingsController],
-  providers: [FeedingsService],
+  providers: [FeedingsService, FeedingsSchedulerService],
 })
 export class FeedingsModule {}

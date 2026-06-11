@@ -1,5 +1,5 @@
 import { User } from "src/users/entities/user.entity";
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from "typeorm";
 
 export enum ShiftType{
     MORNING = 'MORNING',
@@ -13,6 +13,7 @@ export enum FeedingStatus{
 }
 
 @Entity('feedings')
+@Unique(['schedule_date', 'shift_type'])
 export class Feeding {
     @PrimaryGeneratedColumn('uuid')
     id!: string;

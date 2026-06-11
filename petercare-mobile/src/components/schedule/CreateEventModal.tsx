@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import { X, Wheat, Route, ClipboardList, Stethoscope } from 'lucide-react-native';
 import { CreateEventCategory } from '../../types/events';
-import { CreateFeedingPayload, ShiftType } from '../../types/feeding';
+import { Feeding } from '../../types/feeding';
+import { UserRole } from '../../types/auth';
 import { CreateTaskPayload } from '../../types/task';
 import { CreateRidePayload } from '../../types/ride';
 import {
@@ -23,7 +24,7 @@ import { Horse } from '../../types/horse';
 import { UserSummary } from '../../types/user';
 import DatePickerField from './DatePickerField';
 import TimePickerField from '../common/TimePickerField';
-import { formatTimeForApi, parseTimeToMinutes } from '../../utils/dateHelpers';
+import { formatTimeForApi, parseTimeToMinutes, formatShiftLabel, formatWeekDayHeader } from '../../utils/dateHelpers';
 import {
   TaskFormFields,
   TaskFormValues,
@@ -38,8 +39,11 @@ interface CreateEventModalProps {
   horses: Horse[];
   users: UserSummary[];
   currentUserId?: string;
+  userRole?: UserRole;
   creating: boolean;
-  onCreateFeeding: (payload: CreateFeedingPayload) => Promise<void>;
+  volunteering: boolean;
+  unassignedFeedings: Feeding[];
+  onVolunteerForFeedings: (feedingIds: string[]) => Promise<void>;
   onCreateTask: (payload: CreateTaskPayload) => Promise<void>;
   onCreateRide: (payload: CreateRidePayload) => Promise<void>;
   onCreateTreatment: (payload: CreateTreatmentPayload) => Promise<void>;
@@ -102,21 +106,22 @@ export default function CreateEventModal({
   horses,
   users,
   currentUserId,
+  userRole,
   creating,
-  onCreateFeeding,
+  volunteering,
+  unassignedFeedings,
+  onVolunteerForFeedings,
   onCreateTask,
   onCreateRide,
   onCreateTreatment,
 }: CreateEventModalProps) {
   const [category, setCategory] = useState<CreateEventCategory | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFeedingIds, setSelectedFeedingIds] = useState<string[]>([]);
 
   const userOptions = users.map((u) => ({ id: u.id, label: u.name }));
   const horseOptions = horses.filter((h) => h.is_active).map((h) => ({ id: h.id, label: h.name }));
-
-  const [feedingDate, setFeedingDate] = useState(defaultDate);
-  const [shiftType, setShiftType] = useState<ShiftType>('MORNING');
-  const [feedingAssignee, setFeedingAssignee] = useState<string | undefined>();
+  const isGuest = userRole === 'GUEST';
 
   const [taskValues, setTaskValues] = useState<TaskFormValues>(taskToFormValues());
 
@@ -140,9 +145,7 @@ export default function CreateEventModal({
   const resetForm = () => {
     setCategory(null);
     setError(null);
-    setFeedingDate(defaultDate);
-    setShiftType('MORNING');
-    setFeedingAssignee(undefined);
+    setSelectedFeedingIds([]);
     setTaskValues(taskToFormValues());
     setRideDate(defaultDate);
     setRideStart('09:00');
@@ -163,9 +166,9 @@ export default function CreateEventModal({
     if (!visible) {
       return;
     }
-    setFeedingDate(defaultDate);
     setRideDate(defaultDate);
     setTreatmentDate(defaultDate);
+    setSelectedFeedingIds([]);
   }, [visible, defaultDate]);
 
   const handleClose = () => {
@@ -191,15 +194,23 @@ export default function CreateEventModal({
     );
   };
 
+  const toggleFeedingSelection = (feedingId: string) => {
+    setSelectedFeedingIds((prev) =>
+      prev.includes(feedingId)
+        ? prev.filter((id) => id !== feedingId)
+        : [...prev, feedingId]
+    );
+  };
+
   const handleSubmit = async () => {
     setError(null);
     try {
       if (category === 'feeding') {
-        await onCreateFeeding({
-          schedule_date: feedingDate.trim(),
-          shift_type: shiftType,
-          assigned_user_id: feedingAssignee,
-        });
+        if (selectedFeedingIds.length === 0) {
+          setError('Select at least one feeding shift.');
+          return;
+        }
+        await onVolunteerForFeedings(selectedFeedingIds);
       } else if (category === 'task') {
         if (!taskValues.name.trim()) {
           setError('Task name is required.');
@@ -261,77 +272,137 @@ export default function CreateEventModal({
       }
       handleClose();
     } catch {
-      setError('Failed to create event. Please check your inputs and try again.');
+      setError(
+        category === 'feeding'
+          ? 'Failed to volunteer for feeding shifts. Please try again.'
+          : 'Failed to create event. Please check your inputs and try again.'
+      );
     }
   };
+
+  const getCategoryTitle = () => {
+    if (!category) {
+      return 'Create Event';
+    }
+    if (category === 'feeding') {
+      return 'Volunteer for Feeding';
+    }
+    return `New ${category.charAt(0).toUpperCase()}${category.slice(1)}`;
+  };
+
+  const isSubmitting = category === 'feeding' ? volunteering : creating;
+  const submitLabel = category === 'feeding' ? 'Volunteer' : 'Create';
+  const canSubmitFeeding = !isGuest && selectedFeedingIds.length > 0 && !volunteering;
+
+  const actionButtons = category ? (
+    <View style={styles.actions}>
+      <TouchableOpacity style={styles.secondaryButton} onPress={() => setCategory(null)}>
+        <Text style={styles.secondaryButtonText}>Back</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[
+          styles.primaryButton,
+          category === 'feeding' && !canSubmitFeeding && styles.primaryButtonDisabled,
+        ]}
+        onPress={handleSubmit}
+        disabled={isSubmitting || (category === 'feeding' && (isGuest || !canSubmitFeeding))}
+      >
+        {isSubmitting ? (
+          <ActivityIndicator color="#FFFFFF" />
+        ) : (
+          <Text style={styles.primaryButtonText}>{submitLabel}</Text>
+        )}
+      </TouchableOpacity>
+    </View>
+  ) : null;
+
+  const feedingContent = (
+    <>
+      {isGuest ? (
+        <Text style={styles.guestMessage}>
+          Guests can view the stable. Request caregiver access to volunteer for shifts.
+        </Text>
+      ) : unassignedFeedings.length === 0 ? (
+        <Text style={styles.emptyMessage}>
+          No unassigned feeding shifts in the next two weeks.
+        </Text>
+      ) : (
+        unassignedFeedings.map((feeding) => {
+          const dateStr = feeding.schedule_date.split('T')[0];
+          const { dayName, dateLabel } = formatWeekDayHeader(dateStr);
+          const isSelected = selectedFeedingIds.includes(feeding.id);
+
+          return (
+            <TouchableOpacity
+              key={feeding.id}
+              style={[styles.feedingRow, isSelected && styles.feedingRowSelected]}
+              onPress={() => toggleFeedingSelection(feeding.id)}
+            >
+              <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
+                {isSelected && <Text style={styles.checkmark}>✓</Text>}
+              </View>
+              <View style={styles.feedingRowText}>
+                <Text style={styles.feedingRowTitle}>
+                  {formatShiftLabel(feeding.shift_type)}
+                </Text>
+                <Text style={styles.feedingRowSubtitle}>
+                  {dayName}, {dateLabel}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })
+      )}
+    </>
+  );
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, category === 'feeding' && styles.sheetWithFixedFooter]}>
           <View style={styles.header}>
-            <Text style={styles.title}>
-              {category ? `New ${category.charAt(0).toUpperCase()}${category.slice(1)}` : 'Create Event'}
-            </Text>
+            <Text style={styles.title}>{getCategoryTitle()}</Text>
             <TouchableOpacity onPress={handleClose} accessibilityLabel="Close">
               <X size={24} color="#2C3E50" />
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={styles.content}>
-            {!category && (
-              <View style={styles.categoryGrid}>
-                {CATEGORIES.map(({ key, label, Icon }) => (
-                  <TouchableOpacity
-                    key={key}
-                    style={styles.categoryCard}
-                    onPress={() => setCategory(key)}
-                  >
-                    <Icon size={28} color="#3498DB" />
-                    <Text style={styles.categoryLabel}>{label}</Text>
-                  </TouchableOpacity>
-                ))}
+          {category === 'feeding' ? (
+            <>
+              <ScrollView
+                style={styles.feedingScroll}
+                contentContainerStyle={styles.feedingScrollContent}
+                showsVerticalScrollIndicator
+              >
+                {feedingContent}
+              </ScrollView>
+              <View style={styles.fixedFooter}>
+                {error && <Text style={styles.errorText}>{error}</Text>}
+                {actionButtons}
               </View>
-            )}
-
-            {category === 'feeding' && (
-              <>
-                <DatePickerField
-                  label="Schedule Date"
-                  value={feedingDate}
-                  onChange={setFeedingDate}
-                />
-                <Text style={styles.label}>Shift</Text>
-                <View style={styles.row}>
-                  {(['MORNING', 'EVENING'] as ShiftType[]).map((shift) => (
+            </>
+          ) : (
+            <ScrollView contentContainerStyle={styles.content}>
+              {!category && (
+                <View style={styles.categoryGrid}>
+                  {CATEGORIES.map(({ key, label, Icon }) => (
                     <TouchableOpacity
-                      key={shift}
-                      style={[styles.chip, shiftType === shift && styles.chipSelected]}
-                      onPress={() => setShiftType(shift)}
+                      key={key}
+                      style={styles.categoryCard}
+                      onPress={() => setCategory(key)}
                     >
-                      <Text
-                        style={[styles.chipText, shiftType === shift && styles.chipTextSelected]}
-                      >
-                        {shift}
-                      </Text>
+                      <Icon size={28} color="#3498DB" />
+                      <Text style={styles.categoryLabel}>{label}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
-                <PickerRow
-                  label="Assign to (optional)"
-                  options={userOptions}
-                  selectedId={feedingAssignee}
-                  onSelect={setFeedingAssignee}
-                  allowEmpty
-                />
-              </>
-            )}
+              )}
 
-            {category === 'task' && (
-              <TaskFormFields values={taskValues} onChange={setTaskValues} users={users} />
-            )}
+              {category === 'task' && (
+                <TaskFormFields values={taskValues} onChange={setTaskValues} users={users} />
+              )}
 
-            {category === 'ride' && (
+              {category === 'ride' && (
               <>
                 <DatePickerField label="Date" value={rideDate} onChange={setRideDate} />
                 <TimePickerField label="Start Time" value={rideStart} onChange={setRideStart} />
@@ -479,25 +550,9 @@ export default function CreateEventModal({
 
             {error && <Text style={styles.errorText}>{error}</Text>}
 
-            {category && (
-              <View style={styles.actions}>
-                <TouchableOpacity style={styles.secondaryButton} onPress={() => setCategory(null)}>
-                  <Text style={styles.secondaryButtonText}>Back</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.primaryButton}
-                  onPress={handleSubmit}
-                  disabled={creating}
-                >
-                  {creating ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.primaryButtonText}>Create</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            )}
+            {actionButtons && <View style={styles.scrollActions}>{actionButtons}</View>}
           </ScrollView>
+          )}
         </View>
       </View>
     </Modal>
@@ -515,6 +570,24 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '92%',
+  },
+  sheetWithFixedFooter: {
+    height: '92%',
+  },
+  feedingScroll: {
+    flex: 1,
+  },
+  feedingScrollContent: {
+    padding: 20,
+    paddingBottom: 8,
+  },
+  fixedFooter: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 32,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E6ED',
+    backgroundColor: '#F5F7FA',
   },
   header: {
     flexDirection: 'row',
@@ -612,6 +685,9 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     gap: 12,
+    marginTop: 0,
+  },
+  scrollActions: {
     marginTop: 16,
   },
   primaryButton: {
@@ -644,5 +720,65 @@ const styles = StyleSheet.create({
     color: '#E74C3C',
     fontSize: 14,
     marginTop: 8,
+  },
+  guestMessage: {
+    fontSize: 15,
+    color: '#7F8C8D',
+    lineHeight: 22,
+  },
+  emptyMessage: {
+    fontSize: 15,
+    color: '#7F8C8D',
+    textAlign: 'center',
+    paddingVertical: 24,
+  },
+  feedingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E0E6ED',
+    gap: 12,
+  },
+  feedingRowSelected: {
+    borderColor: '#3498DB',
+    backgroundColor: '#EBF5FB',
+  },
+  feedingRowText: {
+    flex: 1,
+  },
+  feedingRowTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2C3E50',
+  },
+  feedingRowSubtitle: {
+    fontSize: 13,
+    color: '#7F8C8D',
+    marginTop: 2,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#BDC3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxSelected: {
+    backgroundColor: '#3498DB',
+    borderColor: '#3498DB',
+  },
+  checkmark: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  primaryButtonDisabled: {
+    opacity: 0.5,
   },
 });

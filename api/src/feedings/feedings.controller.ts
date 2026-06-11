@@ -1,6 +1,5 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Body, Patch, Param, Delete, UseGuards, Req } from '@nestjs/common';
 import { FeedingsService } from './feedings.service';
-import { CreateFeedingDto } from './dto/create-feeding.dto';
 import { UpdateFeedingDto } from './dto/update-feeding.dto';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { VolunteerDto } from './dto/volunteer.dto';
@@ -9,11 +8,6 @@ import { VolunteerDto } from './dto/volunteer.dto';
 @Controller('feedings')
 export class FeedingsController {
   constructor(private readonly feedingsService: FeedingsService) {}
-
-  @Post()
-  create(@Body() createFeedingDto: CreateFeedingDto) {
-    return this.feedingsService.create(createFeedingDto);
-  }
 
   @Patch(':id/volunteer')
   volunteer(@Param('id') feedingId: string, @Req() req: any, @Body() volunteerDto: VolunteerDto) {

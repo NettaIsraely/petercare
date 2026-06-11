@@ -7,12 +7,12 @@ import * as rideService from '../services/rideService';
 import * as treatmentService from '../services/treatmentService';
 import * as userService from '../services/userService';
 import * as horseService from '../services/horseService';
-import { CreateFeedingPayload, Feeding } from '../types/feeding';
 import { CreateTaskPayload, Task, UpdateTaskPayload } from '../types/task';
 import { CreateRidePayload, Ride } from '../types/ride';
 import { CreateTreatmentPayload, Treatment } from '../types/treatment';
 import { Horse } from '../types/horse';
 import { UserSummary } from '../types/user';
+import { Feeding } from '../types/feeding';
 import { ScheduleSectionData, TimelineEvent } from '../types/events';
 import {
   buildCalendarMarkedDates,
@@ -21,7 +21,7 @@ import {
   getEventsForDate,
   getEventsForWeek,
 } from '../utils/scheduleHelpers';
-import { toDateString } from '../utils/dateHelpers';
+import { toDateString, normalizeDateString, getNext14DayStrings } from '../utils/dateHelpers';
 import { completingKey } from '../utils/completionKeys';
 import { confirmFeedingCompletionIfNeeded } from '../utils/feedingCompletionHelpers';
 
@@ -60,7 +60,27 @@ export function useScheduleData() {
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
+  const [volunteeringBatch, setVolunteeringBatch] = useState(false);
   const [updating, setUpdating] = useState(false);
+
+  const availableUnassignedFeedings = useMemo(() => {
+    const validDates = new Set(getNext14DayStrings());
+    return raw.feedings
+      .filter(
+        (feeding) =>
+          feeding.feeding_status === 'UNASSIGNED' &&
+          validDates.has(normalizeDateString(feeding.schedule_date))
+      )
+      .sort((a, b) => {
+        const dateCompare = normalizeDateString(a.schedule_date).localeCompare(
+          normalizeDateString(b.schedule_date)
+        );
+        if (dateCompare !== 0) {
+          return dateCompare;
+        }
+        return a.shift_type === 'MORNING' ? -1 : 1;
+      });
+  }, [raw.feedings]);
 
   const alertTimes = useMemo(() => CALENDAR_FEEDING_ALERT_TIMES, []);
 
@@ -222,17 +242,23 @@ export function useScheduleData() {
     [refresh]
   );
 
-  const createFeeding = useCallback(
-    async (payload: CreateFeedingPayload) => {
-      setCreating(true);
+  const volunteerForFeedings = useCallback(
+    async (feedingIds: string[]) => {
+      if (feedingIds.length === 0) {
+        return;
+      }
+
+      setVolunteeringBatch(true);
       try {
-        await feedingService.createFeeding(payload);
+        for (const feedingId of feedingIds) {
+          await feedingService.volunteerForFeeding(feedingId);
+        }
         await refresh(true);
       } catch (error) {
-        console.error('Failed to create feeding:', error);
+        console.error('Failed to volunteer for feedings:', error);
         throw error;
       } finally {
-        setCreating(false);
+        setVolunteeringBatch(false);
       }
     },
     [refresh]
@@ -317,12 +343,14 @@ export function useScheduleData() {
     claimingId,
     completingIds,
     creating,
+    volunteeringBatch,
     updating,
     refresh,
     volunteerForFeeding,
+    volunteerForFeedings,
     claimTask,
     markEventComplete,
-    createFeeding,
+    availableUnassignedFeedings,
     createTask,
     updateTask,
     createRide,

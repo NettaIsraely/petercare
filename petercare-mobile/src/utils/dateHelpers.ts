@@ -62,6 +62,22 @@ export function formatHourLabel(hour: number): string {
   return `${hours12} ${period}`;
 }
 
+export function getNext14DayStrings(): string[] {
+  const days: string[] = [];
+  const today = new Date();
+  for (let i = 0; i < 14; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+    days.push(toDateString(date));
+  }
+  return days;
+}
+
+export function isWithinNext14Days(value: string | Date): boolean {
+  const dateStr = normalizeDateString(value);
+  return getNext14DayStrings().includes(dateStr);
+}
+
 export function getNext7DayStrings(): string[] {
   const days: string[] = [];
   const today = new Date();

@@ -7,6 +7,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useScheduleData } from '../hooks/useScheduleData';
+import { useAuth } from '../context/AuthContext';
 import { CalendarViewMode, ScheduleViewMode, TimelineEvent } from '../types/events';
 import { Task } from '../types/task';
 import ViewToggleBar from '../components/schedule/ViewToggleBar';
@@ -18,6 +19,7 @@ import CreateEventModal from '../components/schedule/CreateEventModal';
 import TaskFormModal from '../components/tasks/TaskFormModal';
 
 export default function ScheduleScreen() {
+  const { user } = useAuth();
   const [viewMode, setViewMode] = useState<ScheduleViewMode>('calendar');
   const [calendarViewMode, setCalendarViewMode] = useState<CalendarViewMode>('weekly');
   const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null);
@@ -40,12 +42,14 @@ export default function ScheduleScreen() {
     claimingId,
     completingIds,
     creating,
+    volunteeringBatch,
     updating,
     refresh,
     volunteerForFeeding,
+    volunteerForFeedings,
     claimTask,
     markEventComplete,
-    createFeeding,
+    availableUnassignedFeedings,
     createTask,
     updateTask,
     createRide,
@@ -153,8 +157,11 @@ export default function ScheduleScreen() {
         horses={raw.horses}
         users={raw.users}
         currentUserId={currentUserId}
+        userRole={user?.role}
         creating={creating}
-        onCreateFeeding={createFeeding}
+        volunteering={volunteeringBatch}
+        unassignedFeedings={availableUnassignedFeedings}
+        onVolunteerForFeedings={volunteerForFeedings}
         onCreateTask={createTask}
         onCreateRide={createRide}
         onCreateTreatment={createTreatment}
