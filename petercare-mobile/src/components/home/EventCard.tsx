@@ -193,7 +193,7 @@ export function OpenTaskCard({
   assignedUserId?: string;
   hasComments?: boolean;
   isCompleting: boolean;
-  onToggleComplete: () => void;
+  onToggleComplete?: () => void;
 }) {
   const cardStyle = getEventCardStyle({ assignedUserId });
 
@@ -211,15 +211,17 @@ export function OpenTaskCard({
           <MessageSquare size={14} color="#95A5A6" />
         </View>
       )}
-      <TouchableOpacity
-        style={[styles.checkbox, isCompleting && styles.checkboxLoading]}
-        onPress={onToggleComplete}
-        disabled={isCompleting}
-        accessibilityRole="checkbox"
-        accessibilityState={{ checked: false, busy: isCompleting }}
-      >
-        {isCompleting && <ActivityIndicator size="small" color="#3498DB" />}
-      </TouchableOpacity>
+      {onToggleComplete && (
+        <TouchableOpacity
+          style={[styles.checkbox, isCompleting && styles.checkboxLoading]}
+          onPress={onToggleComplete}
+          disabled={isCompleting}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: false, busy: isCompleting }}
+        >
+          {isCompleting && <ActivityIndicator size="small" color="#3498DB" />}
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

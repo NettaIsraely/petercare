@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -8,8 +7,17 @@ import { UpdateFeedingDto } from './dto/update-feeding.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Feeding, FeedingStatus, ShiftType } from './entities/feeding.entity';
 import { Repository } from 'typeorm';
-import { User, UserRole } from 'src/users/entities/user.entity';
+import { User } from 'src/users/entities/user.entity';
 import { FeedingNotificationsService } from '../notifications/feeding-notifications.service';
+import {
+  AuthUser,
+  assertCanCompleteEvent,
+  assertCanEditEvent,
+  assertCanTakeOverFeeding,
+  assertCanVolunteerFeeding,
+  assertOwnerOnly,
+  pickFeedingUpdateFields,
+} from '../common/event-permissions';
 
 @Injectable()
 export class FeedingsService {
@@ -55,6 +63,7 @@ export class FeedingsService {
   async volunteer(
     feedingId: string,
     userId: string,
+    authUser: AuthUser,
     customNotificationTime?: string,
   ): Promise<Feeding> {
     const shift = await this.feedingRepository.findOne({
@@ -70,14 +79,12 @@ export class FeedingsService {
       throw new BadRequestException('This feeding shift is no longer available to volunteer for');
     }
 
+    assertCanVolunteerFeeding(authUser, shift);
+
     const newUser = await this.userRepository.findOne({ where: { id: userId } });
 
     if (!newUser) {
       throw new NotFoundException('User not found');
-    }
-
-    if (newUser.role === UserRole.GUEST) {
-      throw new ForbiddenException('Guests cannot volunteer for feeding shifts');
     }
 
     const previousUserId = shift.assigned_user?.id;
@@ -103,6 +110,43 @@ export class FeedingsService {
     return savedShift;
   }
 
+  async takeOver(feedingId: string, authUser: AuthUser): Promise<Feeding> {
+    const shift = await this.feedingRepository.findOne({
+      where: { id: feedingId },
+      relations: { assigned_user: true },
+    });
+
+    if (!shift) {
+      throw new NotFoundException('Feeding shift not found');
+    }
+
+    assertCanTakeOverFeeding(authUser, shift);
+
+    const previousUserId = shift.assigned_user!.id;
+
+    const newUser = await this.userRepository.findOne({
+      where: { id: authUser.userId },
+    });
+
+    if (!newUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    shift.feeding_status = FeedingStatus.ASSIGNED;
+    shift.assigned_user = { id: authUser.userId } as User;
+    const savedShift = await this.feedingRepository.save(shift);
+
+    await this.feedingNotifications.cancelFeedingReminder(feedingId);
+    await this.feedingNotifications.notifyAssigneeChange(
+      previousUserId,
+      newUser,
+      savedShift,
+    );
+    await this.feedingNotifications.scheduleFeedingReminder(savedShift, newUser);
+
+    return this.findOne(savedShift.id);
+  }
+
   async findAll(): Promise<Feeding[]> {
     return await this.feedingRepository.find({
       relations: { assigned_user: true },
@@ -122,7 +166,11 @@ export class FeedingsService {
     return feeding;
   }
 
-  async update(id: string, updateFeedingDto: UpdateFeedingDto): Promise<Feeding> {
+  async update(
+    id: string,
+    updateFeedingDto: UpdateFeedingDto,
+    authUser: AuthUser,
+  ): Promise<Feeding> {
     const existing = await this.feedingRepository.findOne({
       where: { id },
       relations: { assigned_user: true },
@@ -132,16 +180,31 @@ export class FeedingsService {
       throw new NotFoundException(`Feeding shift with ID ${id} not found`);
     }
 
+    const allowedFields = pickFeedingUpdateFields(
+      updateFeedingDto as unknown as Record<string, unknown>,
+    );
+
+    const isCompleteOnly =
+      allowedFields.feeding_status === FeedingStatus.COMPLETE &&
+      allowedFields.assigned_user_id === undefined &&
+      allowedFields.notification_time === undefined;
+
+    if (isCompleteOnly) {
+      assertCanCompleteEvent(authUser, 'feeding', existing);
+    } else {
+      assertCanEditEvent(authUser, 'feeding', existing);
+    }
+
     const previousUserId = existing.assigned_user?.id;
     const wasComplete = existing.feeding_status === FeedingStatus.COMPLETE;
 
-    const { assigned_user_id, ...rest } = updateFeedingDto;
+    const { assigned_user_id, notification_time, ...rest } = allowedFields as UpdateFeedingDto;
     const updateData: Record<string, unknown> = { id, ...rest };
 
     if (assigned_user_id !== undefined) {
       const isAssigned = !!assigned_user_id;
       updateData.assigned_user = isAssigned ? { id: assigned_user_id } : null;
-      if (updateFeedingDto.feeding_status === undefined) {
+      if ((allowedFields as UpdateFeedingDto).feeding_status === undefined) {
         updateData.feeding_status = isAssigned
           ? FeedingStatus.ASSIGNED
           : FeedingStatus.UNASSIGNED;
@@ -160,7 +223,7 @@ export class FeedingsService {
       assigned_user_id !== undefined && assigned_user_id !== previousUserId;
 
     const markedComplete =
-      updateFeedingDto.feeding_status === FeedingStatus.COMPLETE && !wasComplete;
+      allowedFields.feeding_status === FeedingStatus.COMPLETE && !wasComplete;
 
     if (markedComplete || savedFeeding.feeding_status === FeedingStatus.COMPLETE) {
       await this.feedingNotifications.cancelFeedingReminder(id);
@@ -184,15 +247,32 @@ export class FeedingsService {
           await this.feedingNotifications.scheduleFeedingReminder(
             savedFeeding,
             newAssignee,
+            notification_time,
           );
         }
       }
+    } else if (
+      notification_time !== undefined &&
+      savedFeeding.assigned_user?.id
+    ) {
+      const assignee = await this.userRepository.findOne({
+        where: { id: savedFeeding.assigned_user.id },
+      });
+
+      if (assignee) {
+        await this.feedingNotifications.scheduleFeedingReminder(
+          savedFeeding,
+          assignee,
+          notification_time,
+        );
+      }
     }
 
-    return savedFeeding;
+    return this.findOne(savedFeeding.id);
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, authUser: AuthUser): Promise<void> {
+    assertOwnerOnly(authUser);
     await this.feedingNotifications.cancelFeedingReminder(id);
 
     const result = await this.feedingRepository.delete(id);

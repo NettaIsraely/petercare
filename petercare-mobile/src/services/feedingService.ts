@@ -1,8 +1,13 @@
 import { apiClient } from '../api/client';
-import { Feeding } from '../types/feeding';
+import { Feeding, UpdateFeedingPayload } from '../types/feeding';
 
 export async function getAllFeedings(): Promise<Feeding[]> {
   const response = await apiClient.get<Feeding[]>('/feedings');
+  return response.data;
+}
+
+export async function updateFeeding(id: string, payload: UpdateFeedingPayload): Promise<Feeding> {
+  const response = await apiClient.patch<Feeding>(`/feedings/${id}`, payload);
   return response.data;
 }
 
@@ -20,5 +25,10 @@ export async function volunteerForFeeding(
   const response = await apiClient.patch<Feeding>(`/feedings/${id}/volunteer`, {
     notification_time: notificationTime,
   });
+  return response.data;
+}
+
+export async function takeOverFeeding(id: string): Promise<Feeding> {
+  const response = await apiClient.patch<Feeding>(`/feedings/${id}/take-over`, {});
   return response.data;
 }

@@ -6,6 +6,13 @@ import { Treatment } from './entities/treatment.entity';
 import { Repository } from 'typeorm';
 import { Horse } from 'src/horses/entities/horse.entity';
 import { SHOEING_TREATMENT_NAME } from './treatment.constants';
+import {
+  AuthUser,
+  assertCanCompleteEvent,
+  assertCanEditEvent,
+  assertGuestCannotMutate,
+  assertOwnerOnly,
+} from '../common/event-permissions';
 
 @Injectable()
 export class TreatmentsService {
@@ -16,7 +23,9 @@ export class TreatmentsService {
     private readonly horseRepository: Repository<Horse>,
   ) {}
 
-  async create(createTreatmentDto: CreateTreatmentDto): Promise<Treatment> {
+  async create(createTreatmentDto: CreateTreatmentDto, authUser: AuthUser): Promise<Treatment> {
+    assertGuestCannotMutate(authUser);
+
     const newTreatment = this.treatmentRepository.create({
       name: createTreatmentDto.name,
       user: { id: createTreatmentDto.user_id },
@@ -51,8 +60,26 @@ export class TreatmentsService {
     return treatment;
   }
 
-  async update(id: string, updateTreatmentDto: UpdateTreatmentDto): Promise<Treatment> {
+  async update(
+    id: string,
+    updateTreatmentDto: UpdateTreatmentDto,
+    authUser: AuthUser,
+  ): Promise<Treatment> {
     const existing = await this.findOne(id);
+
+    const isCompleteOnly =
+      updateTreatmentDto.is_complete === true &&
+      updateTreatmentDto.name === undefined &&
+      updateTreatmentDto.date === undefined &&
+      updateTreatmentDto.duration_minutes === undefined &&
+      updateTreatmentDto.horse_ids === undefined &&
+      updateTreatmentDto.user_id === undefined;
+
+    if (isCompleteOnly) {
+      assertCanCompleteEvent(authUser, 'treatment', existing);
+    } else {
+      assertCanEditEvent(authUser, 'treatment', existing);
+    }
 
     const updateData: Record<string, unknown> = { id, ...updateTreatmentDto };
 
@@ -92,7 +119,9 @@ export class TreatmentsService {
     }
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, authUser: AuthUser): Promise<void> {
+    assertOwnerOnly(authUser);
+
     const result = await this.treatmentRepository.delete(id);
     if (result.affected === 0) {
       throw new NotFoundException(`Treatment with ID ${id} not found`);

@@ -15,7 +15,7 @@ export class Task {
     @Column({type:'varchar', nullable: true})
     comments?: string;
 
-    @ManyToOne(()=>User)
+    @ManyToOne(()=>User, { nullable: true })
     @JoinColumn({name: 'assigned_user_id'})
     assigned_user?: User;
 

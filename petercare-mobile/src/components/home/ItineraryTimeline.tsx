@@ -1,13 +1,17 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { WeekDaySection } from '../../types/events';
+import { UserRole } from '../../types/auth';
 import { isCompletingKey } from '../../utils/completionKeys';
+import { canPerformAction } from '../../utils/eventPermissions';
 import EventCard from './EventCard';
 
 interface ItineraryTimelineProps {
   daySections: WeekDaySection[];
   onMarkComplete: (event: WeekDaySection['events'][number]) => void;
   completingIds: Set<string>;
+  userRole?: UserRole;
+  currentUserId?: string;
   alertTimes?: {
     morningTime?: string;
     eveningTime?: string;
@@ -18,6 +22,8 @@ export default function ItineraryTimeline({
   daySections,
   onMarkComplete,
   completingIds,
+  userRole,
+  currentUserId,
   alertTimes,
 }: ItineraryTimelineProps) {
   if (daySections.length === 0) {
@@ -38,8 +44,7 @@ export default function ItineraryTimeline({
             {section.dayName} · {section.dateLabel}
           </Text>
           {section.events.map((event) => {
-            const showCheckbox =
-              event.kind === 'feeding' || event.kind === 'task' || event.kind === 'treatment';
+            const canComplete = canPerformAction(userRole, 'complete', event, currentUserId);
             const isCompleting =
               event.kind === 'feeding'
                 ? isCompletingKey(completingIds, 'feeding', event.data.id)
@@ -53,12 +58,10 @@ export default function ItineraryTimeline({
               <EventCard
                 key={`${event.kind}-${event.data.id}`}
                 event={event}
-                showCheckbox={showCheckbox}
+                showCheckbox={canComplete}
                 isCompleting={isCompleting}
                 alertTimes={alertTimes}
-                onToggleComplete={
-                  showCheckbox ? () => onMarkComplete(event) : undefined
-                }
+                onToggleComplete={canComplete ? () => onMarkComplete(event) : undefined}
               />
             );
           })}

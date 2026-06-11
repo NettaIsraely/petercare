@@ -18,3 +18,8 @@ export interface CreateFeedingPayload {
   shift_type: ShiftType;
   assigned_user_id?: string;
 }
+
+export interface UpdateFeedingPayload {
+  assigned_user_id?: string | null;
+  notification_time?: string;
+}

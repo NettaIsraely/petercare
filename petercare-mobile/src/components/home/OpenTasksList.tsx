@@ -1,20 +1,26 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Task } from '../../types/task';
+import { UserRole } from '../../types/auth';
 import { isCompletingKey } from '../../utils/completionKeys';
 import { eventHasComments } from '../../utils/scheduleHelpers';
+import { canPerformAction } from '../../utils/eventPermissions';
 import { OpenTaskCard } from './EventCard';
 
 interface OpenTasksListProps {
   tasks: Task[];
   onMarkComplete: (task: Task) => void;
   completingIds: Set<string>;
+  userRole?: UserRole;
+  currentUserId?: string;
 }
 
 export default function OpenTasksList({
   tasks,
   onMarkComplete,
   completingIds,
+  userRole,
+  currentUserId,
 }: OpenTasksListProps) {
   return (
     <View style={styles.container}>
@@ -24,16 +30,21 @@ export default function OpenTasksList({
           <Text style={styles.emptyText}>No other tasks</Text>
         </View>
       ) : (
-        tasks.map((task) => (
+        tasks.map((task) => {
+          const event = { kind: 'task' as const, data: task, sortMinutes: 0 };
+          const canComplete = canPerformAction(userRole, 'complete', event, currentUserId);
+
+          return (
           <OpenTaskCard
             key={task.id}
             name={task.name}
             assignedUserId={task.assigned_user?.id}
-            hasComments={eventHasComments({ kind: 'task', data: task })}
+            hasComments={eventHasComments(event)}
             isCompleting={isCompletingKey(completingIds, 'task', task.id)}
-            onToggleComplete={() => onMarkComplete(task)}
+            onToggleComplete={canComplete ? () => onMarkComplete(task) : undefined}
           />
-        ))
+          );
+        })
       )}
     </View>
   );

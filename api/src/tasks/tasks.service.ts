@@ -4,6 +4,14 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Task } from './entities/task.entity';
 import { Repository } from 'typeorm';
+import {
+  AuthUser,
+  assertCanClaimTask,
+  assertCanCompleteEvent,
+  assertCanEditEvent,
+  assertGuestCannotMutate,
+  assertOwnerOnly,
+} from '../common/event-permissions';
 
 function normalizeDate(value: Date | string | undefined): string | null {
   if (!value) {
@@ -19,7 +27,9 @@ export class TasksService {
     private readonly tasksRepository: Repository<Task>,
   ) {}
 
-  async create(createTaskDto: CreateTaskDto): Promise<Task> {
+  async create(createTaskDto: CreateTaskDto, authUser: AuthUser): Promise<Task> {
+    assertGuestCannotMutate(authUser);
+
     const newTask = this.tasksRepository.create({
       name: createTaskDto.name,
       deadline: createTaskDto.deadline,
@@ -46,11 +56,20 @@ export class TasksService {
     return task;
   }
 
-  async update(id: string, updateTaskDto: UpdateTaskDto): Promise<Task> {
-    const existing = await this.tasksRepository.findOne({ where: { id } });
+  async update(id: string, updateTaskDto: UpdateTaskDto, authUser: AuthUser): Promise<Task> {
+    const existing = await this.findOne(id);
 
-    if (!existing) {
-      throw new NotFoundException(`Task with ID ${id} not found`);
+    const isCompleteOnly =
+      updateTaskDto.is_complete === true &&
+      updateTaskDto.name === undefined &&
+      updateTaskDto.deadline === undefined &&
+      updateTaskDto.comments === undefined &&
+      updateTaskDto.assigned_user_id === undefined;
+
+    if (isCompleteOnly) {
+      assertCanCompleteEvent(authUser, 'task', existing);
+    } else {
+      assertCanEditEvent(authUser, 'task', existing);
     }
 
     const { assigned_user_id, ...rest } = updateTaskDto;
@@ -79,10 +98,13 @@ export class TasksService {
     return await this.tasksRepository.save(task);
   }
 
-  async claim(id: string, userId: string): Promise<Task> {
+  async claim(id: string, userId: string, authUser: AuthUser): Promise<Task> {
+    const existing = await this.findOne(id);
+    assertCanClaimTask(authUser, existing);
+
     const task = await this.tasksRepository.preload({
       id: id,
-      assigned_user: { id: userId } as any,
+      assigned_user: { id: userId } as Task['assigned_user'],
     });
 
     if (!task) {
@@ -92,7 +114,9 @@ export class TasksService {
     return await this.tasksRepository.save(task);
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, authUser: AuthUser): Promise<void> {
+    assertOwnerOnly(authUser);
+
     const result = await this.tasksRepository.delete(id);
     if (result.affected === 0) {
       throw new NotFoundException(`Task with ID ${id} not found`);

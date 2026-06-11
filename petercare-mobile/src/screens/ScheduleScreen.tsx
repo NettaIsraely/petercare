@@ -10,6 +10,9 @@ import { useScheduleData } from '../hooks/useScheduleData';
 import { useAuth } from '../context/AuthContext';
 import { CalendarViewMode, ScheduleViewMode, TimelineEvent } from '../types/events';
 import { Task } from '../types/task';
+import { Feeding } from '../types/feeding';
+import { Ride } from '../types/ride';
+import { Treatment } from '../types/treatment';
 import ViewToggleBar from '../components/schedule/ViewToggleBar';
 import ScheduleCalendarView from '../components/schedule/ScheduleCalendarView';
 import ScheduleListView from '../components/schedule/ScheduleListView';
@@ -17,6 +20,10 @@ import EventDetailModal from '../components/schedule/EventDetailModal';
 import CreateEventFab from '../components/schedule/CreateEventFab';
 import CreateEventModal from '../components/schedule/CreateEventModal';
 import TaskFormModal from '../components/tasks/TaskFormModal';
+import FeedingEditModal from '../components/schedule/FeedingEditModal';
+import EditEventModal from '../components/schedule/EditEventModal';
+import { canCreateEvents } from '../utils/eventPermissions';
+import { confirmFeedingTakeOver } from '../utils/feedingTakeOverHelpers';
 
 export default function ScheduleScreen() {
   const { user } = useAuth();
@@ -26,6 +33,9 @@ export default function ScheduleScreen() {
   const [detailVisible, setDetailVisible] = useState(false);
   const [createVisible, setCreateVisible] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
+  const [editFeeding, setEditFeeding] = useState<Feeding | null>(null);
+  const [editRide, setEditRide] = useState<Ride | null>(null);
+  const [editTreatment, setEditTreatment] = useState<Treatment | null>(null);
 
   const {
     raw,
@@ -39,6 +49,7 @@ export default function ScheduleScreen() {
     loading,
     refreshing,
     volunteeringId,
+    takingOverId,
     claimingId,
     completingIds,
     creating,
@@ -46,6 +57,7 @@ export default function ScheduleScreen() {
     updating,
     refresh,
     volunteerForFeeding,
+    takeOverFeeding,
     volunteerForFeedings,
     claimTask,
     markEventComplete,
@@ -54,7 +66,11 @@ export default function ScheduleScreen() {
     updateTask,
     createRide,
     createTreatment,
+    updateFeeding,
+    updateRide,
+    updateTreatment,
     currentUserId,
+    userRole,
   } = useScheduleData();
 
   const handleEventPress = (event: TimelineEvent) => {
@@ -82,9 +98,40 @@ export default function ScheduleScreen() {
     handleCloseDetail();
   };
 
-  const handleEditTask = (task: Task) => {
+  const handleTakeOver = async (feedingId: string) => {
+    if (selectedEvent?.kind !== 'feeding') {
+      return;
+    }
+
+    const confirmed = await confirmFeedingTakeOver(selectedEvent.data);
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await takeOverFeeding(feedingId);
+      handleCloseDetail();
+    } catch {
+      // Error already logged in hook
+    }
+  };
+
+  const handleEdit = (event: TimelineEvent) => {
     handleCloseDetail();
-    setEditTask(task);
+    switch (event.kind) {
+      case 'task':
+        setEditTask(event.data);
+        break;
+      case 'feeding':
+        setEditFeeding(event.data);
+        break;
+      case 'ride':
+        setEditRide(event.data);
+        break;
+      case 'treatment':
+        setEditTreatment(event.data);
+        break;
+    }
   };
 
   if (loading && !refreshing) {
@@ -133,21 +180,26 @@ export default function ScheduleScreen() {
         )}
       </ScrollView>
 
-      <CreateEventFab onPress={() => setCreateVisible(true)} />
+      {canCreateEvents(user?.role) && (
+        <CreateEventFab onPress={() => setCreateVisible(true)} />
+      )}
 
       <EventDetailModal
         visible={detailVisible}
         event={selectedEvent}
         currentUserId={currentUserId}
+        userRole={userRole}
         alertTimes={alertTimes}
         volunteeringId={volunteeringId}
+        takingOverId={takingOverId}
         claimingId={claimingId}
         completingIds={completingIds}
         onClose={handleCloseDetail}
         onVolunteer={handleVolunteer}
+        onTakeOver={handleTakeOver}
         onClaim={handleClaim}
         onMarkComplete={handleMarkComplete}
-        onEditTask={handleEditTask}
+        onEdit={handleEdit}
       />
 
       <CreateEventModal
@@ -176,6 +228,31 @@ export default function ScheduleScreen() {
         onClose={() => setEditTask(null)}
         onSubmitCreate={createTask}
         onSubmitEdit={updateTask}
+      />
+
+      <FeedingEditModal
+        visible={!!editFeeding}
+        feeding={editFeeding}
+        users={raw.users}
+        submitting={updating}
+        onClose={() => setEditFeeding(null)}
+        onSubmit={updateFeeding}
+      />
+
+      <EditEventModal
+        visible={!!editRide || !!editTreatment}
+        kind={editRide ? 'ride' : editTreatment ? 'treatment' : null}
+        ride={editRide}
+        treatment={editTreatment}
+        horses={raw.horses}
+        users={raw.users}
+        submitting={updating}
+        onClose={() => {
+          setEditRide(null);
+          setEditTreatment(null);
+        }}
+        onSubmitRide={updateRide}
+        onSubmitTreatment={updateTreatment}
       />
     </View>
   );

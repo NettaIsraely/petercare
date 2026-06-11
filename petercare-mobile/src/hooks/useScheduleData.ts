@@ -8,11 +8,11 @@ import * as treatmentService from '../services/treatmentService';
 import * as userService from '../services/userService';
 import * as horseService from '../services/horseService';
 import { CreateTaskPayload, Task, UpdateTaskPayload } from '../types/task';
-import { CreateRidePayload, Ride } from '../types/ride';
-import { CreateTreatmentPayload, Treatment } from '../types/treatment';
+import { CreateRidePayload, Ride, UpdateRidePayload } from '../types/ride';
+import { CreateTreatmentPayload, Treatment, UpdateTreatmentPayload } from '../types/treatment';
 import { Horse } from '../types/horse';
 import { UserSummary } from '../types/user';
-import { Feeding } from '../types/feeding';
+import { Feeding, UpdateFeedingPayload } from '../types/feeding';
 import { ScheduleSectionData, TimelineEvent } from '../types/events';
 import {
   buildCalendarMarkedDates,
@@ -57,6 +57,7 @@ export function useScheduleData() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [volunteeringId, setVolunteeringId] = useState<string | null>(null);
+  const [takingOverId, setTakingOverId] = useState<string | null>(null);
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
@@ -185,6 +186,22 @@ export function useScheduleData() {
         console.error('Failed to volunteer for feeding:', error);
       } finally {
         setVolunteeringId(null);
+      }
+    },
+    [refresh]
+  );
+
+  const takeOverFeeding = useCallback(
+    async (feedingId: string) => {
+      setTakingOverId(feedingId);
+      try {
+        await feedingService.takeOverFeeding(feedingId);
+        await refresh(true);
+      } catch (error) {
+        console.error('Failed to take over feeding:', error);
+        throw error;
+      } finally {
+        setTakingOverId(null);
       }
     },
     [refresh]
@@ -328,6 +345,54 @@ export function useScheduleData() {
     [refresh]
   );
 
+  const updateFeeding = useCallback(
+    async (id: string, payload: UpdateFeedingPayload) => {
+      setUpdating(true);
+      try {
+        await feedingService.updateFeeding(id, payload);
+        await refresh(true);
+      } catch (error) {
+        console.error('Failed to update feeding:', error);
+        throw error;
+      } finally {
+        setUpdating(false);
+      }
+    },
+    [refresh]
+  );
+
+  const updateRide = useCallback(
+    async (id: string, payload: UpdateRidePayload) => {
+      setUpdating(true);
+      try {
+        await rideService.updateRide(id, payload);
+        await refresh(true);
+      } catch (error) {
+        console.error('Failed to update ride:', error);
+        throw error;
+      } finally {
+        setUpdating(false);
+      }
+    },
+    [refresh]
+  );
+
+  const updateTreatment = useCallback(
+    async (id: string, payload: UpdateTreatmentPayload) => {
+      setUpdating(true);
+      try {
+        await treatmentService.updateTreatment(id, payload);
+        await refresh(true);
+      } catch (error) {
+        console.error('Failed to update treatment:', error);
+        throw error;
+      } finally {
+        setUpdating(false);
+      }
+    },
+    [refresh]
+  );
+
   return {
     raw,
     listSections: listSections ?? EMPTY_SECTIONS,
@@ -340,6 +405,7 @@ export function useScheduleData() {
     loading,
     refreshing,
     volunteeringId,
+    takingOverId,
     claimingId,
     completingIds,
     creating,
@@ -347,6 +413,7 @@ export function useScheduleData() {
     updating,
     refresh,
     volunteerForFeeding,
+    takeOverFeeding,
     volunteerForFeedings,
     claimTask,
     markEventComplete,
@@ -355,7 +422,11 @@ export function useScheduleData() {
     updateTask,
     createRide,
     createTreatment,
+    updateFeeding,
+    updateRide,
+    updateTreatment,
     currentUserId: user?.userId,
+    userRole: user?.role,
   };
 }
 

@@ -23,6 +23,7 @@ import CreateEventFab from '../components/schedule/CreateEventFab';
 import HorseFormModal from '../components/horses/HorseFormModal';
 import TaskFormModal from '../components/tasks/TaskFormModal';
 import EventDetailModal from '../components/schedule/EventDetailModal';
+import { canCreateEvents } from '../utils/eventPermissions';
 
 type HorsesListNavigationProp = NativeStackNavigationProp<
   HorsesStackParamList,
@@ -103,9 +104,11 @@ export default function HorsesScreen() {
     setSelectedEvent(null);
   };
 
-  const handleEditTask = (task: Task) => {
-    handleCloseDetail();
-    setEditTask(task);
+  const handleEdit = (event: TimelineEvent) => {
+    if (event.kind === 'task') {
+      handleCloseDetail();
+      setEditTask(event.data);
+    }
   };
 
   const handleClaim = async (taskId: string) => {
@@ -148,6 +151,7 @@ export default function HorsesScreen() {
           openTasks={openTasks}
           completedTasks={completedTasks}
           currentUserId={currentUserId}
+          userRole={user?.role}
           completingIds={completingIds}
           onTaskPress={handleTaskPress}
           onMarkComplete={markTaskComplete}
@@ -161,19 +165,22 @@ export default function HorsesScreen() {
         />
       </ScrollView>
 
-      <CreateEventFab onPress={() => setCreateTaskVisible(true)} />
+      {canCreateEvents(user?.role) && (
+        <CreateEventFab onPress={() => setCreateTaskVisible(true)} />
+      )}
 
       <EventDetailModal
         visible={detailVisible}
         event={selectedEvent}
         currentUserId={currentUserId}
+        userRole={user?.role}
         claimingId={claimingId}
         completingIds={completingIds}
         onClose={handleCloseDetail}
         onVolunteer={() => {}}
         onClaim={handleClaim}
         onMarkComplete={handleMarkComplete}
-        onEditTask={handleEditTask}
+        onEdit={handleEdit}
       />
 
       <TaskFormModal

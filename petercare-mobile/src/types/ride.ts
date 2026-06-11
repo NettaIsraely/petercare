@@ -23,3 +23,13 @@ export interface CreateRidePayload {
   additional_riders_ids?: string[];
   comments?: string;
 }
+
+export interface UpdateRidePayload {
+  date?: string;
+  start_time?: string;
+  end_time?: string;
+  primary_rider_id?: string;
+  horses?: string[];
+  additional_riders_ids?: string[];
+  comments?: string;
+}

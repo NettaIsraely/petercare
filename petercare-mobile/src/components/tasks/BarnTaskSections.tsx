@@ -2,15 +2,18 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { ChevronDown, ChevronUp, ClipboardList } from 'lucide-react-native';
 import { Task } from '../../types/task';
+import { UserRole } from '../../types/auth';
 import { TimelineEvent } from '../../types/events';
 import EventCard from '../home/EventCard';
 import { isCompletingKey } from '../../utils/completionKeys';
 import { taskToTimelineEvent } from '../../utils/taskHelpers';
+import { canPerformAction } from '../../utils/eventPermissions';
 
 interface BarnTaskSectionsProps {
   openTasks: Task[];
   completedTasks: Task[];
   currentUserId?: string;
+  userRole?: UserRole;
   completingIds: Set<string>;
   onTaskPress: (event: TimelineEvent) => void;
   onMarkComplete: (task: Task) => void;
@@ -20,6 +23,7 @@ export default function BarnTaskSections({
   openTasks,
   completedTasks,
   currentUserId,
+  userRole,
   completingIds,
   onTaskPress,
   onMarkComplete,
@@ -30,9 +34,7 @@ export default function BarnTaskSections({
     const event = taskToTimelineEvent(task);
     const canComplete =
       !completed &&
-      !!task.assigned_user &&
-      task.assigned_user.id === currentUserId &&
-      !(task.is_complete ?? false);
+      canPerformAction(userRole, 'complete', event, currentUserId);
 
     return (
       <EventCard

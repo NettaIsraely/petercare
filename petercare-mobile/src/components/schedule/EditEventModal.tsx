@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Modal,
   View,
@@ -9,87 +9,62 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { X, Wheat, Route, ClipboardList, Stethoscope } from 'lucide-react-native';
-import { CreateEventCategory } from '../../types/events';
-import { Feeding } from '../../types/feeding';
-import { UserRole } from '../../types/auth';
-import { CreateTaskPayload } from '../../types/task';
-import { CreateRidePayload } from '../../types/ride';
+import { X } from 'lucide-react-native';
+import { Ride, UpdateRidePayload } from '../../types/ride';
 import {
-  CreateTreatmentPayload,
   PREDEFINED_TREATMENT_NAMES,
   PredefinedTreatmentName,
+  Treatment,
+  UpdateTreatmentPayload,
 } from '../../types/treatment';
 import { Horse } from '../../types/horse';
 import { UserSummary } from '../../types/user';
 import DatePickerField from './DatePickerField';
 import TimePickerField from '../common/TimePickerField';
-import { formatTimeForApi, parseTimeToMinutes, formatShiftLabel, formatWeekDayHeader } from '../../utils/dateHelpers';
 import {
-  TaskFormFields,
-  TaskFormValues,
-  formValuesToCreatePayload,
-  taskToFormValues,
-} from '../tasks/TaskFormModal';
+  formatTimeForApi,
+  formatTimeForInput,
+  normalizeDateString,
+  parseTimeToMinutes,
+} from '../../utils/dateHelpers';
 
-interface CreateEventModalProps {
+type EditEventKind = 'ride' | 'treatment';
+
+interface EditEventModalProps {
   visible: boolean;
-  onClose: () => void;
-  defaultDate: string;
+  kind: EditEventKind | null;
+  ride?: Ride | null;
+  treatment?: Treatment | null;
   horses: Horse[];
   users: UserSummary[];
-  currentUserId?: string;
-  userRole?: UserRole;
-  creating: boolean;
-  volunteering: boolean;
-  unassignedFeedings: Feeding[];
-  onVolunteerForFeedings: (feedingIds: string[]) => Promise<void>;
-  onCreateTask: (payload: CreateTaskPayload) => Promise<void>;
-  onCreateRide: (payload: CreateRidePayload) => Promise<void>;
-  onCreateTreatment: (payload: CreateTreatmentPayload) => Promise<void>;
+  submitting: boolean;
+  onClose: () => void;
+  onSubmitRide: (id: string, payload: UpdateRidePayload) => Promise<void>;
+  onSubmitTreatment: (id: string, payload: UpdateTreatmentPayload) => Promise<void>;
 }
-
-const CATEGORIES: { key: CreateEventCategory; label: string; Icon: typeof Wheat }[] = [
-  { key: 'feeding', label: 'Feeding', Icon: Wheat },
-  { key: 'ride', label: 'Ride', Icon: Route },
-  { key: 'treatment', label: 'Treatment', Icon: Stethoscope },
-  { key: 'task', label: 'Task', Icon: ClipboardList },
-];
 
 function PickerRow({
   label,
   options,
   selectedId,
   onSelect,
-  allowEmpty,
 }: {
   label: string;
   options: { id: string; label: string }[];
   selectedId?: string;
   onSelect: (id: string | undefined) => void;
-  allowEmpty?: boolean;
 }) {
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipRow}>
-        {allowEmpty && (
-          <TouchableOpacity
-            style={[styles.chip, !selectedId && styles.chipSelected]}
-            onPress={() => onSelect(undefined)}
-          >
-            <Text style={[styles.chipText, !selectedId && styles.chipTextSelected]}>None</Text>
-          </TouchableOpacity>
-        )}
         {options.map((option) => (
           <TouchableOpacity
             key={option.id}
             style={[styles.chip, selectedId === option.id && styles.chipSelected]}
             onPress={() => onSelect(option.id)}
           >
-            <Text
-              style={[styles.chipText, selectedId === option.id && styles.chipTextSelected]}
-            >
+            <Text style={[styles.chipText, selectedId === option.id && styles.chipTextSelected]}>
               {option.label}
             </Text>
           </TouchableOpacity>
@@ -99,36 +74,30 @@ function PickerRow({
   );
 }
 
-export default function CreateEventModal({
+export default function EditEventModal({
   visible,
-  onClose,
-  defaultDate,
+  kind,
+  ride,
+  treatment,
   horses,
   users,
-  currentUserId,
-  userRole,
-  creating,
-  volunteering,
-  unassignedFeedings,
-  onVolunteerForFeedings,
-  onCreateTask,
-  onCreateRide,
-  onCreateTreatment,
-}: CreateEventModalProps) {
-  const [category, setCategory] = useState<CreateEventCategory | null>(null);
+  submitting,
+  onClose,
+  onSubmitRide,
+  onSubmitTreatment,
+}: EditEventModalProps) {
   const [error, setError] = useState<string | null>(null);
-  const [selectedFeedingIds, setSelectedFeedingIds] = useState<string[]>([]);
 
-  const userOptions = users.map((u) => ({ id: u.id, label: u.name }));
-  const horseOptions = horses.filter((h) => h.is_active).map((h) => ({ id: h.id, label: h.name }));
-  const isGuest = userRole === 'GUEST';
+  const userOptions = useMemo(() => users.map((u) => ({ id: u.id, label: u.name })), [users]);
+  const horseOptions = useMemo(
+    () => horses.filter((h) => h.is_active).map((h) => ({ id: h.id, label: h.name })),
+    [horses]
+  );
 
-  const [taskValues, setTaskValues] = useState<TaskFormValues>(taskToFormValues());
-
-  const [rideDate, setRideDate] = useState(defaultDate);
+  const [rideDate, setRideDate] = useState('');
   const [rideStart, setRideStart] = useState('09:00');
   const [rideEnd, setRideEnd] = useState('10:00');
-  const [primaryRiderId, setPrimaryRiderId] = useState(currentUserId ?? '');
+  const [primaryRiderId, setPrimaryRiderId] = useState('');
   const [selectedHorseIds, setSelectedHorseIds] = useState<string[]>([]);
   const [additionalRiderIds, setAdditionalRiderIds] = useState<string[]>([]);
   const [rideComments, setRideComments] = useState('');
@@ -137,44 +106,42 @@ export default function CreateEventModal({
     null
   );
   const [treatmentCustomName, setTreatmentCustomName] = useState('');
-  const [treatmentDate, setTreatmentDate] = useState(defaultDate);
+  const [treatmentDate, setTreatmentDate] = useState('');
   const [treatmentDuration, setTreatmentDuration] = useState('');
   const [treatmentHorseIds, setTreatmentHorseIds] = useState<string[]>([]);
-  const [treatmentUserId, setTreatmentUserId] = useState(currentUserId ?? '');
-
-  const resetForm = () => {
-    setCategory(null);
-    setError(null);
-    setSelectedFeedingIds([]);
-    setTaskValues(taskToFormValues());
-    setRideDate(defaultDate);
-    setRideStart('09:00');
-    setRideEnd('10:00');
-    setPrimaryRiderId(currentUserId ?? '');
-    setSelectedHorseIds([]);
-    setAdditionalRiderIds([]);
-    setRideComments('');
-    setTreatmentNamePreset(null);
-    setTreatmentCustomName('');
-    setTreatmentDate(defaultDate);
-    setTreatmentDuration('');
-    setTreatmentHorseIds([]);
-    setTreatmentUserId(currentUserId ?? '');
-  };
+  const [treatmentUserId, setTreatmentUserId] = useState('');
 
   useEffect(() => {
-    if (!visible) {
+    if (!visible || !kind) {
       return;
     }
-    setRideDate(defaultDate);
-    setTreatmentDate(defaultDate);
-    setSelectedFeedingIds([]);
-  }, [visible, defaultDate]);
 
-  const handleClose = () => {
-    resetForm();
-    onClose();
-  };
+    setError(null);
+
+    if (kind === 'ride' && ride) {
+      setRideDate(normalizeDateString(ride.date));
+      setRideStart(formatTimeForInput(ride.start_time) || '09:00');
+      setRideEnd(formatTimeForInput(ride.end_time) || '10:00');
+      setPrimaryRiderId(ride.primary_rider.id);
+      setSelectedHorseIds(ride.horses.map((h) => h.id));
+      setAdditionalRiderIds(ride.additional_riders?.map((r) => r.id) ?? []);
+      setRideComments(ride.comments ?? '');
+    }
+
+    if (kind === 'treatment' && treatment) {
+      const isPreset = PREDEFINED_TREATMENT_NAMES.includes(
+        treatment.name as PredefinedTreatmentName
+      );
+      setTreatmentNamePreset(isPreset ? (treatment.name as PredefinedTreatmentName) : null);
+      setTreatmentCustomName(isPreset ? '' : treatment.name);
+      setTreatmentDate(normalizeDateString(treatment.date));
+      setTreatmentDuration(
+        treatment.duration_minutes !== undefined ? String(treatment.duration_minutes) : ''
+      );
+      setTreatmentHorseIds(treatment.horses.map((h) => h.id));
+      setTreatmentUserId(treatment.user.id);
+    }
+  }, [visible, kind, ride, treatment]);
 
   const toggleHorse = (horseId: string) => {
     setSelectedHorseIds((prev) =>
@@ -194,30 +161,10 @@ export default function CreateEventModal({
     );
   };
 
-  const toggleFeedingSelection = (feedingId: string) => {
-    setSelectedFeedingIds((prev) =>
-      prev.includes(feedingId)
-        ? prev.filter((id) => id !== feedingId)
-        : [...prev, feedingId]
-    );
-  };
-
   const handleSubmit = async () => {
     setError(null);
     try {
-      if (category === 'feeding') {
-        if (selectedFeedingIds.length === 0) {
-          setError('Select at least one feeding shift.');
-          return;
-        }
-        await onVolunteerForFeedings(selectedFeedingIds);
-      } else if (category === 'task') {
-        if (!taskValues.name.trim()) {
-          setError('Task name is required.');
-          return;
-        }
-        await onCreateTask(formValuesToCreatePayload(taskValues));
-      } else if (category === 'ride') {
+      if (kind === 'ride' && ride) {
         if (!primaryRiderId) {
           setError('Primary rider is required.');
           return;
@@ -236,17 +183,16 @@ export default function CreateEventModal({
           setError('End time must be after start time.');
           return;
         }
-        await onCreateRide({
+        await onSubmitRide(ride.id, {
           date: rideDate.trim(),
           start_time: startTime,
           end_time: endTime,
           primary_rider_id: primaryRiderId,
           horses: selectedHorseIds,
-          additional_riders_ids:
-            additionalRiderIds.length > 0 ? additionalRiderIds : undefined,
+          additional_riders_ids: additionalRiderIds,
           comments: rideComments.trim() || undefined,
         });
-      } else if (category === 'treatment') {
+      } else if (kind === 'treatment' && treatment) {
         const resolvedTreatmentName = treatmentNamePreset ?? treatmentCustomName.trim();
         if (!resolvedTreatmentName) {
           setError('Treatment name is required.');
@@ -260,7 +206,7 @@ export default function CreateEventModal({
           setError('Select a staff member.');
           return;
         }
-        await onCreateTreatment({
+        await onSubmitTreatment(treatment.id, {
           name: resolvedTreatmentName,
           date: treatmentDate.trim() || undefined,
           duration_minutes: treatmentDuration.trim()
@@ -270,145 +216,27 @@ export default function CreateEventModal({
           user_id: treatmentUserId,
         });
       }
-      handleClose();
+      onClose();
     } catch {
-      setError(
-        category === 'feeding'
-          ? 'Failed to volunteer for feeding shifts. Please try again.'
-          : 'Failed to create event. Please check your inputs and try again.'
-      );
+      setError('Failed to update event. Please try again.');
     }
   };
 
-  const getCategoryTitle = () => {
-    if (!category) {
-      return 'Create Event';
-    }
-    if (category === 'feeding') {
-      return 'Volunteer for Feeding';
-    }
-    return `New ${category.charAt(0).toUpperCase()}${category.slice(1)}`;
-  };
-
-  const isSubmitting = category === 'feeding' ? volunteering : creating;
-  const submitLabel = category === 'feeding' ? 'Volunteer' : 'Create';
-  const canSubmitFeeding = !isGuest && selectedFeedingIds.length > 0 && !volunteering;
-
-  const actionButtons = category ? (
-    <View style={styles.actions}>
-      <TouchableOpacity style={styles.secondaryButton} onPress={() => setCategory(null)}>
-        <Text style={styles.secondaryButtonText}>Back</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[
-          styles.primaryButton,
-          category === 'feeding' && !canSubmitFeeding && styles.primaryButtonDisabled,
-        ]}
-        onPress={handleSubmit}
-        disabled={isSubmitting || (category === 'feeding' && (isGuest || !canSubmitFeeding))}
-      >
-        {isSubmitting ? (
-          <ActivityIndicator color="#FFFFFF" />
-        ) : (
-          <Text style={styles.primaryButtonText}>{submitLabel}</Text>
-        )}
-      </TouchableOpacity>
-    </View>
-  ) : null;
-
-  const feedingContent = (
-    <>
-      {isGuest ? (
-        <Text style={styles.guestMessage}>
-          Guests can view the stable. Request caregiver access to volunteer for shifts.
-        </Text>
-      ) : unassignedFeedings.length === 0 ? (
-        <Text style={styles.emptyMessage}>
-          No unassigned feeding shifts in the next two weeks.
-        </Text>
-      ) : (
-        unassignedFeedings.map((feeding) => {
-          const dateStr = feeding.schedule_date.split('T')[0];
-          const { dayName, dateLabel } = formatWeekDayHeader(dateStr);
-          const isSelected = selectedFeedingIds.includes(feeding.id);
-
-          return (
-            <TouchableOpacity
-              key={feeding.id}
-              style={[styles.feedingRow, isSelected && styles.feedingRowSelected]}
-              onPress={() => toggleFeedingSelection(feeding.id)}
-            >
-              <View style={[styles.checkbox, isSelected && styles.checkboxSelected]}>
-                {isSelected && <Text style={styles.checkmark}>✓</Text>}
-              </View>
-              <View style={styles.feedingRowText}>
-                <Text style={styles.feedingRowTitle}>
-                  {formatShiftLabel(feeding.shift_type)}
-                </Text>
-                <Text style={styles.feedingRowSubtitle}>
-                  {dayName}, {dateLabel}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })
-      )}
-    </>
-  );
+  const title = kind === 'ride' ? 'Edit Ride' : kind === 'treatment' ? 'Edit Treatment' : 'Edit Event';
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
-        <View style={[styles.sheet, category === 'feeding' && styles.sheetWithFixedFooter]}>
+        <View style={styles.sheet}>
           <View style={styles.header}>
-            <Text style={styles.title}>{getCategoryTitle()}</Text>
-            <TouchableOpacity onPress={handleClose} accessibilityLabel="Close">
+            <Text style={styles.title}>{title}</Text>
+            <TouchableOpacity onPress={onClose} accessibilityLabel="Close">
               <X size={24} color="#2C3E50" />
             </TouchableOpacity>
           </View>
 
-          {category === 'feeding' ? (
-            <>
-              <ScrollView
-                style={styles.feedingScroll}
-                contentContainerStyle={styles.feedingScrollContent}
-                showsVerticalScrollIndicator
-              >
-                {feedingContent}
-              </ScrollView>
-              <View style={styles.fixedFooter}>
-                {error && <Text style={styles.errorText}>{error}</Text>}
-                {actionButtons}
-              </View>
-            </>
-          ) : (
-            <ScrollView contentContainerStyle={styles.content}>
-              {isGuest ? (
-                <Text style={styles.guestMessage}>
-                  Guests can view the stable. Request caregiver access to create or manage events.
-                </Text>
-              ) : (
-                <>
-              {!category && (
-                <View style={styles.categoryGrid}>
-                  {CATEGORIES.map(({ key, label, Icon }) => (
-                    <TouchableOpacity
-                      key={key}
-                      style={styles.categoryCard}
-                      onPress={() => setCategory(key)}
-                    >
-                      <Icon size={28} color="#3498DB" />
-                      <Text style={styles.categoryLabel}>{label}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-
-              {category === 'task' && (
-                <TaskFormFields values={taskValues} onChange={setTaskValues} users={users} />
-              )}
-
-              {category === 'ride' && (
+          <ScrollView contentContainerStyle={styles.content}>
+            {kind === 'ride' && (
               <>
                 <DatePickerField label="Date" value={rideDate} onChange={setRideDate} />
                 <TimePickerField label="Start Time" value={rideStart} onChange={setRideStart} />
@@ -479,7 +307,7 @@ export default function CreateEventModal({
               </>
             )}
 
-            {category === 'treatment' && (
+            {kind === 'treatment' && (
               <>
                 <Text style={styles.label}>Name</Text>
                 <View style={styles.rowWrap}>
@@ -556,11 +384,18 @@ export default function CreateEventModal({
 
             {error && <Text style={styles.errorText}>{error}</Text>}
 
-            {actionButtons && <View style={styles.scrollActions}>{actionButtons}</View>}
-                </>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={handleSubmit}
+              disabled={submitting}
+            >
+              {submitting ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.primaryButtonText}>Save</Text>
               )}
+            </TouchableOpacity>
           </ScrollView>
-          )}
         </View>
       </View>
     </Modal>
@@ -579,24 +414,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     maxHeight: '92%',
   },
-  sheetWithFixedFooter: {
-    height: '92%',
-  },
-  feedingScroll: {
-    flex: 1,
-  },
-  feedingScrollContent: {
-    padding: 20,
-    paddingBottom: 8,
-  },
-  fixedFooter: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 32,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E6ED',
-    backgroundColor: '#F5F7FA',
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -613,26 +430,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
     paddingBottom: 32,
-  },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  categoryCard: {
-    width: '47%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E0E6ED',
-    gap: 8,
-  },
-  categoryLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#2C3E50',
   },
   field: {
     marginBottom: 12,
@@ -654,11 +451,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#2C3E50',
     marginBottom: 4,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
   },
   rowWrap: {
     flexDirection: 'row',
@@ -690,103 +482,21 @@ const styles = StyleSheet.create({
   chipTextSelected: {
     color: '#FFFFFF',
   },
-  actions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 0,
-  },
-  scrollActions: {
-    marginTop: 16,
-  },
   primaryButton: {
-    flex: 1,
     backgroundColor: '#3498DB',
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
+    marginTop: 16,
   },
   primaryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
   },
-  secondaryButton: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E0E6ED',
-  },
-  secondaryButtonText: {
-    color: '#2C3E50',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   errorText: {
     color: '#E74C3C',
     fontSize: 14,
     marginTop: 8,
-  },
-  guestMessage: {
-    fontSize: 15,
-    color: '#7F8C8D',
-    lineHeight: 22,
-  },
-  emptyMessage: {
-    fontSize: 15,
-    color: '#7F8C8D',
-    textAlign: 'center',
-    paddingVertical: 24,
-  },
-  feedingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#E0E6ED',
-    gap: 12,
-  },
-  feedingRowSelected: {
-    borderColor: '#3498DB',
-    backgroundColor: '#EBF5FB',
-  },
-  feedingRowText: {
-    flex: 1,
-  },
-  feedingRowTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#2C3E50',
-  },
-  feedingRowSubtitle: {
-    fontSize: 13,
-    color: '#7F8C8D',
-    marginTop: 2,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#BDC3C7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxSelected: {
-    backgroundColor: '#3498DB',
-    borderColor: '#3498DB',
-  },
-  checkmark: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  primaryButtonDisabled: {
-    opacity: 0.5,
   },
 });

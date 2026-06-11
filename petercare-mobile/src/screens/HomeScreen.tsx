@@ -59,12 +59,16 @@ export default function HomeScreen() {
         overdueFeedings={myWeek.overdueFeedings}
         onVolunteer={volunteerForFeeding}
         volunteeringId={volunteeringId}
+        userRole={user?.role}
+        currentUserId={user?.userId}
       />
 
       <ItineraryTimeline
         daySections={myWeek.daySections}
         onMarkComplete={markEventComplete}
         completingIds={completingIds}
+        userRole={user?.role}
+        currentUserId={user?.userId}
         alertTimes={alertTimes}
       />
 
@@ -74,6 +78,8 @@ export default function HomeScreen() {
           markEventComplete({ kind: 'task', data: task, sortMinutes: 0 })
         }
         completingIds={completingIds}
+        userRole={user?.role}
+        currentUserId={user?.userId}
       />
     </ScrollView>
   );

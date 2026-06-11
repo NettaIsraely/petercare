@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { X } from 'lucide-react-native';
 import { TimelineEvent } from '../../types/events';
-import { Task } from '../../types/task';
+import { UserRole } from '../../types/auth';
 import { HorseColor } from '../../types/horse';
 import EventCard from '../home/EventCard';
 import HorseIconRow from '../horses/HorseIconRow';
@@ -23,23 +23,27 @@ import {
 } from '../../utils/dateHelpers';
 import { isCompletingKey } from '../../utils/completionKeys';
 import { eventHasComments, getEventComments } from '../../utils/scheduleHelpers';
+import { canEditEvent, canPerformAction } from '../../utils/eventPermissions';
 
 interface EventDetailModalProps {
   visible: boolean;
   event: TimelineEvent | null;
   currentUserId?: string;
+  userRole?: UserRole;
   alertTimes?: {
     morningTime?: string;
     eveningTime?: string;
   };
   volunteeringId?: string | null;
+  takingOverId?: string | null;
   claimingId?: string | null;
   completingIds: Set<string>;
   onClose: () => void;
   onVolunteer: (feedingId: string, notificationTime?: string) => void;
+  onTakeOver?: (feedingId: string) => void;
   onClaim: (taskId: string) => void;
   onMarkComplete: (event: TimelineEvent) => void;
-  onEditTask?: (task: Task) => void;
+  onEdit?: (event: TimelineEvent) => void;
 }
 
 function getDetailLines(event: TimelineEvent): string[] {
@@ -106,15 +110,18 @@ export default function EventDetailModal({
   visible,
   event,
   currentUserId,
+  userRole,
   alertTimes,
   volunteeringId,
+  takingOverId,
   claimingId,
   completingIds,
   onClose,
   onVolunteer,
+  onTakeOver,
   onClaim,
   onMarkComplete,
-  onEditTask,
+  onEdit,
 }: EventDetailModalProps) {
   const [notificationTime, setNotificationTime] = useState('08:00');
 
@@ -122,36 +129,36 @@ export default function EventDetailModal({
     return null;
   }
 
-  const isFeedingUnassigned =
-    event.kind === 'feeding' && event.data.feeding_status === 'UNASSIGNED';
-  const isTaskUnassigned = event.kind === 'task' && !event.data.assigned_user;
-  const isFeedingAssignedIncomplete =
-    event.kind === 'feeding' &&
-    event.data.feeding_status !== 'COMPLETE' &&
-    event.data.feeding_status !== 'UNASSIGNED';
-  const isTaskAssignedIncomplete =
-    event.kind === 'task' &&
-    !!event.data.assigned_user &&
-    !(event.data.is_complete ?? false);
-  const isTreatmentAssignedIncomplete =
-    event.kind === 'treatment' &&
-    event.data.user.id === currentUserId &&
-    !(event.data.is_complete ?? false);
+  const showVolunteer = canPerformAction(userRole, 'volunteer', event, currentUserId);
+  const showTakeOver = onTakeOver && canPerformAction(userRole, 'takeOver', event, currentUserId);
+  const showClaim = canPerformAction(userRole, 'claim', event, currentUserId);
+  const showComplete = canPerformAction(userRole, 'complete', event, currentUserId);
+  const showEdit = onEdit && canEditEvent(userRole, event, currentUserId);
 
   const eventId = event.data.id;
   const isVolunteering = volunteeringId === eventId;
+  const isTakingOver = takingOverId === eventId;
   const isClaiming = claimingId === eventId;
   const isCompleting =
     (event.kind === 'feeding' || event.kind === 'task' || event.kind === 'treatment') &&
     isCompletingKey(completingIds, event.kind, eventId);
 
-  const canCompleteFeeding =
-    isFeedingAssignedIncomplete && event.data.assigned_user?.id === currentUserId;
-  const canCompleteTask =
-    isTaskAssignedIncomplete && event.data.assigned_user?.id === currentUserId;
-  const canCompleteTreatment = isTreatmentAssignedIncomplete;
-
   const horseDetail = getHorseDetailSection(event);
+
+  const getEditLabel = () => {
+    switch (event.kind) {
+      case 'feeding':
+        return 'Edit Feeding';
+      case 'task':
+        return 'Edit Task';
+      case 'ride':
+        return 'Edit Ride';
+      case 'treatment':
+        return 'Edit Treatment';
+      default:
+        return 'Edit';
+    }
+  };
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -187,7 +194,7 @@ export default function EventDetailModal({
               )}
             </View>
 
-            {isFeedingUnassigned && (
+            {showVolunteer && (
               <View style={styles.actionSection}>
                 <TimePickerField
                   label="Notification reminder time (optional)"
@@ -211,7 +218,21 @@ export default function EventDetailModal({
               </View>
             )}
 
-            {isTaskUnassigned && (
+            {showTakeOver && (
+              <TouchableOpacity
+                style={[styles.primaryButton, styles.takeOverButton]}
+                onPress={() => onTakeOver(eventId)}
+                disabled={isTakingOver}
+              >
+                {isTakingOver ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>Take Shift</Text>
+                )}
+              </TouchableOpacity>
+            )}
+
+            {showClaim && (
               <TouchableOpacity
                 style={[styles.primaryButton, styles.claimButton]}
                 onPress={() => onClaim(eventId)}
@@ -225,7 +246,7 @@ export default function EventDetailModal({
               </TouchableOpacity>
             )}
 
-            {canCompleteFeeding && (
+            {showComplete && event.kind === 'feeding' && (
               <TouchableOpacity
                 style={styles.primaryButton}
                 onPress={() => onMarkComplete(event)}
@@ -239,7 +260,7 @@ export default function EventDetailModal({
               </TouchableOpacity>
             )}
 
-            {canCompleteTask && (
+            {showComplete && event.kind === 'task' && (
               <TouchableOpacity
                 style={styles.primaryButton}
                 onPress={() => onMarkComplete(event)}
@@ -253,7 +274,7 @@ export default function EventDetailModal({
               </TouchableOpacity>
             )}
 
-            {canCompleteTreatment && (
+            {showComplete && event.kind === 'treatment' && (
               <TouchableOpacity
                 style={styles.primaryButton}
                 onPress={() => onMarkComplete(event)}
@@ -267,12 +288,12 @@ export default function EventDetailModal({
               </TouchableOpacity>
             )}
 
-            {event.kind === 'task' && onEditTask && (
+            {showEdit && (
               <TouchableOpacity
                 style={styles.secondaryButton}
-                onPress={() => onEditTask(event.data)}
+                onPress={() => onEdit(event)}
               >
-                <Text style={styles.secondaryButtonText}>Edit Task</Text>
+                <Text style={styles.secondaryButtonText}>{getEditLabel()}</Text>
               </TouchableOpacity>
             )}
           </ScrollView>
@@ -359,23 +380,6 @@ const styles = StyleSheet.create({
   actionSection: {
     marginBottom: 12,
   },
-  actionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#7F8C8D',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E0E6ED',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 15,
-    color: '#2C3E50',
-    marginBottom: 12,
-  },
   primaryButton: {
     backgroundColor: '#3498DB',
     borderRadius: 10,
@@ -385,6 +389,9 @@ const styles = StyleSheet.create({
   },
   claimButton: {
     backgroundColor: '#27AE60',
+  },
+  takeOverButton: {
+    backgroundColor: '#E67E22',
   },
   primaryButtonText: {
     color: '#FFFFFF',
