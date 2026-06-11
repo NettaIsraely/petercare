@@ -35,4 +35,10 @@ export class Feeding {
 
     @UpdateDateColumn()
     updated_at!: Date;
+
+    @Column({ type: 'timestamptz', nullable: true })
+    unassigned_night_alert_sent_at?: Date | null;
+
+    @Column({ type: 'timestamptz', nullable: true })
+    incomplete_alert_sent_at?: Date | null;
 }

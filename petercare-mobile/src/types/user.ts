@@ -7,6 +7,7 @@ export interface UserSummary {
   role?: UserRole;
   morning_alert_time?: string;
   evening_alert_time?: string;
+  timezone?: string;
 }
 
 export interface UpdateUserPayload {
@@ -15,4 +16,5 @@ export interface UpdateUserPayload {
   morning_alert_time?: string;
   evening_alert_time?: string;
   expo_push_token?: string;
+  timezone?: string;
 }

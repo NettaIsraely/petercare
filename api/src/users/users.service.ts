@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User, UserRole } from './entities/user.entity';
 import * as bcrypt from 'bcrypt';
+import { isValidTimezone } from '../common/timezone.util';
 
 export type PublicUser = {
   id: string;
@@ -13,6 +14,7 @@ export type PublicUser = {
   role: UserRole;
   morning_alert_time: string;
   evening_alert_time: string;
+  timezone: string;
   expo_push_token?: string;
   created_at: Date;
   updated_at: Date;
@@ -33,6 +35,7 @@ export class UsersService {
       role: user.role,
       morning_alert_time: user.morning_alert_time,
       evening_alert_time: user.evening_alert_time,
+      timezone: user.timezone,
       expo_push_token: user.expo_push_token,
       created_at: user.created_at,
       updated_at: user.updated_at,
@@ -78,6 +81,10 @@ export class UsersService {
   }
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<PublicUser> {
+    if (updateUserDto.timezone !== undefined && !isValidTimezone(updateUserDto.timezone)) {
+      throw new BadRequestException('Invalid IANA timezone identifier.');
+    }
+
     const updateData: Record<string, unknown> = { id, ...updateUserDto };
 
     if (updateUserDto.password){

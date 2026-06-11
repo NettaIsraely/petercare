@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
@@ -13,6 +14,7 @@ import { QueueModule } from './queue/queue.module';
 import { FeedingsModule } from './feedings/feedings.module';
 import { AuthModule } from './auth/auth.module';
 import { RoleRequestsModule } from './role-requests/role-requests.module';
+import { NotificationsModule } from './notifications/notifications.module';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { RoleRequestsModule } from './role-requests/role-requests.module';
       isGlobal: true, 
       envFilePath: '../.env', 
     }),
+
+    ScheduleModule.forRoot(),
 
     // 2. Connect to PostgreSQL (Docker)
     TypeOrmModule.forRootAsync({
@@ -34,7 +38,8 @@ import { RoleRequestsModule } from './role-requests/role-requests.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
         autoLoadEntities: true, 
-        synchronize: true, 
+        synchronize: true,
+        timezone: 'Z',
       }),
     }),
 
@@ -67,6 +72,8 @@ import { RoleRequestsModule } from './role-requests/role-requests.module';
     AuthModule,
 
     RoleRequestsModule,
+
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

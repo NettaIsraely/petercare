@@ -27,4 +27,7 @@ export class Task {
 
     @UpdateDateColumn()
     updated_at!: Date;
+
+    @Column({ type: 'timestamptz', nullable: true })
+    deadline_reminder_sent_at?: Date | null;
 }

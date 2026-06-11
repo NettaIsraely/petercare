@@ -15,7 +15,7 @@ import {
   setUnauthorizedHandler,
 } from '../services/authService';
 import { AuthUser } from '../types/auth';
-import { registerPushToken } from '../services/pushNotificationService';
+import { registerPushToken, syncUserTimezone } from '../services/pushNotificationService';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -71,6 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     await setToken(token);
     setUser(decodedUser);
+    void syncUserTimezone(decodedUser.userId);
     void registerPushToken(decodedUser.userId);
   }, []);
 
@@ -83,6 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (isMounted) {
           setUser(session);
           if (session) {
+            void syncUserTimezone(session.userId);
             void registerPushToken(session.userId);
           }
         }

@@ -30,6 +30,9 @@ export class User {
   @Column({ type: 'time', default: '18:00:00' })
   evening_alert_time!: string;
 
+  @Column({ type: 'varchar', length: 64, default: 'Asia/Jerusalem' })
+  timezone!: string;
+
   // The device address for push notifications
   @Column({ type: 'varchar', nullable: true })
   expo_push_token?: string;

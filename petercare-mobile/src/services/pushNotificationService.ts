@@ -14,6 +14,10 @@ Notifications.setNotificationHandler({
   }),
 });
 
+export function getDeviceTimezone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
 async function getExpoPushToken(): Promise<string | null> {
   if (!Device.isDevice) {
     return null;
@@ -46,18 +50,36 @@ async function getExpoPushToken(): Promise<string | null> {
   }
 }
 
+export async function syncUserTimezone(userId: string): Promise<void> {
+  if (Platform.OS === 'web') {
+    return;
+  }
+
+  try {
+    await userService.updateUser(userId, { timezone: getDeviceTimezone() });
+  } catch (error) {
+    console.warn('Failed to sync user timezone:', error);
+  }
+}
+
 export async function registerPushToken(userId: string): Promise<void> {
   if (Platform.OS === 'web') {
     return;
   }
 
+  const timezone = getDeviceTimezone();
   const token = await getExpoPushToken();
+
   if (!token) {
+    await syncUserTimezone(userId);
     return;
   }
 
   try {
-    await userService.updateUser(userId, { expo_push_token: token });
+    await userService.updateUser(userId, {
+      expo_push_token: token,
+      timezone,
+    });
   } catch (error) {
     console.warn('Failed to register push token:', error);
   }
