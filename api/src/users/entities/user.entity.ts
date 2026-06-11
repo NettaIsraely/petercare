@@ -34,6 +34,14 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   expo_push_token?: string;
 
+  // The temporary token for password resets
+  @Column({ type: 'varchar', nullable: true })
+  reset_password_token?: string | null;
+
+  // The strict deadline for when the token expires
+  @Column({ type: 'timestamp', nullable: true })
+  reset_password_expires?: Date | null;
+
   @CreateDateColumn()
   created_at!: Date;
 

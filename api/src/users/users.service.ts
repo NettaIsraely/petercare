@@ -37,6 +37,18 @@ export class UsersService {
     return user;
   }
 
+  async findByEmail(email: string) {
+    return this.userRepository.findOne({ 
+      where: { email } 
+    });
+  }
+
+  async findByResetToken(token: string) {
+    return this.userRepository.findOne({ 
+      where: { reset_password_token: token } 
+    });
+  }
+
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
     const updateData: any = {id, ...updateUserDto};
 

@@ -7,9 +7,15 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './jwt.strategy';
 import { ConfigService } from '@nestjs/config';
+import { UsersModule } from 'src/users/users.module';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
   imports: [
+    UsersModule,
+    BullModule.registerQueue({
+      name: 'notifications',
+    }),
     TypeOrmModule.forFeature([User]),
     PassportModule,
     JwtModule.registerAsync({
