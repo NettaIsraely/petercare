@@ -1,17 +1,18 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Task } from '../../types/task';
+import { isCompletingKey } from '../../utils/completionKeys';
 import { OpenTaskCard } from './EventCard';
 
 interface OpenTasksListProps {
   tasks: Task[];
-  onMarkTaskComplete: (id: string) => void;
+  onMarkComplete: (task: Task) => void;
   completingIds: Set<string>;
 }
 
 export default function OpenTasksList({
   tasks,
-  onMarkTaskComplete,
+  onMarkComplete,
   completingIds,
 }: OpenTasksListProps) {
   return (
@@ -27,8 +28,8 @@ export default function OpenTasksList({
             key={task.id}
             name={task.name}
             assignedUserId={task.assigned_user?.id}
-            isComplete={completingIds.has(task.id)}
-            onToggleComplete={() => onMarkTaskComplete(task.id)}
+            isCompleting={isCompletingKey(completingIds, 'task', task.id)}
+            onToggleComplete={() => onMarkComplete(task)}
           />
         ))
       )}

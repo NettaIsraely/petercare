@@ -1,6 +1,13 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
-import { Wheat, ClipboardList, Check } from 'lucide-react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Pressable,
+  StyleSheet,
+  ActivityIndicator,
+} from 'react-native';
+import { Wheat, ClipboardList } from 'lucide-react-native';
 import { TimelineEvent } from '../../types/events';
 import { getEventCardStyle } from '../../utils/userColors';
 import HorseIconRow from '../horses/HorseIconRow';
@@ -15,7 +22,7 @@ import {
 interface EventCardProps {
   event: TimelineEvent;
   showCheckbox?: boolean;
-  isComplete?: boolean;
+  isCompleting?: boolean;
   onToggleComplete?: () => void;
   onPress?: () => void;
   alertTimes?: {
@@ -113,7 +120,7 @@ function EventIconColumn({ event }: { event: TimelineEvent }) {
 export default function EventCard({
   event,
   showCheckbox = false,
-  isComplete = false,
+  isCompleting = false,
   onToggleComplete,
   onPress,
   alertTimes,
@@ -132,12 +139,13 @@ export default function EventCard({
       </View>
       {showCheckbox && (
         <TouchableOpacity
-          style={[styles.checkbox, isComplete && styles.checkboxChecked]}
+          style={[styles.checkbox, isCompleting && styles.checkboxLoading]}
           onPress={onToggleComplete}
+          disabled={isCompleting}
           accessibilityRole="checkbox"
-          accessibilityState={{ checked: isComplete }}
+          accessibilityState={{ checked: false, busy: isCompleting }}
         >
-          {isComplete && <Check size={16} color="#FFFFFF" />}
+          {isCompleting && <ActivityIndicator size="small" color="#3498DB" />}
         </TouchableOpacity>
       )}
     </>
@@ -161,12 +169,12 @@ export default function EventCard({
 export function OpenTaskCard({
   name,
   assignedUserId,
-  isComplete,
+  isCompleting,
   onToggleComplete,
 }: {
   name: string;
   assignedUserId?: string;
-  isComplete: boolean;
+  isCompleting: boolean;
   onToggleComplete: () => void;
 }) {
   const cardStyle = getEventCardStyle(assignedUserId);
@@ -181,12 +189,13 @@ export function OpenTaskCard({
         <Text style={styles.subtitle}>No deadline</Text>
       </View>
       <TouchableOpacity
-        style={[styles.checkbox, isComplete && styles.checkboxChecked]}
+        style={[styles.checkbox, isCompleting && styles.checkboxLoading]}
         onPress={onToggleComplete}
+        disabled={isCompleting}
         accessibilityRole="checkbox"
-        accessibilityState={{ checked: isComplete }}
+        accessibilityState={{ checked: false, busy: isCompleting }}
       >
-        {isComplete && <Check size={16} color="#FFFFFF" />}
+        {isCompleting && <ActivityIndicator size="small" color="#3498DB" />}
       </TouchableOpacity>
     </View>
   );
@@ -229,7 +238,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 8,
   },
-  checkboxChecked: {
-    backgroundColor: '#3498DB',
+  checkboxLoading: {
+    borderColor: '#AED6F1',
   },
 });

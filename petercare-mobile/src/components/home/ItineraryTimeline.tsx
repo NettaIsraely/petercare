@@ -1,12 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { TimelineEvent } from '../../types/events';
+import { isCompletingKey } from '../../utils/completionKeys';
 import EventCard from './EventCard';
 
 interface ItineraryTimelineProps {
   events: TimelineEvent[];
-  onMarkFeedingComplete: (id: string) => void;
-  onMarkTaskComplete: (id: string) => void;
+  onMarkComplete: (event: TimelineEvent) => void;
   completingIds: Set<string>;
   alertTimes?: {
     morningTime?: string;
@@ -16,8 +16,7 @@ interface ItineraryTimelineProps {
 
 export default function ItineraryTimeline({
   events,
-  onMarkFeedingComplete,
-  onMarkTaskComplete,
+  onMarkComplete,
   completingIds,
   alertTimes,
 }: ItineraryTimelineProps) {
@@ -31,26 +30,22 @@ export default function ItineraryTimeline({
       ) : (
         events.map((event) => {
           const showCheckbox = event.kind === 'feeding' || event.kind === 'task';
-          const eventId = event.data.id;
-          const isCompleting = completingIds.has(eventId);
+          const isCompleting =
+            event.kind === 'feeding'
+              ? isCompletingKey(completingIds, 'feeding', event.data.id)
+              : event.kind === 'task'
+                ? isCompletingKey(completingIds, 'task', event.data.id)
+                : false;
 
           return (
             <EventCard
-              key={`${event.kind}-${eventId}`}
+              key={`${event.kind}-${event.data.id}`}
               event={event}
               showCheckbox={showCheckbox}
-              isComplete={isCompleting}
+              isCompleting={isCompleting}
               alertTimes={alertTimes}
               onToggleComplete={
-                showCheckbox
-                  ? () => {
-                      if (event.kind === 'feeding') {
-                        onMarkFeedingComplete(eventId);
-                      } else if (event.kind === 'task') {
-                        onMarkTaskComplete(eventId);
-                      }
-                    }
-                  : undefined
+                showCheckbox ? () => onMarkComplete(event) : undefined
               }
             />
           );

@@ -6,12 +6,13 @@ import * as taskService from '../services/taskService';
 import * as rideService from '../services/rideService';
 import * as treatmentService from '../services/treatmentService';
 import * as userService from '../services/userService';
-import { MyDayData } from '../types/events';
+import { MyDayData, TimelineEvent } from '../types/events';
 import { Feeding } from '../types/feeding';
 import { Task } from '../types/task';
 import { Ride } from '../types/ride';
 import { Treatment } from '../types/treatment';
 import { UserSummary } from '../types/user';
+import { completingKey } from '../utils/completionKeys';
 import { computeMyDay, mergeUserAlertTimes } from '../utils/myDayHelpers';
 
 const EMPTY_MY_DAY: MyDayData = {
@@ -108,37 +109,27 @@ export function useMyDayData() {
     [refresh]
   );
 
-  const markFeedingComplete = useCallback(
-    async (feedingId: string) => {
-      setCompletingIds((prev) => new Set(prev).add(feedingId));
-      try {
-        await feedingService.markFeedingComplete(feedingId);
-        await refresh(true);
-      } catch (error) {
-        console.error('Failed to mark feeding complete:', error);
-      } finally {
-        setCompletingIds((prev) => {
-          const next = new Set(prev);
-          next.delete(feedingId);
-          return next;
-        });
+  const markEventComplete = useCallback(
+    async (event: TimelineEvent) => {
+      if (event.kind !== 'feeding' && event.kind !== 'task') {
+        return;
       }
-    },
-    [refresh]
-  );
 
-  const markTaskComplete = useCallback(
-    async (taskId: string) => {
-      setCompletingIds((prev) => new Set(prev).add(taskId));
+      const key = completingKey(event.kind, event.data.id);
+      setCompletingIds((prev) => new Set(prev).add(key));
       try {
-        await taskService.markTaskComplete(taskId);
+        if (event.kind === 'feeding') {
+          await feedingService.markFeedingComplete(event.data.id);
+        } else {
+          await taskService.markTaskComplete(event.data.id);
+        }
         await refresh(true);
       } catch (error) {
-        console.error('Failed to mark task complete:', error);
+        console.error(`Failed to mark ${event.kind} complete:`, error);
       } finally {
         setCompletingIds((prev) => {
           const next = new Set(prev);
-          next.delete(taskId);
+          next.delete(key);
           return next;
         });
       }
@@ -155,7 +146,6 @@ export function useMyDayData() {
     completingIds,
     refresh,
     volunteerForFeeding,
-    markFeedingComplete,
-    markTaskComplete,
+    markEventComplete,
   };
 }

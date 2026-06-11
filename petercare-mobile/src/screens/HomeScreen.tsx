@@ -24,8 +24,7 @@ export default function HomeScreen() {
     completingIds,
     refresh,
     volunteerForFeeding,
-    markFeedingComplete,
-    markTaskComplete,
+    markEventComplete,
   } = useMyDayData();
 
   if (loading && !refreshing) {
@@ -64,15 +63,16 @@ export default function HomeScreen() {
 
       <ItineraryTimeline
         events={myDay.itinerary}
-        onMarkFeedingComplete={markFeedingComplete}
-        onMarkTaskComplete={markTaskComplete}
+        onMarkComplete={markEventComplete}
         completingIds={completingIds}
         alertTimes={alertTimes}
       />
 
       <OpenTasksList
         tasks={myDay.openTasks}
-        onMarkTaskComplete={markTaskComplete}
+        onMarkComplete={(task) =>
+          markEventComplete({ kind: 'task', data: task, sortMinutes: 0 })
+        }
         completingIds={completingIds}
       />
     </ScrollView>

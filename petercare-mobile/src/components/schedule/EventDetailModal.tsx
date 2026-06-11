@@ -20,6 +20,7 @@ import {
   formatTimeLabel,
   normalizeDateString,
 } from '../../utils/dateHelpers';
+import { isCompletingKey } from '../../utils/completionKeys';
 
 interface EventDetailModalProps {
   visible: boolean;
@@ -35,8 +36,7 @@ interface EventDetailModalProps {
   onClose: () => void;
   onVolunteer: (feedingId: string, notificationTime?: string) => void;
   onClaim: (taskId: string) => void;
-  onMarkFeedingComplete: (feedingId: string) => void;
-  onMarkTaskComplete: (taskId: string) => void;
+  onMarkComplete: (event: TimelineEvent) => void;
 }
 
 function getDetailLines(event: TimelineEvent): string[] {
@@ -110,8 +110,7 @@ export default function EventDetailModal({
   onClose,
   onVolunteer,
   onClaim,
-  onMarkFeedingComplete,
-  onMarkTaskComplete,
+  onMarkComplete,
 }: EventDetailModalProps) {
   const [notificationTime, setNotificationTime] = useState('08:00');
 
@@ -134,7 +133,9 @@ export default function EventDetailModal({
   const eventId = event.data.id;
   const isVolunteering = volunteeringId === eventId;
   const isClaiming = claimingId === eventId;
-  const isCompleting = completingIds.has(eventId);
+  const isCompleting =
+    (event.kind === 'feeding' || event.kind === 'task') &&
+    isCompletingKey(completingIds, event.kind, eventId);
 
   const canCompleteFeeding =
     isFeedingAssignedIncomplete && event.data.assigned_user?.id === currentUserId;
@@ -212,7 +213,7 @@ export default function EventDetailModal({
             {canCompleteFeeding && (
               <TouchableOpacity
                 style={styles.primaryButton}
-                onPress={() => onMarkFeedingComplete(eventId)}
+                onPress={() => onMarkComplete(event)}
                 disabled={isCompleting}
               >
                 {isCompleting ? (
@@ -226,7 +227,7 @@ export default function EventDetailModal({
             {canCompleteTask && (
               <TouchableOpacity
                 style={styles.primaryButton}
-                onPress={() => onMarkTaskComplete(eventId)}
+                onPress={() => onMarkComplete(event)}
                 disabled={isCompleting}
               >
                 {isCompleting ? (

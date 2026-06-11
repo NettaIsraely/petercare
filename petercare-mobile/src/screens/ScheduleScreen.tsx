@@ -38,8 +38,7 @@ export default function ScheduleScreen() {
     refresh,
     volunteerForFeeding,
     claimTask,
-    markFeedingComplete,
-    markTaskComplete,
+    markEventComplete,
     createFeeding,
     createTask,
     createRide,
@@ -67,13 +66,8 @@ export default function ScheduleScreen() {
     handleCloseDetail();
   };
 
-  const handleMarkFeedingComplete = async (feedingId: string) => {
-    await markFeedingComplete(feedingId);
-    handleCloseDetail();
-  };
-
-  const handleMarkTaskComplete = async (taskId: string) => {
-    await markTaskComplete(taskId);
+  const handleMarkComplete = async (event: TimelineEvent) => {
+    await markEventComplete(event);
     handleCloseDetail();
   };
 
@@ -130,8 +124,7 @@ export default function ScheduleScreen() {
         onClose={handleCloseDetail}
         onVolunteer={handleVolunteer}
         onClaim={handleClaim}
-        onMarkFeedingComplete={handleMarkFeedingComplete}
-        onMarkTaskComplete={handleMarkTaskComplete}
+        onMarkComplete={handleMarkComplete}
       />
 
       <CreateEventModal
