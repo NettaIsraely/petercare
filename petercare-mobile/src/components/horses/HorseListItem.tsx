@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
 import { Horse } from '../../types/horse';
-import { formatShoeingDate } from '../../utils/horseHelpers';
 import { getHorseIcon } from '../../utils/horseIcons';
 
 interface HorseListItemProps {
@@ -21,9 +20,7 @@ export default function HorseListItem({ horse, onPress }: HorseListItemProps) {
       <Image source={getHorseIcon(horse.color)} style={styles.icon} />
       <View style={styles.content}>
         <Text style={styles.name}>{horse.name}</Text>
-        <Text style={styles.subtitle}>
-          Last shoeing: {formatShoeingDate(horse.last_shoeing_date)}
-        </Text>
+        <Text style={styles.subtitle}>Tap to view activity</Text>
       </View>
       <ChevronRight size={20} color="#7F8C8D" />
     </TouchableOpacity>

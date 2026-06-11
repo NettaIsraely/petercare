@@ -37,6 +37,7 @@ interface EventCardProps {
   };
   currentUserId?: string;
   showAssignee?: boolean;
+  completed?: boolean;
 }
 
 function getEventTitle(event: TimelineEvent): string {
@@ -101,6 +102,7 @@ export default function EventCard({
   alertTimes,
   currentUserId,
   showAssignee = false,
+  completed = false,
 }: EventCardProps) {
   const assignedUserId = getAssignedUserId(event);
   const isCurrentUser = isEventOwnedByUser(event, currentUserId);
@@ -122,12 +124,22 @@ export default function EventCard({
         <EventTypeIcon event={event} />
       </View>
       <View style={styles.content}>
-        <Text style={[styles.title, { fontWeight: titleWeight }]}>
+        <Text
+          style={[
+            styles.title,
+            { fontWeight: titleWeight },
+            completed && styles.completedTitle,
+          ]}
+        >
           {getEventTitle(event)}
         </Text>
-        <Text style={styles.subtitle}>{getEventSubtitle(event, alertTimes)}</Text>
+        <Text style={[styles.subtitle, completed && styles.completedSubtitle]}>
+          {getEventSubtitle(event, alertTimes)}
+        </Text>
         {assigneeName ? (
-          <Text style={styles.assignee}>{assigneeName}</Text>
+          <Text style={[styles.assignee, completed && styles.completedSubtitle]}>
+            {assigneeName}
+          </Text>
         ) : null}
       </View>
       {showCheckbox && (
@@ -147,7 +159,7 @@ export default function EventCard({
   if (onPress) {
     return (
       <Pressable
-        style={[styles.card, cardStyle]}
+        style={[styles.card, cardStyle, completed && styles.completedCard]}
         onPress={onPress}
         accessibilityRole="button"
       >
@@ -156,7 +168,9 @@ export default function EventCard({
     );
   }
 
-  return <View style={[styles.card, cardStyle]}>{content}</View>;
+  return (
+    <View style={[styles.card, cardStyle, completed && styles.completedCard]}>{content}</View>
+  );
 }
 
 export function OpenTaskCard({
@@ -238,5 +252,15 @@ const styles = StyleSheet.create({
   },
   checkboxLoading: {
     borderColor: '#AED6F1',
+  },
+  completedCard: {
+    opacity: 0.75,
+  },
+  completedTitle: {
+    textDecorationLine: 'line-through',
+    color: '#95A5A6',
+  },
+  completedSubtitle: {
+    color: '#BDC3C7',
   },
 });

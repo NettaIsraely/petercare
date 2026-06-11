@@ -5,60 +5,80 @@ import { HorseHistoryEntry, formatHistoryDate } from '../../utils/horseHelpers';
 import { formatTimeLabel } from '../../utils/dateHelpers';
 
 interface HorseHistoryLogProps {
-  history: HorseHistoryEntry[];
+  rides: HorseHistoryEntry[];
+  treatments: HorseHistoryEntry[];
 }
 
-export default function HorseHistoryLog({ history }: HorseHistoryLogProps) {
+function RideEntry({ entry }: { entry: Extract<HorseHistoryEntry, { kind: 'ride' }> }) {
+  const ride = entry.data;
+  return (
+    <View style={styles.entry}>
+      <View style={styles.iconContainer}>
+        <Route size={20} color="#2C3E50" />
+      </View>
+      <View style={styles.entryContent}>
+        <Text style={styles.entryTitle}>Ride</Text>
+        <Text style={styles.entryMeta}>{formatHistoryDate(ride.date)}</Text>
+        <Text style={styles.entryDetail}>
+          {formatTimeLabel(ride.start_time)} – {formatTimeLabel(ride.end_time)}
+        </Text>
+        <Text style={styles.entryDetail}>Rider: {ride.primary_rider.name}</Text>
+      </View>
+    </View>
+  );
+}
+
+function TreatmentEntry({
+  entry,
+}: {
+  entry: Extract<HorseHistoryEntry, { kind: 'treatment' }>;
+}) {
+  const treatment = entry.data;
+  const durationLabel =
+    treatment.duration_minutes != null ? `${treatment.duration_minutes} min` : null;
+
+  return (
+    <View style={styles.entry}>
+      <View style={styles.iconContainer}>
+        <Stethoscope size={20} color="#2C3E50" />
+      </View>
+      <View style={styles.entryContent}>
+        <Text style={styles.entryTitle}>{treatment.name}</Text>
+        <Text style={styles.entryMeta}>{formatHistoryDate(treatment.date)}</Text>
+        <Text style={styles.entryDetail}>Caregiver: {treatment.user.name}</Text>
+        {durationLabel ? (
+          <Text style={styles.entryDetail}>Duration: {durationLabel}</Text>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+export default function HorseHistoryLog({ rides, treatments }: HorseHistoryLogProps) {
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Activity History</Text>
-      {history.length === 0 ? (
+      <Text style={styles.sectionTitle}>Ride History</Text>
+      {rides.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>No rides or treatments recorded for this horse.</Text>
+          <Text style={styles.emptyText}>No rides recorded.</Text>
         </View>
       ) : (
-        history.map((entry) => {
-          if (entry.kind === 'ride') {
-            const ride = entry.data;
-            return (
-              <View key={`ride-${ride.id}`} style={styles.entry}>
-                <View style={styles.iconContainer}>
-                  <Route size={20} color="#2C3E50" />
-                </View>
-                <View style={styles.entryContent}>
-                  <Text style={styles.entryTitle}>Ride</Text>
-                  <Text style={styles.entryMeta}>{formatHistoryDate(ride.date)}</Text>
-                  <Text style={styles.entryDetail}>
-                    {formatTimeLabel(ride.start_time)} – {formatTimeLabel(ride.end_time)}
-                  </Text>
-                  <Text style={styles.entryDetail}>Rider: {ride.primary_rider.name}</Text>
-                </View>
-              </View>
-            );
-          }
+        rides.map((entry) =>
+          entry.kind === 'ride' ? <RideEntry key={`ride-${entry.data.id}`} entry={entry} /> : null
+        )
+      )}
 
-          const treatment = entry.data;
-          const durationLabel =
-            treatment.duration_minutes != null
-              ? `${treatment.duration_minutes} min`
-              : null;
-
-          return (
-            <View key={`treatment-${treatment.id}`} style={styles.entry}>
-              <View style={styles.iconContainer}>
-                <Stethoscope size={20} color="#2C3E50" />
-              </View>
-              <View style={styles.entryContent}>
-                <Text style={styles.entryTitle}>{treatment.name}</Text>
-                <Text style={styles.entryMeta}>{formatHistoryDate(treatment.date)}</Text>
-                <Text style={styles.entryDetail}>Caregiver: {treatment.user.name}</Text>
-                {durationLabel ? (
-                  <Text style={styles.entryDetail}>Duration: {durationLabel}</Text>
-                ) : null}
-              </View>
-            </View>
-          );
-        })
+      <Text style={[styles.sectionTitle, styles.sectionTitleSpaced]}>Treatments</Text>
+      {treatments.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyText}>No treatments recorded.</Text>
+        </View>
+      ) : (
+        treatments.map((entry) =>
+          entry.kind === 'treatment' ? (
+            <TreatmentEntry key={`treatment-${entry.data.id}`} entry={entry} />
+          ) : null
+        )
       )}
     </View>
   );
@@ -73,6 +93,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#2C3E50',
     marginBottom: 12,
+  },
+  sectionTitleSpaced: {
+    marginTop: 24,
   },
   emptyState: {
     backgroundColor: '#FFFFFF',

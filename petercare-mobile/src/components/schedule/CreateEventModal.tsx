@@ -20,6 +20,12 @@ import { UserSummary } from '../../types/user';
 import DatePickerField from './DatePickerField';
 import TimePickerField from '../common/TimePickerField';
 import { formatTimeForApi, parseTimeToMinutes } from '../../utils/dateHelpers';
+import {
+  TaskFormFields,
+  TaskFormValues,
+  formValuesToCreatePayload,
+  taskToFormValues,
+} from '../tasks/TaskFormModal';
 
 interface CreateEventModalProps {
   visible: boolean;
@@ -108,10 +114,7 @@ export default function CreateEventModal({
   const [shiftType, setShiftType] = useState<ShiftType>('MORNING');
   const [feedingAssignee, setFeedingAssignee] = useState<string | undefined>();
 
-  const [taskName, setTaskName] = useState('');
-  const [taskDeadline, setTaskDeadline] = useState('');
-  const [taskComments, setTaskComments] = useState('');
-  const [taskAssignee, setTaskAssignee] = useState<string | undefined>();
+  const [taskValues, setTaskValues] = useState<TaskFormValues>(taskToFormValues());
 
   const [rideDate, setRideDate] = useState(defaultDate);
   const [rideStart, setRideStart] = useState('09:00');
@@ -132,10 +135,7 @@ export default function CreateEventModal({
     setFeedingDate(defaultDate);
     setShiftType('MORNING');
     setFeedingAssignee(undefined);
-    setTaskName('');
-    setTaskDeadline('');
-    setTaskComments('');
-    setTaskAssignee(undefined);
+    setTaskValues(taskToFormValues());
     setRideDate(defaultDate);
     setRideStart('09:00');
     setRideEnd('10:00');
@@ -185,16 +185,11 @@ export default function CreateEventModal({
           assigned_user_id: feedingAssignee,
         });
       } else if (category === 'task') {
-        if (!taskName.trim()) {
+        if (!taskValues.name.trim()) {
           setError('Task name is required.');
           return;
         }
-        await onCreateTask({
-          name: taskName.trim(),
-          deadline: taskDeadline.trim() || undefined,
-          comments: taskComments.trim() || undefined,
-          assigned_user_id: taskAssignee,
-        });
+        await onCreateTask(formValuesToCreatePayload(taskValues));
       } else if (category === 'ride') {
         if (!primaryRiderId) {
           setError('Primary rider is required.');
@@ -315,30 +310,7 @@ export default function CreateEventModal({
             )}
 
             {category === 'task' && (
-              <>
-                <Text style={styles.label}>Name</Text>
-                <TextInput style={styles.input} value={taskName} onChangeText={setTaskName} />
-                <DatePickerField
-                  label="Deadline (optional)"
-                  value={taskDeadline}
-                  onChange={setTaskDeadline}
-                  optional
-                />
-                <Text style={styles.label}>Comments (optional)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={taskComments}
-                  onChangeText={setTaskComments}
-                  multiline
-                />
-                <PickerRow
-                  label="Assign to (optional)"
-                  options={userOptions}
-                  selectedId={taskAssignee}
-                  onSelect={setTaskAssignee}
-                  allowEmpty
-                />
-              </>
+              <TaskFormFields values={taskValues} onChange={setTaskValues} users={users} />
             )}
 
             {category === 'ride' && (

@@ -1,5 +1,5 @@
 import { apiClient } from '../api/client';
-import { CreateTaskPayload, Task } from '../types/task';
+import { CreateTaskPayload, Task, UpdateTaskPayload } from '../types/task';
 
 export async function getAllTasks(): Promise<Task[]> {
   const response = await apiClient.get<Task[]>('/tasks');
@@ -20,5 +20,10 @@ export async function markTaskComplete(id: string): Promise<Task> {
   const response = await apiClient.patch<Task>(`/tasks/${id}`, {
     is_complete: true,
   });
+  return response.data;
+}
+
+export async function updateTask(id: string, payload: UpdateTaskPayload): Promise<Task> {
+  const response = await apiClient.patch<Task>(`/tasks/${id}`, payload);
   return response.data;
 }

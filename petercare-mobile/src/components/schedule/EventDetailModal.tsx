@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { X } from 'lucide-react-native';
 import { TimelineEvent } from '../../types/events';
+import { Task } from '../../types/task';
 import { HorseColor } from '../../types/horse';
 import EventCard from '../home/EventCard';
 import HorseIconRow from '../horses/HorseIconRow';
@@ -37,6 +38,7 @@ interface EventDetailModalProps {
   onVolunteer: (feedingId: string, notificationTime?: string) => void;
   onClaim: (taskId: string) => void;
   onMarkComplete: (event: TimelineEvent) => void;
+  onEditTask?: (task: Task) => void;
 }
 
 function getDetailLines(event: TimelineEvent): string[] {
@@ -111,6 +113,7 @@ export default function EventDetailModal({
   onVolunteer,
   onClaim,
   onMarkComplete,
+  onEditTask,
 }: EventDetailModalProps) {
   const [notificationTime, setNotificationTime] = useState('08:00');
 
@@ -237,6 +240,15 @@ export default function EventDetailModal({
                 )}
               </TouchableOpacity>
             )}
+
+            {event.kind === 'task' && onEditTask && (
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={() => onEditTask(event.data)}
+              >
+                <Text style={styles.secondaryButtonText}>Edit Task</Text>
+              </TouchableOpacity>
+            )}
           </ScrollView>
         </View>
       </View>
@@ -338,5 +350,19 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  secondaryButton: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E0E6ED',
+  },
+  secondaryButtonText: {
+    color: '#2C3E50',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

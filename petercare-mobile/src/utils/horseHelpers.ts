@@ -28,24 +28,27 @@ function getTreatmentSortKey(treatment: Treatment): number {
   return new Date(`${datePart}T00:00:00`).getTime();
 }
 
-export function buildHorseHistory(
+export function buildSeparatedHorseHistory(
   rides: Ride[],
   treatments: Treatment[]
-): HorseHistoryEntry[] {
-  const entries: HorseHistoryEntry[] = [
-    ...rides.map((ride) => ({
+): { rides: HorseHistoryEntry[]; treatments: HorseHistoryEntry[] } {
+  const rideEntries: HorseHistoryEntry[] = rides
+    .map((ride) => ({
       kind: 'ride' as const,
       data: ride,
       sortKey: getRideSortKey(ride),
-    })),
-    ...treatments.map((treatment) => ({
+    }))
+    .sort((a, b) => b.sortKey - a.sortKey);
+
+  const treatmentEntries: HorseHistoryEntry[] = treatments
+    .map((treatment) => ({
       kind: 'treatment' as const,
       data: treatment,
       sortKey: getTreatmentSortKey(treatment),
-    })),
-  ];
+    }))
+    .sort((a, b) => b.sortKey - a.sortKey);
 
-  return entries.sort((a, b) => b.sortKey - a.sortKey);
+  return { rides: rideEntries, treatments: treatmentEntries };
 }
 
 export function formatShoeingDate(value?: string | null): string {

@@ -8,12 +8,14 @@ import {
 } from 'react-native';
 import { useScheduleData } from '../hooks/useScheduleData';
 import { CalendarViewMode, ScheduleViewMode, TimelineEvent } from '../types/events';
+import { Task } from '../types/task';
 import ViewToggleBar from '../components/schedule/ViewToggleBar';
 import ScheduleCalendarView from '../components/schedule/ScheduleCalendarView';
 import ScheduleListView from '../components/schedule/ScheduleListView';
 import EventDetailModal from '../components/schedule/EventDetailModal';
 import CreateEventFab from '../components/schedule/CreateEventFab';
 import CreateEventModal from '../components/schedule/CreateEventModal';
+import TaskFormModal from '../components/tasks/TaskFormModal';
 
 export default function ScheduleScreen() {
   const [viewMode, setViewMode] = useState<ScheduleViewMode>('calendar');
@@ -21,6 +23,7 @@ export default function ScheduleScreen() {
   const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
   const [createVisible, setCreateVisible] = useState(false);
+  const [editTask, setEditTask] = useState<Task | null>(null);
 
   const {
     raw,
@@ -37,12 +40,14 @@ export default function ScheduleScreen() {
     claimingId,
     completingIds,
     creating,
+    updating,
     refresh,
     volunteerForFeeding,
     claimTask,
     markEventComplete,
     createFeeding,
     createTask,
+    updateTask,
     createRide,
     createTreatment,
     currentUserId,
@@ -71,6 +76,11 @@ export default function ScheduleScreen() {
   const handleMarkComplete = async (event: TimelineEvent) => {
     await markEventComplete(event);
     handleCloseDetail();
+  };
+
+  const handleEditTask = (task: Task) => {
+    handleCloseDetail();
+    setEditTask(task);
   };
 
   if (loading && !refreshing) {
@@ -133,6 +143,7 @@ export default function ScheduleScreen() {
         onVolunteer={handleVolunteer}
         onClaim={handleClaim}
         onMarkComplete={handleMarkComplete}
+        onEditTask={handleEditTask}
       />
 
       <CreateEventModal
@@ -147,6 +158,17 @@ export default function ScheduleScreen() {
         onCreateTask={createTask}
         onCreateRide={createRide}
         onCreateTreatment={createTreatment}
+      />
+
+      <TaskFormModal
+        visible={!!editTask}
+        mode="edit"
+        initialTask={editTask ?? undefined}
+        users={raw.users}
+        submitting={updating}
+        onClose={() => setEditTask(null)}
+        onSubmitCreate={createTask}
+        onSubmitEdit={updateTask}
       />
     </View>
   );

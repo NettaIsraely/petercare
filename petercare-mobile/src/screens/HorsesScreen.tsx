@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
-  Text,
-  FlatList,
+  ScrollView,
   RefreshControl,
   ActivityIndicator,
   StyleSheet,
@@ -11,11 +10,19 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { useHorseDirectory } from '../hooks/useHorseDirectory';
-import HorseListItem from '../components/horses/HorseListItem';
-import CreateEventFab from '../components/schedule/CreateEventFab';
-import HorseFormModal from '../components/horses/HorseFormModal';
+import { useTasksData } from '../hooks/useTasksData';
 import { HorsesStackParamList } from '../navigation/types';
 import { Horse } from '../types/horse';
+import { Task } from '../types/task';
+import { TimelineEvent } from '../types/events';
+import { AssigneeFilter, buildFilteredBarnTasks } from '../utils/taskHelpers';
+import TaskAssigneeFilter from '../components/tasks/TaskAssigneeFilter';
+import BarnTaskSections from '../components/tasks/BarnTaskSections';
+import HorsesSection from '../components/horses/HorsesSection';
+import CreateEventFab from '../components/schedule/CreateEventFab';
+import HorseFormModal from '../components/horses/HorseFormModal';
+import TaskFormModal from '../components/tasks/TaskFormModal';
+import EventDetailModal from '../components/schedule/EventDetailModal';
 
 type HorsesListNavigationProp = NativeStackNavigationProp<
   HorsesStackParamList,
@@ -25,12 +32,54 @@ type HorsesListNavigationProp = NativeStackNavigationProp<
 export default function HorsesScreen() {
   const navigation = useNavigation<HorsesListNavigationProp>();
   const { user } = useAuth();
-  const { horses, loading, refreshing, creating, refresh, createHorse } = useHorseDirectory();
-  const [createVisible, setCreateVisible] = useState(false);
+  const {
+    horses,
+    loading: horsesLoading,
+    refreshing: horsesRefreshing,
+    creating: horseCreating,
+    refresh: refreshHorses,
+    createHorse,
+  } = useHorseDirectory();
+  const {
+    tasks,
+    users,
+    loading: tasksLoading,
+    refreshing: tasksRefreshing,
+    creating: taskCreating,
+    updating: taskUpdating,
+    claimingId,
+    completingIds,
+    refresh: refreshTasks,
+    createTask,
+    updateTask,
+    claimTask,
+    markTaskComplete,
+    markEventComplete,
+    currentUserId,
+  } = useTasksData();
+
+  const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilter>('all');
+  const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null);
+  const [detailVisible, setDetailVisible] = useState(false);
+  const [createTaskVisible, setCreateTaskVisible] = useState(false);
+  const [editTask, setEditTask] = useState<Task | null>(null);
+  const [createHorseVisible, setCreateHorseVisible] = useState(false);
 
   const isOwner = user?.role === 'OWNER';
+  const loading = horsesLoading || tasksLoading;
+  const refreshing = horsesRefreshing || tasksRefreshing;
 
-  const handlePress = (horse: Horse) => {
+  const { openTasks, completedTasks } = useMemo(
+    () => buildFilteredBarnTasks(tasks, assigneeFilter, currentUserId),
+    [tasks, assigneeFilter, currentUserId]
+  );
+
+  const handleRefresh = () => {
+    refreshTasks(true);
+    refreshHorses(true);
+  };
+
+  const handleHorsePress = (horse: Horse) => {
     navigation.navigate('HorseDetail', {
       horseId: horse.id,
       horseName: horse.name,
@@ -41,6 +90,32 @@ export default function HorsesScreen() {
 
   const handleCreateHorse = async (payload: Parameters<typeof createHorse>[0]) => {
     await createHorse(payload);
+    setCreateHorseVisible(false);
+  };
+
+  const handleTaskPress = (event: TimelineEvent) => {
+    setSelectedEvent(event);
+    setDetailVisible(true);
+  };
+
+  const handleCloseDetail = () => {
+    setDetailVisible(false);
+    setSelectedEvent(null);
+  };
+
+  const handleEditTask = (task: Task) => {
+    handleCloseDetail();
+    setEditTask(task);
+  };
+
+  const handleClaim = async (taskId: string) => {
+    await claimTask(taskId);
+    handleCloseDetail();
+  };
+
+  const handleMarkComplete = async (event: TimelineEvent) => {
+    await markEventComplete(event);
+    handleCloseDetail();
   };
 
   if (loading && !refreshing) {
@@ -53,39 +128,82 @@ export default function HorsesScreen() {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        style={styles.list}
+      <ScrollView
         contentContainerStyle={styles.content}
-        data={horses}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <HorseListItem horse={item} onPress={() => handlePress(item)} />
-        )}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={() => refresh(true)}
+            onRefresh={handleRefresh}
             tintColor="#3498DB"
           />
         }
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No active horses found.</Text>
-          </View>
-        }
+      >
+        <TaskAssigneeFilter
+          filter={assigneeFilter}
+          onChange={setAssigneeFilter}
+          users={users}
+        />
+
+        <BarnTaskSections
+          openTasks={openTasks}
+          completedTasks={completedTasks}
+          currentUserId={currentUserId}
+          completingIds={completingIds}
+          onTaskPress={handleTaskPress}
+          onMarkComplete={markTaskComplete}
+        />
+
+        <HorsesSection
+          horses={horses}
+          showAddButton={isOwner}
+          onAddPress={() => setCreateHorseVisible(true)}
+          onHorsePress={handleHorsePress}
+        />
+      </ScrollView>
+
+      <CreateEventFab onPress={() => setCreateTaskVisible(true)} />
+
+      <EventDetailModal
+        visible={detailVisible}
+        event={selectedEvent}
+        currentUserId={currentUserId}
+        claimingId={claimingId}
+        completingIds={completingIds}
+        onClose={handleCloseDetail}
+        onVolunteer={() => {}}
+        onClaim={handleClaim}
+        onMarkComplete={handleMarkComplete}
+        onEditTask={handleEditTask}
+      />
+
+      <TaskFormModal
+        visible={createTaskVisible}
+        mode="create"
+        users={users}
+        submitting={taskCreating}
+        onClose={() => setCreateTaskVisible(false)}
+        onSubmitCreate={createTask}
+      />
+
+      <TaskFormModal
+        visible={!!editTask}
+        mode="edit"
+        initialTask={editTask ?? undefined}
+        users={users}
+        submitting={taskUpdating}
+        onClose={() => setEditTask(null)}
+        onSubmitCreate={createTask}
+        onSubmitEdit={updateTask}
       />
 
       {isOwner ? (
-        <>
-          <CreateEventFab onPress={() => setCreateVisible(true)} />
-          <HorseFormModal
-            mode="create"
-            visible={createVisible}
-            onClose={() => setCreateVisible(false)}
-            submitting={creating}
-            onSubmit={handleCreateHorse}
-          />
-        </>
+        <HorseFormModal
+          mode="create"
+          visible={createHorseVisible}
+          onClose={() => setCreateHorseVisible(false)}
+          submitting={horseCreating}
+          onSubmit={handleCreateHorse}
+        />
       ) : null}
     </View>
   );
@@ -95,9 +213,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F7FA',
-  },
-  list: {
-    flex: 1,
   },
   content: {
     padding: 16,
@@ -109,16 +224,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F5F7FA',
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyText: {
-    fontSize: 15,
-    color: '#7F8C8D',
-    textAlign: 'center',
   },
 });

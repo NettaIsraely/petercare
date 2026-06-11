@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import * as horseService from '../services/horseService';
 import { CreateHorsePayload, Horse } from '../types/horse';
@@ -8,11 +8,12 @@ export function useHorseDirectory() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [creating, setCreating] = useState(false);
+  const hasLoadedRef = useRef(false);
 
-  const refresh = useCallback(async (isPullRefresh = false) => {
-    if (isPullRefresh) {
+  const refresh = useCallback(async (options?: { pull?: boolean; silent?: boolean }) => {
+    if (options?.pull) {
       setRefreshing(true);
-    } else {
+    } else if (!options?.silent) {
       setLoading(true);
     }
 
@@ -40,7 +41,8 @@ export function useHorseDirectory() {
 
   useFocusEffect(
     useCallback(() => {
-      refresh();
+      refresh({ silent: hasLoadedRef.current });
+      hasLoadedRef.current = true;
     }, [refresh])
   );
 
@@ -49,7 +51,7 @@ export function useHorseDirectory() {
     loading,
     refreshing,
     creating,
-    refresh,
+    refresh: (isPullRefresh = false) => refresh(isPullRefresh ? { pull: true } : undefined),
     createHorse,
   };
 }

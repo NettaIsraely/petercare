@@ -17,3 +17,11 @@ export interface CreateTaskPayload {
   comments?: string;
   assigned_user_id?: string;
 }
+
+export interface UpdateTaskPayload {
+  name?: string;
+  deadline?: string;
+  comments?: string;
+  assigned_user_id?: string | null;
+  is_complete?: boolean;
+}

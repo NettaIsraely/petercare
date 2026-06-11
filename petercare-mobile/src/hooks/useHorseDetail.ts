@@ -3,14 +3,15 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as rideService from '../services/rideService';
 import * as treatmentService from '../services/treatmentService';
 import {
-  buildHorseHistory,
+  buildSeparatedHorseHistory,
   filterRidesForHorse,
   filterTreatmentsForHorse,
   HorseHistoryEntry,
 } from '../utils/horseHelpers';
 
 export function useHorseDetail(horseId: string) {
-  const [history, setHistory] = useState<HorseHistoryEntry[]>([]);
+  const [rides, setRides] = useState<HorseHistoryEntry[]>([]);
+  const [treatments, setTreatments] = useState<HorseHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -30,7 +31,9 @@ export function useHorseDetail(horseId: string) {
 
         const horseRides = filterRidesForHorse(rides, horseId);
         const horseTreatments = filterTreatmentsForHorse(treatments, horseId);
-        setHistory(buildHorseHistory(horseRides, horseTreatments));
+        const separated = buildSeparatedHorseHistory(horseRides, horseTreatments);
+        setRides(separated.rides);
+        setTreatments(separated.treatments);
       } catch (error) {
         console.error('Failed to load horse detail:', error);
       } finally {
@@ -48,7 +51,8 @@ export function useHorseDetail(horseId: string) {
   );
 
   return {
-    history,
+    rides,
+    treatments,
     loading,
     refreshing,
     refresh,

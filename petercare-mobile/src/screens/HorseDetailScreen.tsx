@@ -25,7 +25,7 @@ type Props = NativeStackScreenProps<HorsesStackParamList, 'HorseDetail'>;
 export default function HorseDetailScreen({ route, navigation }: Props) {
   const { horseId } = route.params;
   const { user } = useAuth();
-  const { history, loading, refreshing, refresh } = useHorseDetail(horseId);
+  const { rides, treatments, loading, refreshing, refresh } = useHorseDetail(horseId);
 
   const [horseName, setHorseName] = useState(route.params.horseName);
   const [horseColor, setHorseColor] = useState(route.params.horseColor);
@@ -102,7 +102,7 @@ export default function HorseDetailScreen({ route, navigation }: Props) {
           <Text style={styles.profileValue}>{formatShoeingDate(lastShoeingDate)}</Text>
         </View>
 
-        <HorseHistoryLog history={history} />
+        <HorseHistoryLog rides={rides} treatments={treatments} />
       </ScrollView>
 
       {isOwner ? (

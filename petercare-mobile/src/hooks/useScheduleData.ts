@@ -8,7 +8,7 @@ import * as treatmentService from '../services/treatmentService';
 import * as userService from '../services/userService';
 import * as horseService from '../services/horseService';
 import { CreateFeedingPayload, Feeding } from '../types/feeding';
-import { CreateTaskPayload, Task } from '../types/task';
+import { CreateTaskPayload, Task, UpdateTaskPayload } from '../types/task';
 import { CreateRidePayload, Ride } from '../types/ride';
 import { CreateTreatmentPayload, Treatment } from '../types/treatment';
 import { Horse } from '../types/horse';
@@ -59,6 +59,7 @@ export function useScheduleData() {
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
+  const [updating, setUpdating] = useState(false);
 
   const alertTimes = useMemo(() => CALENDAR_FEEDING_ALERT_TIMES, []);
 
@@ -243,6 +244,22 @@ export function useScheduleData() {
     [refresh]
   );
 
+  const updateTask = useCallback(
+    async (id: string, payload: UpdateTaskPayload) => {
+      setUpdating(true);
+      try {
+        await taskService.updateTask(id, payload);
+        await refresh(true);
+      } catch (error) {
+        console.error('Failed to update task:', error);
+        throw error;
+      } finally {
+        setUpdating(false);
+      }
+    },
+    [refresh]
+  );
+
   const createRide = useCallback(
     async (payload: CreateRidePayload) => {
       setCreating(true);
@@ -290,12 +307,14 @@ export function useScheduleData() {
     claimingId,
     completingIds,
     creating,
+    updating,
     refresh,
     volunteerForFeeding,
     claimTask,
     markEventComplete,
     createFeeding,
     createTask,
+    updateTask,
     createRide,
     createTreatment,
     currentUserId: user?.userId,
