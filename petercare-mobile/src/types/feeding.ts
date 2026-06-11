@@ -1,0 +1,14 @@
+import { UserSummary } from './user';
+
+export type ShiftType = 'MORNING' | 'EVENING';
+export type FeedingStatus = 'UNASSIGNED' | 'ASSIGNED' | 'COMPLETE';
+
+export interface Feeding {
+  id: string;
+  schedule_date: string;
+  shift_type: ShiftType;
+  feeding_status: FeedingStatus;
+  assigned_user?: UserSummary;
+  created_at: string;
+  updated_at: string;
+}

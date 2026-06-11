@@ -3,4 +3,5 @@ export class CreateTaskDto {
     deadline?:string;
     comments?:string;
     assigned_user_id?:string;
+    is_complete?: boolean;
 }

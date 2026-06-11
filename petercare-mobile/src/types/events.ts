@@ -1,0 +1,22 @@
+import { Feeding } from './feeding';
+import { Ride } from './ride';
+import { Task } from './task';
+import { Treatment } from './treatment';
+
+export type TimelineEvent =
+  | { kind: 'feeding'; data: Feeding; sortMinutes: number }
+  | { kind: 'ride'; data: Ride; sortMinutes: number }
+  | { kind: 'treatment'; data: Treatment; sortMinutes: number }
+  | { kind: 'task'; data: Task; sortMinutes: number };
+
+export interface MyDayData {
+  summaryCounts: {
+    feedings: number;
+    rides: number;
+    tasks: number;
+  };
+  unassignedFeedings: Feeding[];
+  overdueFeedings: Feeding[];
+  itinerary: TimelineEvent[];
+  openTasks: Task[];
+}

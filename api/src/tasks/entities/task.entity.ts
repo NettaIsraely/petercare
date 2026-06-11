@@ -19,6 +19,9 @@ export class Task {
     @JoinColumn({name: 'assigned_user_id'})
     assigned_user?: User;
 
+    @Column({ type: 'boolean', default: false })
+    is_complete!: boolean;
+
     @CreateDateColumn()
     created_at!: Date;
 

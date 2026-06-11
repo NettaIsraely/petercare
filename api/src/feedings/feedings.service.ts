@@ -121,12 +121,14 @@ export class FeedingsService {
   }
 
   async update(id: string, updateFeedingDto: UpdateFeedingDto): Promise<Feeding> {
-    const updateData: any = {id, ...updateFeedingDto};
+    const updateData: any = { id, ...updateFeedingDto };
 
-    if (updateFeedingDto.assigned_user_id !== undefined){
+    if (updateFeedingDto.assigned_user_id !== undefined) {
       const isAssigned = !!updateFeedingDto.assigned_user_id;
       updateData.assigned_user = isAssigned ? { id: updateFeedingDto.assigned_user_id } : null;
-      updateData.feeding_status = isAssigned ? FeedingStatus.ASSIGNED : FeedingStatus.UNASSIGNED;
+      if (updateFeedingDto.feeding_status === undefined) {
+        updateData.feeding_status = isAssigned ? FeedingStatus.ASSIGNED : FeedingStatus.UNASSIGNED;
+      }
     }
 
     const feeding = await this.feedingRepository.preload(updateData);
