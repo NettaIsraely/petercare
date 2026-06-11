@@ -12,6 +12,15 @@ import { useAuth } from '../context/AuthContext';
 import { useProfileSettings } from '../hooks/useProfileSettings';
 import TimePickerField from '../components/common/TimePickerField';
 
+function formatRequestDate(dateString: string): string {
+  const date = new Date(dateString);
+  return date.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 export default function ProfileSettingsScreen() {
   const { logout } = useAuth();
   const {
@@ -21,11 +30,20 @@ export default function ProfileSettingsScreen() {
     error,
     hasChanges,
     role,
+    roleDescription,
+    myRoleRequest,
+    pendingRequests,
+    requestingRole,
+    reviewingRequestId,
+    canRequestCaregiver,
     setName,
     setEmail,
     setMorningAlertTime,
     setEveningAlertTime,
     save,
+    requestCaregiverAccess,
+    approveRequest,
+    denyRequest,
   } = useProfileSettings();
 
   if (loading) {
@@ -73,6 +91,43 @@ export default function ProfileSettingsScreen() {
         <View style={styles.roleBadge}>
           <Text style={styles.roleText}>{role ?? '—'}</Text>
         </View>
+        {roleDescription ? (
+          <Text style={styles.roleDescription}>{roleDescription}</Text>
+        ) : null}
+
+        {role === 'GUEST' ? (
+          <View style={styles.roleActionSection}>
+            {myRoleRequest?.status === 'PENDING' ? (
+              <View style={styles.statusBanner}>
+                <Text style={styles.statusBannerText}>
+                  Caregiver request pending approval.
+                </Text>
+              </View>
+            ) : null}
+
+            {myRoleRequest?.status === 'DENIED' ? (
+              <View style={[styles.statusBanner, styles.statusBannerDenied]}>
+                <Text style={styles.statusBannerText}>
+                  Your previous caregiver request was denied. You may submit a new request.
+                </Text>
+              </View>
+            ) : null}
+
+            {canRequestCaregiver ? (
+              <TouchableOpacity
+                style={[styles.requestButton, requestingRole && styles.buttonDisabled]}
+                onPress={requestCaregiverAccess}
+                disabled={requestingRole}
+              >
+                {requestingRole ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.requestButtonText}>Request Caregiver Access</Text>
+                )}
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : null}
 
         <TimePickerField
           label="Morning Alert Time"
@@ -86,6 +141,49 @@ export default function ProfileSettingsScreen() {
           onChange={setEveningAlertTime}
         />
       </View>
+
+      {role === 'OWNER' ? (
+        <View style={styles.formCard}>
+          <Text style={styles.sectionTitle}>Pending Role Requests</Text>
+          {pendingRequests.length === 0 ? (
+            <Text style={styles.emptyText}>No pending caregiver requests.</Text>
+          ) : (
+            pendingRequests.map((request) => (
+              <View key={request.id} style={styles.requestCard}>
+                <Text style={styles.requestName}>{request.user.name}</Text>
+                {request.user.email ? (
+                  <Text style={styles.requestEmail}>{request.user.email}</Text>
+                ) : null}
+                <Text style={styles.requestDate}>
+                  Requested {formatRequestDate(request.created_at)}
+                </Text>
+                <View style={styles.requestActions}>
+                  <TouchableOpacity
+                    style={[
+                      styles.approveButton,
+                      reviewingRequestId === request.id && styles.buttonDisabled,
+                    ]}
+                    onPress={() => approveRequest(request.id)}
+                    disabled={reviewingRequestId === request.id}
+                  >
+                    <Text style={styles.approveButtonText}>Approve</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.denyButton,
+                      reviewingRequestId === request.id && styles.buttonDisabled,
+                    ]}
+                    onPress={() => denyRequest(request.id)}
+                    disabled={reviewingRequestId === request.id}
+                  >
+                    <Text style={styles.denyButtonText}>Deny</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
+          )}
+        </View>
+      ) : null}
 
       <TouchableOpacity
         style={[styles.saveButton, (!hasChanges || saving) && styles.saveButtonDisabled]}
@@ -174,6 +272,102 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#3498DB',
+  },
+  roleDescription: {
+    fontSize: 13,
+    color: '#7F8C8D',
+    marginTop: 8,
+    lineHeight: 18,
+  },
+  roleActionSection: {
+    marginTop: 12,
+  },
+  statusBanner: {
+    backgroundColor: '#EBF5FB',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  statusBannerDenied: {
+    backgroundColor: '#FDEDEC',
+  },
+  statusBannerText: {
+    fontSize: 13,
+    color: '#2C3E50',
+    lineHeight: 18,
+  },
+  requestButton: {
+    backgroundColor: '#3498DB',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  requestButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2C3E50',
+    marginBottom: 12,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#7F8C8D',
+  },
+  requestCard: {
+    borderWidth: 1,
+    borderColor: '#E0E6ED',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  requestName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2C3E50',
+  },
+  requestEmail: {
+    fontSize: 13,
+    color: '#7F8C8D',
+    marginTop: 2,
+  },
+  requestDate: {
+    fontSize: 12,
+    color: '#95A5A6',
+    marginTop: 4,
+    marginBottom: 10,
+  },
+  requestActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  approveButton: {
+    flex: 1,
+    backgroundColor: '#27AE60',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  approveButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  denyButton: {
+    flex: 1,
+    backgroundColor: '#E74C3C',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  denyButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   saveButton: {
     backgroundColor: '#3498DB',

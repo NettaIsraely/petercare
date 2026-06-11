@@ -42,6 +42,24 @@ export class AuthService {
         };
     }
 
+    async refreshToken(userId: string) {
+        const user = await this.userRepository.findOne({ where: { id: userId } });
+
+        if (!user) {
+            throw new UnauthorizedException('User not found');
+        }
+
+        const payload = {
+            sub: user.id,
+            name: user.name,
+            role: user.role,
+        };
+
+        return {
+            access_token: await this.jwtService.signAsync(payload),
+        };
+    }
+
     async forgotPassword(email: string){
         // Find the user
         const user = await this.usersService.findByEmail(email.toLowerCase().trim());

@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
+import { decodeToken, getToken } from '../services/authService';
 import * as userService from '../services/userService';
+import * as roleRequestService from '../services/roleRequestService';
 import {
   formatTimeForApi,
   formatTimeForInput,
 } from '../utils/dateHelpers';
+import { RoleRequest } from '../types/roleRequest';
+import { UserRole } from '../types/auth';
 
 interface ProfileFormState {
   name: string;
@@ -52,13 +57,39 @@ function validateForm(form: ProfileFormState): string | null {
   return null;
 }
 
+function getRoleDescription(role: UserRole | undefined): string {
+  switch (role) {
+    case 'GUEST':
+      return 'Guests can view the stable. Request caregiver access to volunteer for shifts.';
+    case 'CAREGIVER':
+      return 'Caregivers can volunteer for and manage assigned shifts.';
+    case 'OWNER':
+      return 'Owners can approve role requests and manage the stable.';
+    default:
+      return '';
+  }
+}
+
+async function getJwtRole(): Promise<UserRole | undefined> {
+  const token = await getToken();
+  if (!token) {
+    return undefined;
+  }
+  return decodeToken(token)?.role;
+}
+
 export function useProfileSettings() {
-  const { user, updateLocalUser } = useAuth();
+  const { user, updateLocalUser, refreshSession } = useAuth();
   const [form, setForm] = useState<ProfileFormState>(EMPTY_FORM);
   const [savedForm, setSavedForm] = useState<ProfileFormState>(EMPTY_FORM);
+  const [displayRole, setDisplayRole] = useState<UserRole | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [myRoleRequest, setMyRoleRequest] = useState<RoleRequest | null>(null);
+  const [pendingRequests, setPendingRequests] = useState<RoleRequest[]>([]);
+  const [requestingRole, setRequestingRole] = useState(false);
+  const [reviewingRequestId, setReviewingRequestId] = useState<string | null>(null);
 
   const hasChanges = useMemo(
     () =>
@@ -68,6 +99,32 @@ export function useProfileSettings() {
       form.eveningAlertTime !== savedForm.eveningAlertTime,
     [form, savedForm]
   );
+
+  const loadRoleRequestData = useCallback(async (roleOverride?: UserRole) => {
+    if (!user) {
+      return;
+    }
+
+    const jwtRole = roleOverride ?? (await getJwtRole()) ?? user.role;
+
+    try {
+      if (jwtRole === 'GUEST') {
+        const request = await roleRequestService.getMyRoleRequest();
+        setMyRoleRequest(request);
+      } else {
+        setMyRoleRequest(null);
+      }
+
+      if (jwtRole === 'OWNER') {
+        const pending = await roleRequestService.getPendingRoleRequests();
+        setPendingRequests(pending);
+      } else {
+        setPendingRequests([]);
+      }
+    } catch (err) {
+      console.error('Failed to load role request data:', err);
+    }
+  }, [user]);
 
   const loadProfile = useCallback(async () => {
     if (!user) {
@@ -83,6 +140,15 @@ export function useProfileSettings() {
       const nextForm = applyProfileToForm(profile);
       setForm(nextForm);
       setSavedForm(nextForm);
+
+      let jwtRole = await getJwtRole();
+      if (profile.role && profile.role !== jwtRole) {
+        const refreshedUser = await refreshSession();
+        jwtRole = refreshedUser?.role ?? profile.role;
+      }
+
+      setDisplayRole(profile.role ?? jwtRole ?? user.role);
+      await loadRoleRequestData(jwtRole);
     } catch (err) {
       console.error('Failed to load profile:', err);
       setError('Could not load profile settings.');
@@ -101,11 +167,19 @@ export function useProfileSettings() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, refreshSession, loadRoleRequestData]);
 
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!loading && user) {
+        void loadRoleRequestData();
+      }
+    }, [loading, user, loadRoleRequestData])
+  );
 
   const setName = useCallback((name: string) => {
     setForm((prev) => ({ ...prev, name }));
@@ -157,6 +231,9 @@ export function useProfileSettings() {
       setForm(nextForm);
       setSavedForm(nextForm);
       updateLocalUser({ name: updated.name });
+      if (updated.role) {
+        setDisplayRole(updated.role);
+      }
       Alert.alert('Success', 'Your profile has been updated.');
     } catch (err: unknown) {
       console.error('Failed to save profile:', err);
@@ -169,18 +246,92 @@ export function useProfileSettings() {
     }
   }, [form, user, updateLocalUser]);
 
+  const requestCaregiverAccess = useCallback(async () => {
+    if (!user || displayRole !== 'GUEST') {
+      return;
+    }
+
+    if (myRoleRequest?.status === 'PENDING') {
+      return;
+    }
+
+    setRequestingRole(true);
+    setError(null);
+
+    try {
+      const request = await roleRequestService.createRoleRequest();
+      setMyRoleRequest(request);
+      Alert.alert('Request Submitted', 'Your caregiver access request has been sent to the stable owner.');
+    } catch (err: unknown) {
+      console.error('Failed to submit role request:', err);
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ?? 'Could not submit your request. Please try again.';
+      Alert.alert('Request Failed', message);
+    } finally {
+      setRequestingRole(false);
+    }
+  }, [user, displayRole, myRoleRequest]);
+
+  const approveRequest = useCallback(async (requestId: string) => {
+    setReviewingRequestId(requestId);
+    try {
+      await roleRequestService.approveRoleRequest(requestId);
+      setPendingRequests((prev) => prev.filter((request) => request.id !== requestId));
+      Alert.alert('Approved', 'The user now has caregiver access.');
+    } catch (err: unknown) {
+      console.error('Failed to approve role request:', err);
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ?? 'Could not approve this request. Please try again.';
+      Alert.alert('Approval Failed', message);
+    } finally {
+      setReviewingRequestId(null);
+    }
+  }, []);
+
+  const denyRequest = useCallback(async (requestId: string) => {
+    setReviewingRequestId(requestId);
+    try {
+      await roleRequestService.denyRoleRequest(requestId);
+      setPendingRequests((prev) => prev.filter((request) => request.id !== requestId));
+      Alert.alert('Denied', 'The caregiver request has been denied.');
+    } catch (err: unknown) {
+      console.error('Failed to deny role request:', err);
+      const message =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message ?? 'Could not deny this request. Please try again.';
+      Alert.alert('Denial Failed', message);
+    } finally {
+      setReviewingRequestId(null);
+    }
+  }, []);
+
+  const canRequestCaregiver =
+    displayRole === 'GUEST' &&
+    (!myRoleRequest || myRoleRequest.status === 'DENIED');
+
   return {
     form,
     loading,
     saving,
     error,
     hasChanges,
-    role: user?.role,
+    role: displayRole,
+    roleDescription: getRoleDescription(displayRole),
+    myRoleRequest,
+    pendingRequests,
+    requestingRole,
+    reviewingRequestId,
+    canRequestCaregiver,
     setName,
     setEmail,
     setMorningAlertTime,
     setEveningAlertTime,
     save,
+    requestCaregiverAccess,
+    approveRequest,
+    denyRequest,
     reload: loadProfile,
   };
 }

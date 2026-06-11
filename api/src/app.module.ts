@@ -12,6 +12,7 @@ import { TasksModule } from './tasks/tasks.module';
 import { QueueModule } from './queue/queue.module';
 import { FeedingsModule } from './feedings/feedings.module';
 import { AuthModule } from './auth/auth.module';
+import { RoleRequestsModule } from './role-requests/role-requests.module';
 
 @Module({
   imports: [
@@ -64,6 +65,8 @@ import { AuthModule } from './auth/auth.module';
     FeedingsModule,
 
     AuthModule,
+
+    RoleRequestsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

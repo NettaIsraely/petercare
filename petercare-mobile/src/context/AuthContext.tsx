@@ -15,6 +15,7 @@ import {
   setUnauthorizedHandler,
 } from '../services/authService';
 import { AuthUser } from '../types/auth';
+import { registerPushToken } from '../services/pushNotificationService';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -22,6 +23,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshSession: () => Promise<AuthUser | null>;
   updateLocalUser: (partial: Partial<AuthUser>) => void;
 }
 
@@ -40,6 +42,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser((current) => (current ? { ...current, ...partial } : current));
   }, []);
 
+  const refreshSession = useCallback(async (): Promise<AuthUser | null> => {
+    const response = await apiClient.post('/auth/refresh');
+    const token = response.data.access_token;
+    const decodedUser = decodeToken(token);
+
+    if (!decodedUser) {
+      throw new Error('Invalid token received from server.');
+    }
+
+    await setToken(token);
+    setUser(decodedUser);
+    return decodedUser;
+  }, []);
+
   const login = useCallback(async (email: string, password: string) => {
     const response = await apiClient.post('/auth/login', {
       email: email.toLowerCase().trim(),
@@ -55,6 +71,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     await setToken(token);
     setUser(decodedUser);
+    void registerPushToken(decodedUser.userId);
   }, []);
 
   useEffect(() => {
@@ -65,6 +82,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const session = await getSession();
         if (isMounted) {
           setUser(session);
+          if (session) {
+            void registerPushToken(session.userId);
+          }
         }
       } catch (error) {
         console.error('Error restoring session:', error);
@@ -102,9 +122,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAuthenticated: user !== null,
       login,
       logout,
+      refreshSession,
       updateLocalUser,
     }),
-    [user, isLoading, login, logout, updateLocalUser]
+    [user, isLoading, login, logout, refreshSession, updateLocalUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

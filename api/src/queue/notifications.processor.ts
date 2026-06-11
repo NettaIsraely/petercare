@@ -69,12 +69,15 @@ export class NotificationProcessor extends WorkerHost{
                 }
 
                 const messages: ExpoPushMessage[] = [];
+                const notificationData = job.data.data ?? (
+                  job.data.shiftType ? { shiftType: job.data.shiftType } : {}
+                );
                 messages.push({
                 to: user.expo_push_token,
                 sound: 'default' as const, 
                 title: 'StableHands', 
                 body: job.data.message,
-                data: { shiftType: job.data.shiftType }, 
+                data: notificationData,
                 });
 
                 // 4. Fire the notification to Expo's servers
