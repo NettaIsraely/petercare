@@ -7,7 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { ClipboardList } from 'lucide-react-native';
+import { ClipboardList, MessageSquare } from 'lucide-react-native';
 import { TimelineEvent } from '../../types/events';
 import { getEventCardStyle } from '../../utils/userColors';
 import {
@@ -15,6 +15,7 @@ import {
   getAssignedUserId,
   isEventOwnedByUser,
   isUnassignedFeeding,
+  eventHasComments,
 } from '../../utils/scheduleHelpers';
 import EventTypeIcon from '../schedule/EventTypeIcon';
 import {
@@ -38,6 +39,7 @@ interface EventCardProps {
   currentUserId?: string;
   showAssignee?: boolean;
   completed?: boolean;
+  showCommentsMarker?: boolean;
 }
 
 function getEventTitle(event: TimelineEvent): string {
@@ -103,6 +105,7 @@ export default function EventCard({
   currentUserId,
   showAssignee = false,
   completed = false,
+  showCommentsMarker = true,
 }: EventCardProps) {
   const assignedUserId = getAssignedUserId(event);
   const isCurrentUser = isEventOwnedByUser(event, currentUserId);
@@ -117,6 +120,7 @@ export default function EventCard({
       ? '700'
       : '500'
     : '600';
+  const hasComments = showCommentsMarker && eventHasComments(event);
 
   const content = (
     <>
@@ -142,6 +146,11 @@ export default function EventCard({
           </Text>
         ) : null}
       </View>
+      {hasComments && (
+        <View style={styles.commentsMarker} accessibilityLabel="Has comments">
+          <MessageSquare size={14} color="#95A5A6" />
+        </View>
+      )}
       {showCheckbox && (
         <TouchableOpacity
           style={[styles.checkbox, isCompleting && styles.checkboxLoading]}
@@ -176,11 +185,13 @@ export default function EventCard({
 export function OpenTaskCard({
   name,
   assignedUserId,
+  hasComments = false,
   isCompleting,
   onToggleComplete,
 }: {
   name: string;
   assignedUserId?: string;
+  hasComments?: boolean;
   isCompleting: boolean;
   onToggleComplete: () => void;
 }) {
@@ -195,6 +206,11 @@ export function OpenTaskCard({
         <Text style={styles.title}>{name}</Text>
         <Text style={styles.subtitle}>No deadline</Text>
       </View>
+      {hasComments && (
+        <View style={styles.commentsMarker} accessibilityLabel="Has comments">
+          <MessageSquare size={14} color="#95A5A6" />
+        </View>
+      )}
       <TouchableOpacity
         style={[styles.checkbox, isCompleting && styles.checkboxLoading]}
         onPress={onToggleComplete}
@@ -239,6 +255,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#95A5A6',
     marginTop: 4,
+  },
+  commentsMarker: {
+    marginLeft: 8,
+    justifyContent: 'center',
   },
   checkbox: {
     width: 26,

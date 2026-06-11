@@ -9,6 +9,7 @@ export interface Ride {
   primary_rider: UserSummary;
   additional_riders?: UserSummary[];
   horses: Horse[];
+  comments?: string;
   created_at: string;
   updated_at: string;
 }
@@ -20,4 +21,5 @@ export interface CreateRidePayload {
   primary_rider_id: string;
   horses: string[];
   additional_riders_ids?: string[];
+  comments?: string;
 }

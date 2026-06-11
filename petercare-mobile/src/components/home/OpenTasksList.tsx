@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Task } from '../../types/task';
 import { isCompletingKey } from '../../utils/completionKeys';
+import { eventHasComments } from '../../utils/scheduleHelpers';
 import { OpenTaskCard } from './EventCard';
 
 interface OpenTasksListProps {
@@ -28,6 +29,7 @@ export default function OpenTasksList({
             key={task.id}
             name={task.name}
             assignedUserId={task.assigned_user?.id}
+            hasComments={eventHasComments({ kind: 'task', data: task })}
             isCompleting={isCompletingKey(completingIds, 'task', task.id)}
             onToggleComplete={() => onMarkComplete(task)}
           />

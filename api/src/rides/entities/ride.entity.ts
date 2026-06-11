@@ -28,6 +28,9 @@ export class Ride {
     @JoinTable({name: 'ride_horses'})
     horses!: Horse[];
 
+    @Column({type:'varchar', nullable: true})
+    comments?: string;
+
     @CreateDateColumn()
     created_at!: Date;
 

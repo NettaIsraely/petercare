@@ -126,6 +126,7 @@ export default function CreateEventModal({
   const [primaryRiderId, setPrimaryRiderId] = useState(currentUserId ?? '');
   const [selectedHorseIds, setSelectedHorseIds] = useState<string[]>([]);
   const [additionalRiderIds, setAdditionalRiderIds] = useState<string[]>([]);
+  const [rideComments, setRideComments] = useState('');
 
   const [treatmentNamePreset, setTreatmentNamePreset] = useState<PredefinedTreatmentName | null>(
     null
@@ -149,6 +150,7 @@ export default function CreateEventModal({
     setPrimaryRiderId(currentUserId ?? '');
     setSelectedHorseIds([]);
     setAdditionalRiderIds([]);
+    setRideComments('');
     setTreatmentNamePreset(null);
     setTreatmentCustomName('');
     setTreatmentDate(defaultDate);
@@ -231,6 +233,7 @@ export default function CreateEventModal({
           horses: selectedHorseIds,
           additional_riders_ids:
             additionalRiderIds.length > 0 ? additionalRiderIds : undefined,
+          comments: rideComments.trim() || undefined,
         });
       } else if (category === 'treatment') {
         const resolvedTreatmentName = treatmentNamePreset ?? treatmentCustomName.trim();
@@ -389,6 +392,13 @@ export default function CreateEventModal({
                       ))}
                   </View>
                 </View>
+                <Text style={styles.label}>Comments (optional)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={rideComments}
+                  onChangeText={setRideComments}
+                  multiline
+                />
               </>
             )}
 

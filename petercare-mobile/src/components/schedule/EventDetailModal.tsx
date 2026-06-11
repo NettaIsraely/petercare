@@ -22,6 +22,7 @@ import {
   normalizeDateString,
 } from '../../utils/dateHelpers';
 import { isCompletingKey } from '../../utils/completionKeys';
+import { eventHasComments, getEventComments } from '../../utils/scheduleHelpers';
 
 interface EventDetailModalProps {
   visible: boolean;
@@ -60,7 +61,6 @@ function getDetailLines(event: TimelineEvent): string[] {
         event.data.assigned_user
           ? `Assigned to: ${event.data.assigned_user.name}`
           : 'Unassigned',
-        event.data.comments ? `Comments: ${event.data.comments}` : '',
         `Complete: ${event.data.is_complete ? 'Yes' : 'No'}`,
       ].filter(Boolean);
     case 'ride':
@@ -165,7 +165,7 @@ export default function EventDetailModal({
           </View>
 
           <ScrollView contentContainerStyle={styles.content}>
-            <EventCard event={event} alertTimes={alertTimes} />
+            <EventCard event={event} alertTimes={alertTimes} showCommentsMarker={false} />
 
             <View style={styles.detailsCard}>
               {horseDetail ? (
@@ -179,6 +179,12 @@ export default function EventDetailModal({
                   {line}
                 </Text>
               ))}
+              {eventHasComments(event) && (
+                <View style={styles.commentsSection}>
+                  <Text style={styles.commentsLabel}>Comments</Text>
+                  <Text style={styles.commentsBody}>{getEventComments(event)}</Text>
+                </View>
+              )}
             </View>
 
             {isFeedingUnassigned && (
@@ -332,6 +338,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#2C3E50',
     marginBottom: 6,
+  },
+  commentsSection: {
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E0E6ED',
+  },
+  commentsLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#7F8C8D',
+    marginBottom: 6,
+  },
+  commentsBody: {
+    fontSize: 14,
+    color: '#2C3E50',
+    lineHeight: 20,
   },
   actionSection: {
     marginBottom: 12,

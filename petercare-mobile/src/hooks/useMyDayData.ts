@@ -13,6 +13,7 @@ import { Ride } from '../types/ride';
 import { Treatment } from '../types/treatment';
 import { UserSummary } from '../types/user';
 import { completingKey } from '../utils/completionKeys';
+import { confirmFeedingCompletionIfNeeded } from '../utils/feedingCompletionHelpers';
 import { computeMyWeek, mergeUserAlertTimes } from '../utils/myDayHelpers';
 
 const EMPTY_MY_WEEK: MyWeekData = {
@@ -113,6 +114,13 @@ export function useMyDayData() {
     async (event: TimelineEvent) => {
       if (event.kind !== 'feeding' && event.kind !== 'task' && event.kind !== 'treatment') {
         return;
+      }
+
+      if (event.kind === 'feeding') {
+        const confirmed = await confirmFeedingCompletionIfNeeded(event.data);
+        if (!confirmed) {
+          return;
+        }
       }
 
       const key = completingKey(event.kind, event.data.id);

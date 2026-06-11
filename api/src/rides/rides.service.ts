@@ -22,7 +22,8 @@ export class RidesService {
       additional_riders: createRideDto.additional_riders_ids 
         ? createRideDto.additional_riders_ids.map(id => ({ id })) 
         : [],
-      horses: createRideDto.horses.map(id => ({ id }))
+      horses: createRideDto.horses.map(id => ({ id })),
+      comments: createRideDto.comments,
     });
 
     return await this.ridesRepository.save(newRide);

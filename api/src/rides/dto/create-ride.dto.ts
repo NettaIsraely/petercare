@@ -5,4 +5,5 @@ export class CreateRideDto {
     primary_rider_id!: string;
     additional_riders_ids?: string[];
     horses!: string[];
+    comments?: string;
 }

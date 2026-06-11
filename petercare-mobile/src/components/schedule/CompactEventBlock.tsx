@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Pressable, Text, StyleSheet } from 'react-native';
+import { MessageSquare } from 'lucide-react-native';
 import { TimelineEvent } from '../../types/events';
 import { getEventCardStyle } from '../../utils/userColors';
 import {
@@ -7,6 +8,7 @@ import {
   getAssignedUserId,
   isEventOwnedByUser,
   isUnassignedFeeding,
+  eventHasComments,
 } from '../../utils/scheduleHelpers';
 import {
   formatShiftLabel,
@@ -76,6 +78,7 @@ export default function CompactEventBlock({
   const assigneeName = getAssigneeName(event);
   const subtitle = getCompactSubtitle(event, alertTimes);
   const titleWeight = isCurrentUser ? '700' : '500';
+  const hasComments = eventHasComments(event);
 
   return (
     <Pressable
@@ -93,9 +96,19 @@ export default function CompactEventBlock({
           />
         </View>
         <View style={styles.content}>
-          <Text style={[styles.title, { fontWeight: titleWeight }]} numberOfLines={2}>
-            {getCompactTitle(event)}
-          </Text>
+          <View style={styles.titleRow}>
+            <Text
+              style={[styles.title, { fontWeight: titleWeight }]}
+              numberOfLines={2}
+            >
+              {getCompactTitle(event)}
+            </Text>
+            {hasComments && (
+              <View style={styles.commentsMarker} accessibilityLabel="Has comments">
+                <MessageSquare size={11} color="#95A5A6" />
+              </View>
+            )}
+          </View>
           {subtitle ? (
             <Text style={styles.subtitle} numberOfLines={1}>
               {subtitle}
@@ -129,9 +142,18 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 4,
+  },
   title: {
+    flex: 1,
     fontSize: 11,
     color: '#2C3E50',
+  },
+  commentsMarker: {
+    marginTop: 1,
   },
   subtitle: {
     fontSize: 10,

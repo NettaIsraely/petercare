@@ -23,6 +23,7 @@ import {
 } from '../utils/scheduleHelpers';
 import { toDateString } from '../utils/dateHelpers';
 import { completingKey } from '../utils/completionKeys';
+import { confirmFeedingCompletionIfNeeded } from '../utils/feedingCompletionHelpers';
 
 interface RawScheduleData {
   feedings: Feeding[];
@@ -188,6 +189,13 @@ export function useScheduleData() {
     async (event: TimelineEvent) => {
       if (event.kind !== 'feeding' && event.kind !== 'task' && event.kind !== 'treatment') {
         return;
+      }
+
+      if (event.kind === 'feeding') {
+        const confirmed = await confirmFeedingCompletionIfNeeded(event.data);
+        if (!confirmed) {
+          return;
+        }
       }
 
       const key = completingKey(event.kind, event.data.id);

@@ -328,3 +328,15 @@ export function rideToTimelineEvent(ride: Ride): TimelineEvent {
 export function treatmentToTimelineEvent(treatment: Treatment): TimelineEvent {
   return toTreatmentEvent(treatment);
 }
+
+export function getEventComments(event: TimelineEvent): string | undefined {
+  if (event.kind === 'task' || event.kind === 'ride') {
+    const comments = event.data.comments?.trim();
+    return comments || undefined;
+  }
+  return undefined;
+}
+
+export function eventHasComments(event: TimelineEvent): boolean {
+  return getEventComments(event) !== undefined;
+}
