@@ -28,7 +28,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto, @Req() req: any) {
-    if (req.user.id !== id){
+    if (req.user.userId !== id){
       throw new UnauthorizedException('You are only allowed to update your own profile settings.');
     }
     return this.usersService.update(id, updateUserDto);
