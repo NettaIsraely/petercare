@@ -1,4 +1,5 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
+import type { HorseColor } from '../types/horse';
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -10,10 +11,10 @@ export type HorsesStackParamList = {
   HorseDetail: {
     horseId: string;
     horseName: string;
+    horseColor: HorseColor;
     lastShoeingDate?: string | null;
   };
 };
-
 export type MainTabParamList = {
   Home: undefined;
   Schedule: undefined;

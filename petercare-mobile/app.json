@@ -1,34 +1,41 @@
 {
   "expo": {
-    "name": "stable-mobile",
+    "name": "Peter Care",
     "slug": "stable-mobile",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "scheme": "stablehands",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/peter-care-icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/peter-care-icon.png",
+        "backgroundColor": "#FFFFFF"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/peter-care-icon.png"
     },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/peter-care-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain"
+        }
+      ],
       "expo-secure-store",
       "@react-native-community/datetimepicker",
       [
         "expo-notifications",
         {
-          "icon": "./assets/icon.png",
+          "icon": "./assets/peter-care-icon.png",
           "color": "#3498DB"
         }
       ]

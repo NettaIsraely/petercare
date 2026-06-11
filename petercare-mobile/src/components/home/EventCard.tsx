@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
-import { Wheat, Route, ClipboardList, Stethoscope, Check } from 'lucide-react-native';
+import { Wheat, ClipboardList, Check } from 'lucide-react-native';
 import { TimelineEvent } from '../../types/events';
 import { getEventCardStyle } from '../../utils/userColors';
+import HorseIconRow from '../horses/HorseIconRow';
 import {
   formatShiftLabel,
   formatTimeLabel,
@@ -91,19 +92,19 @@ function getEventSubtitle(event: TimelineEvent, alertTimes?: EventCardProps['ale
   }
 }
 
-function CategoryIcon({ kind }: { kind: TimelineEvent['kind'] }) {
+function EventIconColumn({ event }: { event: TimelineEvent }) {
   const size = 22;
   const color = '#2C3E50';
 
-  switch (kind) {
+  switch (event.kind) {
     case 'feeding':
       return <Wheat size={size} color={color} />;
-    case 'ride':
-      return <Route size={size} color={color} />;
     case 'task':
       return <ClipboardList size={size} color={color} />;
+    case 'ride':
+      return <HorseIconRow colors={event.data.horses.map((h) => h.color)} size={28} />;
     case 'treatment':
-      return <Stethoscope size={size} color={color} />;
+      return <HorseIconRow colors={[event.data.horse.color]} size={28} />;
     default:
       return null;
   }
@@ -123,7 +124,7 @@ export default function EventCard({
   const content = (
     <>
       <View style={styles.iconColumn}>
-        <CategoryIcon kind={event.kind} />
+        <EventIconColumn event={event} />
       </View>
       <View style={styles.content}>
         <Text style={styles.title}>{getEventTitle(event)}</Text>
@@ -201,6 +202,9 @@ const styles = StyleSheet.create({
   },
   iconColumn: {
     marginRight: 12,
+    minWidth: 36,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
   content: {
     flex: 1,

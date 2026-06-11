@@ -10,7 +10,9 @@ import {
 } from 'react-native';
 import { X } from 'lucide-react-native';
 import { TimelineEvent } from '../../types/events';
+import { HorseColor } from '../../types/horse';
 import EventCard from '../home/EventCard';
+import HorseIconRow from '../horses/HorseIconRow';
 import TimePickerField from '../common/TimePickerField';
 import {
   formatShiftLabel,
@@ -64,7 +66,6 @@ function getDetailLines(event: TimelineEvent): string[] {
         `Date: ${normalizeDateString(event.data.date)}`,
         `Time: ${formatTimeLabel(event.data.start_time)} – ${formatTimeLabel(event.data.end_time)}`,
         `Primary rider: ${event.data.primary_rider.name}`,
-        `Horses: ${event.data.horses.map((h) => h.name).join(', ')}`,
         event.data.additional_riders?.length
           ? `Additional riders: ${event.data.additional_riders.map((r) => r.name).join(', ')}`
           : '',
@@ -72,7 +73,6 @@ function getDetailLines(event: TimelineEvent): string[] {
     case 'treatment':
       return [
         `Date: ${normalizeDateString(event.data.date)}`,
-        `Horse: ${event.data.horse.name}`,
         `Staff: ${event.data.user.name}`,
         event.data.duration_minutes
           ? `Duration: ${event.data.duration_minutes} min`
@@ -81,6 +81,22 @@ function getDetailLines(event: TimelineEvent): string[] {
     default:
       return [];
   }
+}
+
+function getHorseDetailSection(event: TimelineEvent): { colors: HorseColor[]; names: string } | null {
+  if (event.kind === 'ride') {
+    return {
+      colors: event.data.horses.map((h) => h.color),
+      names: event.data.horses.map((h) => h.name).join(', '),
+    };
+  }
+  if (event.kind === 'treatment') {
+    return {
+      colors: [event.data.horse.color],
+      names: event.data.horse.name,
+    };
+  }
+  return null;
 }
 
 export default function EventDetailModal({
@@ -125,6 +141,8 @@ export default function EventDetailModal({
   const canCompleteTask =
     isTaskAssignedIncomplete && event.data.assigned_user?.id === currentUserId;
 
+  const horseDetail = getHorseDetailSection(event);
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.overlay}>
@@ -140,6 +158,12 @@ export default function EventDetailModal({
             <EventCard event={event} alertTimes={alertTimes} />
 
             <View style={styles.detailsCard}>
+              {horseDetail ? (
+                <View style={styles.horseSection}>
+                  <HorseIconRow colors={horseDetail.colors} size={36} />
+                  <Text style={styles.horseNames}>{horseDetail.names}</Text>
+                </View>
+              ) : null}
               {getDetailLines(event).map((line) => (
                 <Text key={line} style={styles.detailLine}>
                   {line}
@@ -256,6 +280,20 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#E0E6ED',
+  },
+  horseSection: {
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E6ED',
+  },
+  horseNames: {
+    marginTop: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2C3E50',
+    textAlign: 'center',
   },
   detailLine: {
     fontSize: 14,

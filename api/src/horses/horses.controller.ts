@@ -3,6 +3,9 @@ import { HorsesService } from './horses.service';
 import { CreateHorseDto } from './dto/create-horse.dto';
 import { UpdateHorseDto } from './dto/update-horse.dto';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { RolesGuard } from 'src/auth/roles.guard';
+import { Roles } from 'src/auth/roles.decorator';
+import { UserRole } from 'src/users/entities/user.entity';
 
 @UseGuards(JwtAuthGuard)
 @Controller('horses')
@@ -10,6 +13,8 @@ export class HorsesController {
   constructor(private readonly horsesService: HorsesService) {}
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.OWNER)
   create(@Body() createHorseDto: CreateHorseDto) {
     return this.horsesService.create(createHorseDto);
   }
@@ -25,6 +30,8 @@ export class HorsesController {
   }
 
   @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.OWNER)
   update(@Param('id') id: string, @Body() updateHorseDto: UpdateHorseDto) {
     return this.horsesService.update(id, updateHorseDto);
   }
