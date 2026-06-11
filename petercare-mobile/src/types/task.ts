@@ -10,3 +10,10 @@ export interface Task {
   created_at: string;
   updated_at: string;
 }
+
+export interface CreateTaskPayload {
+  name: string;
+  deadline?: string;
+  comments?: string;
+  assigned_user_id?: string;
+}

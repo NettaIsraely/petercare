@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
 import { Wheat, Route, ClipboardList, Stethoscope, Check } from 'lucide-react-native';
 import { TimelineEvent } from '../../types/events';
 import { getEventCardStyle } from '../../utils/userColors';
@@ -7,6 +7,8 @@ import {
   formatShiftLabel,
   formatTimeLabel,
   getShiftDeadlineTime,
+  isToday,
+  normalizeDateString,
 } from '../../utils/dateHelpers';
 
 interface EventCardProps {
@@ -14,6 +16,7 @@ interface EventCardProps {
   showCheckbox?: boolean;
   isComplete?: boolean;
   onToggleComplete?: () => void;
+  onPress?: () => void;
   alertTimes?: {
     morningTime?: string;
     eveningTime?: string;
@@ -58,16 +61,31 @@ function getEventSubtitle(event: TimelineEvent, alertTimes?: EventCardProps['ale
         alertTimes?.morningTime,
         alertTimes?.eveningTime
       );
-      return formatTimeLabel(time);
+      const timeLabel = formatTimeLabel(time);
+      return isToday(event.data.schedule_date)
+        ? timeLabel
+        : `${normalizeDateString(event.data.schedule_date)} · ${timeLabel}`;
     }
-    case 'ride':
-      return `${formatTimeLabel(event.data.start_time)} – ${formatTimeLabel(event.data.end_time)}`;
-    case 'treatment':
-      return event.data.duration_minutes
+    case 'ride': {
+      const timeRange = `${formatTimeLabel(event.data.start_time)} – ${formatTimeLabel(event.data.end_time)}`;
+      return isToday(event.data.date)
+        ? timeRange
+        : `${normalizeDateString(event.data.date)} · ${timeRange}`;
+    }
+    case 'treatment': {
+      const durationLabel = event.data.duration_minutes
         ? `${event.data.duration_minutes} min`
-        : 'Scheduled today';
+        : 'Scheduled';
+      return isToday(event.data.date)
+        ? durationLabel
+        : `${normalizeDateString(event.data.date)} · ${durationLabel}`;
+    }
     case 'task':
-      return 'Due today';
+      if (event.data.deadline) {
+        const deadline = normalizeDateString(event.data.deadline);
+        return isToday(deadline) ? 'Due today' : `Due ${deadline}`;
+      }
+      return 'No deadline';
     default:
       return '';
   }
@@ -96,13 +114,14 @@ export default function EventCard({
   showCheckbox = false,
   isComplete = false,
   onToggleComplete,
+  onPress,
   alertTimes,
 }: EventCardProps) {
   const assignedUserId = getAssignedUserId(event);
   const cardStyle = getEventCardStyle(assignedUserId);
 
-  return (
-    <View style={[styles.card, cardStyle]}>
+  const content = (
+    <>
       <View style={styles.iconColumn}>
         <CategoryIcon kind={event.kind} />
       </View>
@@ -120,8 +139,22 @@ export default function EventCard({
           {isComplete && <Check size={16} color="#FFFFFF" />}
         </TouchableOpacity>
       )}
-    </View>
+    </>
   );
+
+  if (onPress) {
+    return (
+      <Pressable
+        style={[styles.card, cardStyle]}
+        onPress={onPress}
+        accessibilityRole="button"
+      >
+        {content}
+      </Pressable>
+    );
+  }
+
+  return <View style={[styles.card, cardStyle]}>{content}</View>;
 }
 
 export function OpenTaskCard({

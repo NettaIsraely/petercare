@@ -12,3 +12,9 @@ export interface Feeding {
   created_at: string;
   updated_at: string;
 }
+
+export interface CreateFeedingPayload {
+  schedule_date: string;
+  shift_type: ShiftType;
+  assigned_user_id?: string;
+}

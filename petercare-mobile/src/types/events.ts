@@ -20,3 +20,15 @@ export interface MyDayData {
   itinerary: TimelineEvent[];
   openTasks: Task[];
 }
+
+export interface ScheduleSectionData {
+  feedings: TimelineEvent[];
+  rides: TimelineEvent[];
+  treatments: TimelineEvent[];
+  tasksWithDeadlines: TimelineEvent[];
+  datelessTasks: Task[];
+}
+
+export type ScheduleViewMode = 'calendar' | 'list';
+
+export type CreateEventCategory = 'feeding' | 'task' | 'ride' | 'treatment';

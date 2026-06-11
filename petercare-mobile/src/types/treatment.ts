@@ -11,3 +11,11 @@ export interface Treatment {
   created_at: string;
   updated_at: string;
 }
+
+export interface CreateTreatmentPayload {
+  name: string;
+  horse_id: string;
+  user_id: string;
+  date?: string;
+  duration_minutes?: number;
+}

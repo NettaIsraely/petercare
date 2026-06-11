@@ -12,3 +12,12 @@ export interface Ride {
   created_at: string;
   updated_at: string;
 }
+
+export interface CreateRidePayload {
+  date: string;
+  start_time: string;
+  end_time: string;
+  primary_rider_id: string;
+  horses: string[];
+  additional_riders_ids?: string[];
+}

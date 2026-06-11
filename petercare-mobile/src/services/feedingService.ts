@@ -1,8 +1,13 @@
 import { apiClient } from '../api/client';
-import { Feeding } from '../types/feeding';
+import { CreateFeedingPayload, Feeding } from '../types/feeding';
 
 export async function getAllFeedings(): Promise<Feeding[]> {
   const response = await apiClient.get<Feeding[]>('/feedings');
+  return response.data;
+}
+
+export async function createFeeding(payload: CreateFeedingPayload): Promise<Feeding> {
+  const response = await apiClient.post<Feeding>('/feedings', payload);
   return response.data;
 }
 
