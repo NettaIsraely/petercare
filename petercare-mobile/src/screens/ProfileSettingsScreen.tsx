@@ -11,6 +11,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useProfileSettings } from '../hooks/useProfileSettings';
 import TimePickerField from '../components/common/TimePickerField';
+import { useStaffOrder } from '../hooks/useStaffOrder';
 
 function formatRequestDate(dateString: string): string {
   const date = new Date(dateString);
@@ -45,6 +46,15 @@ export default function ProfileSettingsScreen() {
     approveRequest,
     denyRequest,
   } = useProfileSettings();
+  const {
+    staffUsers,
+    staffOrderLoading,
+    staffOrderSaving,
+    staffOrderError,
+    staffOrderHasChanges,
+    moveStaffUser,
+    saveStaffOrder,
+  } = useStaffOrder(role === 'OWNER');
 
   if (loading) {
     return (
@@ -185,6 +195,63 @@ export default function ProfileSettingsScreen() {
         </View>
       ) : null}
 
+      {role === 'OWNER' ? (
+        <View style={styles.formCard}>
+          <Text style={styles.sectionTitle}>Staff Order</Text>
+          <Text style={styles.sectionDescription}>
+            Set the default order for caregivers and owners in assignment pickers.
+          </Text>
+          {staffOrderError ? <Text style={styles.errorText}>{staffOrderError}</Text> : null}
+          {staffOrderLoading ? (
+            <ActivityIndicator color="#3498DB" />
+          ) : staffUsers.length === 0 ? (
+            <Text style={styles.emptyText}>No caregivers or owners to order yet.</Text>
+          ) : (
+            staffUsers.map((staffUser, index) => (
+              <View key={staffUser.id} style={styles.staffRow}>
+                <Text style={styles.staffName}>{staffUser.name}</Text>
+                <View style={styles.staffActions}>
+                  <TouchableOpacity
+                    style={[
+                      styles.moveButton,
+                      index === 0 && styles.buttonDisabled,
+                    ]}
+                    onPress={() => moveStaffUser(index, 'up')}
+                    disabled={index === 0 || staffOrderSaving}
+                  >
+                    <Text style={styles.moveButtonText}>Up</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.moveButton,
+                      index === staffUsers.length - 1 && styles.buttonDisabled,
+                    ]}
+                    onPress={() => moveStaffUser(index, 'down')}
+                    disabled={index === staffUsers.length - 1 || staffOrderSaving}
+                  >
+                    <Text style={styles.moveButtonText}>Down</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
+          )}
+          <TouchableOpacity
+            style={[
+              styles.saveOrderButton,
+              (!staffOrderHasChanges || staffOrderSaving) && styles.saveButtonDisabled,
+            ]}
+            onPress={saveStaffOrder}
+            disabled={!staffOrderHasChanges || staffOrderSaving}
+          >
+            {staffOrderSaving ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.saveButtonText}>Save Staff Order</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
       <TouchableOpacity
         style={[styles.saveButton, (!hasChanges || saving) && styles.saveButtonDisabled]}
         onPress={save}
@@ -312,6 +379,51 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#2C3E50',
     marginBottom: 12,
+  },
+  sectionDescription: {
+    fontSize: 13,
+    color: '#7F8C8D',
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  staffRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#E0E6ED',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+  },
+  staffName: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginRight: 12,
+  },
+  staffActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  moveButton: {
+    backgroundColor: '#EBF5FB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  moveButtonText: {
+    color: '#2980B9',
+    fontWeight: '600',
+    fontSize: 13,
+  },
+  saveOrderButton: {
+    backgroundColor: '#3498DB',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 8,
   },
   emptyText: {
     fontSize: 14,

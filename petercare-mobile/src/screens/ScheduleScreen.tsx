@@ -39,6 +39,7 @@ export default function ScheduleScreen() {
 
   const {
     raw,
+    assignableUsers,
     listSections,
     markedDates,
     selectedDate,
@@ -207,7 +208,7 @@ export default function ScheduleScreen() {
         onClose={() => setCreateVisible(false)}
         defaultDate={selectedDate}
         horses={raw.horses}
-        users={raw.users}
+        users={assignableUsers}
         currentUserId={currentUserId}
         userRole={user?.role}
         creating={creating}
@@ -223,7 +224,7 @@ export default function ScheduleScreen() {
         visible={!!editTask}
         mode="edit"
         initialTask={editTask ?? undefined}
-        users={raw.users}
+        users={assignableUsers}
         submitting={updating}
         onClose={() => setEditTask(null)}
         onSubmitCreate={createTask}
@@ -233,7 +234,7 @@ export default function ScheduleScreen() {
       <FeedingEditModal
         visible={!!editFeeding}
         feeding={editFeeding}
-        users={raw.users}
+        users={assignableUsers}
         submitting={updating}
         onClose={() => setEditFeeding(null)}
         onSubmit={updateFeeding}
@@ -245,7 +246,7 @@ export default function ScheduleScreen() {
         ride={editRide}
         treatment={editTreatment}
         horses={raw.horses}
-        users={raw.users}
+        users={assignableUsers}
         submitting={updating}
         onClose={() => {
           setEditRide(null);

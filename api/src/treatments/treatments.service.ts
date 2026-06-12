@@ -5,9 +5,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Treatment } from './entities/treatment.entity';
 import { Repository } from 'typeorm';
 import { Horse } from 'src/horses/entities/horse.entity';
+import { User } from '../users/entities/user.entity';
 import { SHOEING_TREATMENT_NAME } from './treatment.constants';
 import {
   AuthUser,
+  assertAssignableUser,
   assertCanCompleteEvent,
   assertCanEditEvent,
   assertGuestCannotMutate,
@@ -21,10 +23,13 @@ export class TreatmentsService {
     private readonly treatmentRepository: Repository<Treatment>,
     @InjectRepository(Horse)
     private readonly horseRepository: Repository<Horse>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   async create(createTreatmentDto: CreateTreatmentDto, authUser: AuthUser): Promise<Treatment> {
     assertGuestCannotMutate(authUser);
+    await assertAssignableUser(this.userRepository, createTreatmentDto.user_id);
 
     const newTreatment = this.treatmentRepository.create({
       name: createTreatmentDto.name,
@@ -89,6 +94,7 @@ export class TreatmentsService {
     }
 
     if (updateTreatmentDto.user_id) {
+      await assertAssignableUser(this.userRepository, updateTreatmentDto.user_id);
       updateData.user = { id: updateTreatmentDto.user_id };
       delete updateData.user_id;
     }

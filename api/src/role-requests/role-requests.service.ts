@@ -10,6 +10,7 @@ import { Queue } from 'bullmq';
 import { Repository } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
 import { RoleRequest, RoleRequestStatus } from './entities/role-request.entity';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class RoleRequestsService {
@@ -20,6 +21,7 @@ export class RoleRequestsService {
     private readonly userRepository: Repository<User>,
     @InjectQueue('notifications')
     private readonly notificationQueue: Queue,
+    private readonly usersService: UsersService,
   ) {}
 
   async create(userId: string): Promise<RoleRequest> {
@@ -85,7 +87,7 @@ export class RoleRequestsService {
     }
 
     requester.role = UserRole.CAREGIVER;
-    await this.userRepository.save(requester);
+    await this.usersService.assignDisplayOrderForRole(requester);
 
     request.status = RoleRequestStatus.APPROVED;
     request.reviewed_by = { id: reviewerId } as User;

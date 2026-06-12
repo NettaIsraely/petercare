@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import * as taskService from '../services/taskService';
@@ -6,12 +6,13 @@ import * as userService from '../services/userService';
 import { CreateTaskPayload, Task, UpdateTaskPayload } from '../types/task';
 import { UserSummary } from '../types/user';
 import { TimelineEvent } from '../types/events';
+import { orderUsersForAssignment } from '../utils/assignableUsers';
 import { completingKey } from '../utils/completionKeys';
 
 export function useTasksData() {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [users, setUsers] = useState<UserSummary[]>([]);
+  const [assignableUsersRaw, setAssignableUsersRaw] = useState<UserSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -19,6 +20,11 @@ export function useTasksData() {
   const [claimingId, setClaimingId] = useState<string | null>(null);
   const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
   const hasLoadedRef = useRef(false);
+
+  const assignableUsers = useMemo(
+    () => orderUsersForAssignment(assignableUsersRaw, user?.userId),
+    [assignableUsersRaw, user?.userId]
+  );
 
   const refresh = useCallback(
     async (options?: { pull?: boolean; silent?: boolean }) => {
@@ -35,10 +41,10 @@ export function useTasksData() {
       try {
         const [taskData, userData] = await Promise.all([
           taskService.getAllTasks(),
-          userService.getAllUsers(),
+          userService.getAssignableUsers(),
         ]);
         setTasks(taskData);
-        setUsers(userData);
+        setAssignableUsersRaw(userData);
       } catch (error) {
         console.error('Failed to load tasks:', error);
       } finally {
@@ -135,7 +141,7 @@ export function useTasksData() {
 
   return {
     tasks,
-    users,
+    assignableUsers,
     loading,
     refreshing,
     creating,

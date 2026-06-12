@@ -15,6 +15,7 @@ import {
   assertCanEditEvent,
   assertCanTakeOverFeeding,
   assertCanVolunteerFeeding,
+  assertAssignableUser,
   assertOwnerOnly,
   pickFeedingUpdateFields,
 } from '../common/event-permissions';
@@ -80,6 +81,7 @@ export class FeedingsService {
     }
 
     assertCanVolunteerFeeding(authUser, shift);
+    await assertAssignableUser(this.userRepository, userId);
 
     const newUser = await this.userRepository.findOne({ where: { id: userId } });
 
@@ -202,6 +204,7 @@ export class FeedingsService {
     const updateData: Record<string, unknown> = { id, ...rest };
 
     if (assigned_user_id !== undefined) {
+      await assertAssignableUser(this.userRepository, assigned_user_id);
       const isAssigned = !!assigned_user_id;
       updateData.assigned_user = isAssigned ? { id: assigned_user_id } : null;
       if ((allowedFields as UpdateFeedingDto).feeding_status === undefined) {

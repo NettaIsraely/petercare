@@ -1,9 +1,10 @@
 import { ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Repository } from 'typeorm';
 import { Feeding, FeedingStatus } from '../feedings/entities/feeding.entity';
 import { Ride } from '../rides/entities/ride.entity';
 import { Task } from '../tasks/entities/task.entity';
 import { Treatment } from '../treatments/entities/treatment.entity';
-import { UserRole } from '../users/entities/user.entity';
+import { User, UserRole } from '../users/entities/user.entity';
 
 export interface AuthUser {
   userId: string;
@@ -22,6 +23,33 @@ export function assertGuestCannotMutate(user: AuthUser): void {
 export function assertOwnerOnly(user: AuthUser): void {
   if (user.role !== UserRole.OWNER) {
     throw new ForbiddenException('Only owners can perform this action');
+  }
+}
+
+export async function assertAssignableUser(
+  userRepo: Repository<User>,
+  userId: string | null | undefined,
+): Promise<void> {
+  if (!userId) {
+    return;
+  }
+
+  const user = await userRepo.findOne({ where: { id: userId } });
+  if (!user || user.role === UserRole.GUEST) {
+    throw new BadRequestException('Assignee must be an owner or caregiver.');
+  }
+}
+
+export async function assertAssignableUsers(
+  userRepo: Repository<User>,
+  userIds: Array<string | null | undefined> | null | undefined,
+): Promise<void> {
+  if (!userIds?.length) {
+    return;
+  }
+
+  for (const userId of userIds) {
+    await assertAssignableUser(userRepo, userId);
   }
 }
 

@@ -3,7 +3,15 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { TreatmentsService } from './treatments.service';
 import { Treatment } from './entities/treatment.entity';
 import { Horse } from 'src/horses/entities/horse.entity';
+import { User } from '../users/entities/user.entity';
+import { UserRole } from '../users/entities/user.entity';
 import { SHOEING_TREATMENT_NAME } from './treatment.constants';
+
+const authUser = {
+  userId: 'user-1',
+  name: 'Staff',
+  role: UserRole.OWNER,
+};
 
 describe('TreatmentsService', () => {
   let service: TreatmentsService;
@@ -68,6 +76,7 @@ describe('TreatmentsService', () => {
         TreatmentsService,
         { provide: getRepositoryToken(Treatment), useValue: treatmentRepository },
         { provide: getRepositoryToken(Horse), useValue: horseRepository },
+        { provide: getRepositoryToken(User), useValue: { findOne: jest.fn() } },
       ],
     }).compile();
 
@@ -83,11 +92,12 @@ describe('TreatmentsService', () => {
 
     treatmentRepository.findOne
       .mockResolvedValueOnce(incompleteShoeing)
+      .mockResolvedValueOnce(completedShoeing)
       .mockResolvedValueOnce(completedShoeing);
     treatmentRepository.preload.mockResolvedValue(completedShoeing);
     treatmentRepository.save.mockResolvedValue(completedShoeing);
 
-    await service.update('treatment-1', { is_complete: true });
+    await service.update('treatment-1', { is_complete: true }, authUser);
 
     expect(horseRepository.save).toHaveBeenCalledTimes(2);
     expect(horseRepository.save).toHaveBeenCalledWith(
@@ -107,7 +117,7 @@ describe('TreatmentsService', () => {
     treatmentRepository.preload.mockResolvedValue(completedPhysio);
     treatmentRepository.save.mockResolvedValue(completedPhysio);
 
-    await service.update('treatment-2', { is_complete: true });
+    await service.update('treatment-2', { is_complete: true }, authUser);
 
     expect(horseRepository.save).not.toHaveBeenCalled();
   });
@@ -121,7 +131,7 @@ describe('TreatmentsService', () => {
     treatmentRepository.preload.mockResolvedValue(alreadyComplete);
     treatmentRepository.save.mockResolvedValue(alreadyComplete);
 
-    await service.update('treatment-1', { is_complete: true });
+    await service.update('treatment-1', { is_complete: true }, authUser);
 
     expect(horseRepository.save).not.toHaveBeenCalled();
   });

@@ -24,6 +24,9 @@ export class User {
   @Column({ type: 'enum', enum: UserRole, default: UserRole.GUEST })
   role!: UserRole;
 
+  @Column({ type: 'int', default: 0 })
+  display_order!: number;
+
   @Column({ type: 'time', default: '08:00:00' })
   morning_alert_time!: string;
 

@@ -22,6 +22,7 @@ import {
   getEventsForWeek,
 } from '../utils/scheduleHelpers';
 import { toDateString, normalizeDateString, getNext14DayStrings } from '../utils/dateHelpers';
+import { orderUsersForAssignment } from '../utils/assignableUsers';
 import { completingKey } from '../utils/completionKeys';
 import { confirmFeedingCompletionIfNeeded } from '../utils/feedingCompletionHelpers';
 import { isExpectedRideSchedulingError } from '../utils/rideConflictHelpers';
@@ -33,6 +34,7 @@ interface RawScheduleData {
   treatments: Treatment[];
   horses: Horse[];
   users: UserSummary[];
+  assignableUsers: UserSummary[];
   profile?: UserSummary;
 }
 
@@ -53,6 +55,7 @@ export function useScheduleData() {
     treatments: [],
     horses: [],
     users: [],
+    assignableUsers: [],
   });
   const [selectedDate, setSelectedDate] = useState(toDateString(new Date()));
   const [loading, setLoading] = useState(true);
@@ -64,6 +67,11 @@ export function useScheduleData() {
   const [creating, setCreating] = useState(false);
   const [volunteeringBatch, setVolunteeringBatch] = useState(false);
   const [updating, setUpdating] = useState(false);
+
+  const assignableUsers = useMemo(
+    () => orderUsersForAssignment(raw.assignableUsers, user?.userId),
+    [raw.assignableUsers, user?.userId]
+  );
 
   const availableUnassignedFeedings = useMemo(() => {
     const validDates = new Set(getNext14DayStrings());
@@ -149,7 +157,7 @@ export function useScheduleData() {
       }
 
       try {
-        const [feedings, tasks, rides, treatments, horses, users, profile] =
+        const [feedings, tasks, rides, treatments, horses, users, assignableUsers, profile] =
           await Promise.all([
             feedingService.getAllFeedings(),
             taskService.getAllTasks(),
@@ -157,10 +165,11 @@ export function useScheduleData() {
             treatmentService.getAllTreatments(),
             horseService.getAllHorses(),
             userService.getAllUsers(),
+            userService.getAssignableUsers(),
             userService.getUserById(user.userId).catch(() => undefined),
           ]);
 
-        setRaw({ feedings, tasks, rides, treatments, horses, users, profile });
+        setRaw({ feedings, tasks, rides, treatments, horses, users, assignableUsers, profile });
       } catch (error) {
         console.error('Failed to load schedule data:', error);
       } finally {
@@ -400,6 +409,7 @@ export function useScheduleData() {
 
   return {
     raw,
+    assignableUsers,
     listSections: listSections ?? EMPTY_SECTIONS,
     markedDates,
     selectedDate,

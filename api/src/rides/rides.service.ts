@@ -7,10 +7,13 @@ import {
 import { CreateRideDto } from './dto/create-ride.dto';
 import { UpdateRideDto } from './dto/update-ride.dto';
 import { Ride } from './entities/ride.entity';
+import { User } from '../users/entities/user.entity';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import {
   AuthUser,
+  assertAssignableUser,
+  assertAssignableUsers,
   assertCanEditEvent,
   assertGuestCannotMutate,
   assertOwnerOnly,
@@ -29,12 +32,16 @@ export class RidesService {
   constructor(
     @InjectRepository(Ride)
     private readonly ridesRepository: Repository<Ride>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     @InjectDataSource()
     private readonly dataSource: DataSource,
   ) {}
 
   async create(createRideDto: CreateRideDto, authUser: AuthUser): Promise<Ride> {
     assertGuestCannotMutate(authUser);
+    await assertAssignableUser(this.userRepository, createRideDto.primary_rider_id);
+    await assertAssignableUsers(this.userRepository, createRideDto.additional_riders_ids);
 
     const conflictParams = buildCreateRideConflictParams(createRideDto);
 
@@ -89,6 +96,13 @@ export class RidesService {
   async update(id: string, updateRideDto: UpdateRideDto, authUser: AuthUser): Promise<Ride> {
     const existing = await this.findOne(id);
     assertCanEditEvent(authUser, 'ride', existing);
+
+    if (updateRideDto.primary_rider_id) {
+      await assertAssignableUser(this.userRepository, updateRideDto.primary_rider_id);
+    }
+    if (updateRideDto.additional_riders_ids) {
+      await assertAssignableUsers(this.userRepository, updateRideDto.additional_riders_ids);
+    }
 
     const conflictParams = buildEffectiveRideConflictParams(existing, updateRideDto, id);
 

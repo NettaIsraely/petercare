@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
+  assertAssignableUser,
   assertCanEditEvent,
   assertCanTakeOverFeeding,
   assertGuestCannotMutate,
@@ -100,5 +101,29 @@ describe('event-permissions', () => {
         assigned_user: { id: 'other-id' },
       } as any),
     ).toThrow(ForbiddenException);
+  });
+
+  it('allows null assignee checks to pass', async () => {
+    const userRepo = { findOne: jest.fn() } as any;
+    await expect(assertAssignableUser(userRepo, null)).resolves.toBeUndefined();
+    expect(userRepo.findOne).not.toHaveBeenCalled();
+  });
+
+  it('rejects guest assignees', async () => {
+    const userRepo = {
+      findOne: jest.fn().mockResolvedValue({ id: 'guest-id', role: UserRole.GUEST }),
+    } as any;
+
+    await expect(assertAssignableUser(userRepo, 'guest-id')).rejects.toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('allows owner and caregiver assignees', async () => {
+    const userRepo = {
+      findOne: jest.fn().mockResolvedValue({ id: 'caregiver-id', role: UserRole.CAREGIVER }),
+    } as any;
+
+    await expect(assertAssignableUser(userRepo, 'caregiver-id')).resolves.toBeUndefined();
   });
 });

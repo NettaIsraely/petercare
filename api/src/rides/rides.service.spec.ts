@@ -3,6 +3,7 @@ import { getRepositoryToken, getDataSourceToken } from '@nestjs/typeorm';
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { RidesService } from './rides.service';
 import { Ride } from './entities/ride.entity';
+import { User } from '../users/entities/user.entity';
 import { UserRole } from '../users/entities/user.entity';
 
 const authUser = {
@@ -71,6 +72,13 @@ describe('RidesService', () => {
       delete: jest.fn(),
     };
 
+    const userRepository = {
+      findOne: jest.fn().mockResolvedValue({
+        id: 'rider-1',
+        role: UserRole.OWNER,
+      }),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RidesService,
@@ -81,6 +89,10 @@ describe('RidesService', () => {
         {
           provide: getDataSourceToken(),
           useValue: dataSource,
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: userRepository,
         },
       ],
     }).compile();

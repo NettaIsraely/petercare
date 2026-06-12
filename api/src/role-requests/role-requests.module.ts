@@ -6,11 +6,13 @@ import { RoleRequest } from './entities/role-request.entity';
 import { User } from '../users/entities/user.entity';
 import { QueueModule } from '../queue/queue.module';
 import { RolesGuard } from '../auth/roles.guard';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([RoleRequest, User]),
     QueueModule,
+    UsersModule,
   ],
   controllers: [RoleRequestsController],
   providers: [RoleRequestsService, RolesGuard],

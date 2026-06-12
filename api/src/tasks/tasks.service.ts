@@ -4,8 +4,10 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Task } from './entities/task.entity';
 import { Repository } from 'typeorm';
+import { User } from '../users/entities/user.entity';
 import {
   AuthUser,
+  assertAssignableUser,
   assertCanClaimTask,
   assertCanCompleteEvent,
   assertCanEditEvent,
@@ -25,10 +27,13 @@ export class TasksService {
   constructor(
     @InjectRepository(Task)
     private readonly tasksRepository: Repository<Task>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   async create(createTaskDto: CreateTaskDto, authUser: AuthUser): Promise<Task> {
     assertGuestCannotMutate(authUser);
+    await assertAssignableUser(this.userRepository, createTaskDto.assigned_user_id);
 
     const newTask = this.tasksRepository.create({
       name: createTaskDto.name,
@@ -76,6 +81,7 @@ export class TasksService {
     const updateData: Record<string, unknown> = { id, ...rest };
 
     if (assigned_user_id !== undefined) {
+      await assertAssignableUser(this.userRepository, assigned_user_id);
       updateData.assigned_user = assigned_user_id
         ? { id: assigned_user_id }
         : null;

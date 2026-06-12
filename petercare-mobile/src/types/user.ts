@@ -5,6 +5,7 @@ export interface UserSummary {
   name: string;
   email?: string;
   role?: UserRole;
+  display_order?: number;
   morning_alert_time?: string;
   evening_alert_time?: string;
   timezone?: string;

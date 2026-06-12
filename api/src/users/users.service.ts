@@ -1,8 +1,13 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  OnModuleInit,
+} from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { User, UserRole } from './entities/user.entity';
 import * as bcrypt from 'bcrypt';
 import { isValidTimezone } from '../common/timezone.util';
@@ -12,6 +17,7 @@ export type PublicUser = {
   name: string;
   email: string;
   role: UserRole;
+  display_order: number;
   morning_alert_time: string;
   evening_alert_time: string;
   timezone: string;
@@ -20,12 +26,18 @@ export type PublicUser = {
   updated_at: Date;
 };
 
+const ASSIGNABLE_ROLES = [UserRole.OWNER, UserRole.CAREGIVER];
+
 @Injectable()
-export class UsersService {
+export class UsersService implements OnModuleInit {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>
-  ){}
+  ) {}
+
+  async onModuleInit(): Promise<void> {
+    await this.ensureDisplayOrdersInitialized();
+  }
 
   toPublicUser(user: User): PublicUser {
     return {
@@ -33,6 +45,7 @@ export class UsersService {
       name: user.name,
       email: user.email,
       role: user.role,
+      display_order: user.display_order,
       morning_alert_time: user.morning_alert_time,
       evening_alert_time: user.evening_alert_time,
       timezone: user.timezone,
@@ -45,12 +58,18 @@ export class UsersService {
   async create(createUserDto: CreateUserDto): Promise<PublicUser> {
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
 
+    const role = createUserDto.role ?? UserRole.GUEST;
+    const displayOrder = ASSIGNABLE_ROLES.includes(role)
+      ? await this.getNextDisplayOrder()
+      : 0;
+
     const newUser = this.userRepository.create({
       name: createUserDto.name,
       email: createUserDto.email,
       password_hash: hashedPassword,
-      role: createUserDto.role
-    })
+      role,
+      display_order: displayOrder,
+    });
     const saved = await this.userRepository.save(newUser);
     return this.toPublicUser(saved);
   }
@@ -60,23 +79,77 @@ export class UsersService {
     return users.map((user) => this.toPublicUser(user));
   }
 
+  async findAssignable(): Promise<PublicUser[]> {
+    await this.ensureDisplayOrdersInitialized();
+
+    const users = await this.userRepository.find({
+      where: { role: In(ASSIGNABLE_ROLES) },
+      order: { display_order: 'ASC', name: 'ASC' },
+    });
+    return users.map((user) => this.toPublicUser(user));
+  }
+
+  async updateDisplayOrder(userIds: string[]): Promise<PublicUser[]> {
+    const uniqueIds = new Set(userIds);
+    if (uniqueIds.size !== userIds.length) {
+      throw new BadRequestException('Duplicate user IDs are not allowed.');
+    }
+
+    const assignableUsers = await this.userRepository.find({
+      where: { role: In(ASSIGNABLE_ROLES) },
+    });
+
+    if (userIds.length !== assignableUsers.length) {
+      throw new BadRequestException(
+        'The user list must include every owner and caregiver exactly once.',
+      );
+    }
+
+    const assignableById = new Map(assignableUsers.map((user) => [user.id, user]));
+
+    for (const userId of userIds) {
+      const user = assignableById.get(userId);
+      if (!user) {
+        throw new BadRequestException(
+          'Every user ID must belong to an owner or caregiver.',
+        );
+      }
+    }
+
+    await this.userRepository.manager.transaction(async (manager) => {
+      for (let index = 0; index < userIds.length; index += 1) {
+        await manager.update(User, userIds[index], { display_order: index + 1 });
+      }
+    });
+
+    return this.findAssignable();
+  }
+
+  async assignDisplayOrderForRole(user: User): Promise<void> {
+    if (!ASSIGNABLE_ROLES.includes(user.role)) {
+      return;
+    }
+    user.display_order = await this.getNextDisplayOrder();
+    await this.userRepository.save(user);
+  }
+
   async findOne(id: string): Promise<PublicUser> {
     const user = await this.userRepository.findOne({ where: { id } });
-    if (!user){
+    if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
     return this.toPublicUser(user);
   }
 
   async findByEmail(email: string) {
-    return this.userRepository.findOne({ 
-      where: { email } 
+    return this.userRepository.findOne({
+      where: { email },
     });
   }
 
   async findByResetToken(token: string) {
-    return this.userRepository.findOne({ 
-      where: { reset_password_token: token } 
+    return this.userRepository.findOne({
+      where: { reset_password_token: token },
     });
   }
 
@@ -87,14 +160,14 @@ export class UsersService {
 
     const updateData: Record<string, unknown> = { id, ...updateUserDto };
 
-    if (updateUserDto.password){
+    if (updateUserDto.password) {
       updateData.password_hash = await bcrypt.hash(updateUserDto.password, 10);
       delete updateData.password;
     }
 
     const user = await this.userRepository.preload(updateData);
-    
-    if (!user){
+
+    if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
     const saved = await this.userRepository.save(user);
@@ -103,8 +176,44 @@ export class UsersService {
 
   async remove(id: string): Promise<void> {
     const result = await this.userRepository.delete(id);
-    if (result.affected === 0){
+    if (result.affected === 0) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
+  }
+
+  private async getNextDisplayOrder(): Promise<number> {
+    const result = await this.userRepository
+      .createQueryBuilder('user')
+      .select('MAX(user.display_order)', 'max')
+      .where('user.role IN (:...roles)', { roles: ASSIGNABLE_ROLES })
+      .getRawOne<{ max: string | null }>();
+
+    const currentMax = result?.max ? Number(result.max) : 0;
+    return currentMax + 1;
+  }
+
+  private async ensureDisplayOrdersInitialized(): Promise<void> {
+    const assignableUsers = await this.userRepository.find({
+      where: { role: In(ASSIGNABLE_ROLES) },
+      order: { created_at: 'ASC' },
+    });
+
+    if (assignableUsers.length <= 1) {
+      if (assignableUsers.length === 1 && assignableUsers[0].display_order === 0) {
+        assignableUsers[0].display_order = 1;
+        await this.userRepository.save(assignableUsers[0]);
+      }
+      return;
+    }
+
+    const allUnset = assignableUsers.every((user) => user.display_order === 0);
+    if (!allUnset) {
+      return;
+    }
+
+    for (let index = 0; index < assignableUsers.length; index += 1) {
+      assignableUsers[index].display_order = index + 1;
+    }
+    await this.userRepository.save(assignableUsers);
   }
 }

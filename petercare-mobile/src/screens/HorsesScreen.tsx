@@ -43,7 +43,7 @@ export default function HorsesScreen() {
   } = useHorseDirectory();
   const {
     tasks,
-    users,
+    assignableUsers,
     loading: tasksLoading,
     refreshing: tasksRefreshing,
     creating: taskCreating,
@@ -144,7 +144,7 @@ export default function HorsesScreen() {
         <TaskAssigneeFilter
           filter={assigneeFilter}
           onChange={setAssigneeFilter}
-          users={users}
+          users={assignableUsers}
         />
 
         <BarnTaskSections
@@ -186,7 +186,7 @@ export default function HorsesScreen() {
       <TaskFormModal
         visible={createTaskVisible}
         mode="create"
-        users={users}
+        users={assignableUsers}
         submitting={taskCreating}
         onClose={() => setCreateTaskVisible(false)}
         onSubmitCreate={createTask}
@@ -196,7 +196,7 @@ export default function HorsesScreen() {
         visible={!!editTask}
         mode="edit"
         initialTask={editTask ?? undefined}
-        users={users}
+        users={assignableUsers}
         submitting={taskUpdating}
         onClose={() => setEditTask(null)}
         onSubmitCreate={createTask}
