@@ -25,6 +25,7 @@ export type MainTabParamList = {
 export type AppStackParamList = {
   MainTabs: NavigatorScreenParams<MainTabParamList>;
   ProfileSettings: undefined;
+  OwnerDashboard: undefined;
 };
 
 export type RootStackParamList = {

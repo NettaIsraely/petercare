@@ -87,9 +87,7 @@ export function useProfileSettings() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [myRoleRequest, setMyRoleRequest] = useState<RoleRequest | null>(null);
-  const [pendingRequests, setPendingRequests] = useState<RoleRequest[]>([]);
   const [requestingRole, setRequestingRole] = useState(false);
-  const [reviewingRequestId, setReviewingRequestId] = useState<string | null>(null);
 
   const hasChanges = useMemo(
     () =>
@@ -113,13 +111,6 @@ export function useProfileSettings() {
         setMyRoleRequest(request);
       } else {
         setMyRoleRequest(null);
-      }
-
-      if (jwtRole === 'OWNER') {
-        const pending = await roleRequestService.getPendingRoleRequests();
-        setPendingRequests(pending);
-      } else {
-        setPendingRequests([]);
       }
     } catch (err) {
       console.error('Failed to load role request data:', err);
@@ -273,40 +264,6 @@ export function useProfileSettings() {
     }
   }, [user, displayRole, myRoleRequest]);
 
-  const approveRequest = useCallback(async (requestId: string) => {
-    setReviewingRequestId(requestId);
-    try {
-      await roleRequestService.approveRoleRequest(requestId);
-      setPendingRequests((prev) => prev.filter((request) => request.id !== requestId));
-      Alert.alert('Approved', 'The user now has caregiver access.');
-    } catch (err: unknown) {
-      console.error('Failed to approve role request:', err);
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? 'Could not approve this request. Please try again.';
-      Alert.alert('Approval Failed', message);
-    } finally {
-      setReviewingRequestId(null);
-    }
-  }, []);
-
-  const denyRequest = useCallback(async (requestId: string) => {
-    setReviewingRequestId(requestId);
-    try {
-      await roleRequestService.denyRoleRequest(requestId);
-      setPendingRequests((prev) => prev.filter((request) => request.id !== requestId));
-      Alert.alert('Denied', 'The caregiver request has been denied.');
-    } catch (err: unknown) {
-      console.error('Failed to deny role request:', err);
-      const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message ?? 'Could not deny this request. Please try again.';
-      Alert.alert('Denial Failed', message);
-    } finally {
-      setReviewingRequestId(null);
-    }
-  }, []);
-
   const canRequestCaregiver =
     displayRole === 'GUEST' &&
     (!myRoleRequest || myRoleRequest.status === 'DENIED');
@@ -320,9 +277,7 @@ export function useProfileSettings() {
     role: displayRole,
     roleDescription: getRoleDescription(displayRole),
     myRoleRequest,
-    pendingRequests,
     requestingRole,
-    reviewingRequestId,
     canRequestCaregiver,
     setName,
     setEmail,
@@ -330,8 +285,6 @@ export function useProfileSettings() {
     setEveningAlertTime,
     save,
     requestCaregiverAccess,
-    approveRequest,
-    denyRequest,
     reload: loadProfile,
   };
 }

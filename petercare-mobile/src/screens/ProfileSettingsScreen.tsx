@@ -11,16 +11,6 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useProfileSettings } from '../hooks/useProfileSettings';
 import TimePickerField from '../components/common/TimePickerField';
-import { useStaffOrder } from '../hooks/useStaffOrder';
-
-function formatRequestDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
 
 export default function ProfileSettingsScreen() {
   const { logout } = useAuth();
@@ -33,9 +23,7 @@ export default function ProfileSettingsScreen() {
     role,
     roleDescription,
     myRoleRequest,
-    pendingRequests,
     requestingRole,
-    reviewingRequestId,
     canRequestCaregiver,
     setName,
     setEmail,
@@ -43,18 +31,7 @@ export default function ProfileSettingsScreen() {
     setEveningAlertTime,
     save,
     requestCaregiverAccess,
-    approveRequest,
-    denyRequest,
   } = useProfileSettings();
-  const {
-    staffUsers,
-    staffOrderLoading,
-    staffOrderSaving,
-    staffOrderError,
-    staffOrderHasChanges,
-    moveStaffUser,
-    saveStaffOrder,
-  } = useStaffOrder(role === 'OWNER');
 
   if (loading) {
     return (
@@ -151,106 +128,6 @@ export default function ProfileSettingsScreen() {
           onChange={setEveningAlertTime}
         />
       </View>
-
-      {role === 'OWNER' ? (
-        <View style={styles.formCard}>
-          <Text style={styles.sectionTitle}>Pending Role Requests</Text>
-          {pendingRequests.length === 0 ? (
-            <Text style={styles.emptyText}>No pending caregiver requests.</Text>
-          ) : (
-            pendingRequests.map((request) => (
-              <View key={request.id} style={styles.requestCard}>
-                <Text style={styles.requestName}>{request.user.name}</Text>
-                {request.user.email ? (
-                  <Text style={styles.requestEmail}>{request.user.email}</Text>
-                ) : null}
-                <Text style={styles.requestDate}>
-                  Requested {formatRequestDate(request.created_at)}
-                </Text>
-                <View style={styles.requestActions}>
-                  <TouchableOpacity
-                    style={[
-                      styles.approveButton,
-                      reviewingRequestId === request.id && styles.buttonDisabled,
-                    ]}
-                    onPress={() => approveRequest(request.id)}
-                    disabled={reviewingRequestId === request.id}
-                  >
-                    <Text style={styles.approveButtonText}>Approve</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.denyButton,
-                      reviewingRequestId === request.id && styles.buttonDisabled,
-                    ]}
-                    onPress={() => denyRequest(request.id)}
-                    disabled={reviewingRequestId === request.id}
-                  >
-                    <Text style={styles.denyButtonText}>Deny</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))
-          )}
-        </View>
-      ) : null}
-
-      {role === 'OWNER' ? (
-        <View style={styles.formCard}>
-          <Text style={styles.sectionTitle}>Staff Order</Text>
-          <Text style={styles.sectionDescription}>
-            Set the default order for caregivers and owners in assignment pickers.
-          </Text>
-          {staffOrderError ? <Text style={styles.errorText}>{staffOrderError}</Text> : null}
-          {staffOrderLoading ? (
-            <ActivityIndicator color="#3498DB" />
-          ) : staffUsers.length === 0 ? (
-            <Text style={styles.emptyText}>No caregivers or owners to order yet.</Text>
-          ) : (
-            staffUsers.map((staffUser, index) => (
-              <View key={staffUser.id} style={styles.staffRow}>
-                <Text style={styles.staffName}>{staffUser.name}</Text>
-                <View style={styles.staffActions}>
-                  <TouchableOpacity
-                    style={[
-                      styles.moveButton,
-                      index === 0 && styles.buttonDisabled,
-                    ]}
-                    onPress={() => moveStaffUser(index, 'up')}
-                    disabled={index === 0 || staffOrderSaving}
-                  >
-                    <Text style={styles.moveButtonText}>Up</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.moveButton,
-                      index === staffUsers.length - 1 && styles.buttonDisabled,
-                    ]}
-                    onPress={() => moveStaffUser(index, 'down')}
-                    disabled={index === staffUsers.length - 1 || staffOrderSaving}
-                  >
-                    <Text style={styles.moveButtonText}>Down</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))
-          )}
-          <TouchableOpacity
-            style={[
-              styles.saveOrderButton,
-              (!staffOrderHasChanges || staffOrderSaving) && styles.saveButtonDisabled,
-            ]}
-            onPress={saveStaffOrder}
-            disabled={!staffOrderHasChanges || staffOrderSaving}
-          >
-            {staffOrderSaving ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.saveButtonText}>Save Staff Order</Text>
-            )}
-          </TouchableOpacity>
-        </View>
-      ) : null}
 
       <TouchableOpacity
         style={[styles.saveButton, (!hasChanges || saving) && styles.saveButtonDisabled]}
@@ -372,110 +249,6 @@ const styles = StyleSheet.create({
   requestButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: '600',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#2C3E50',
-    marginBottom: 12,
-  },
-  sectionDescription: {
-    fontSize: 13,
-    color: '#7F8C8D',
-    marginBottom: 12,
-    lineHeight: 18,
-  },
-  staffRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#E0E6ED',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-  },
-  staffName: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#2C3E50',
-    marginRight: 12,
-  },
-  staffActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  moveButton: {
-    backgroundColor: '#EBF5FB',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  moveButtonText: {
-    color: '#2980B9',
-    fontWeight: '600',
-    fontSize: 13,
-  },
-  saveOrderButton: {
-    backgroundColor: '#3498DB',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: '#7F8C8D',
-  },
-  requestCard: {
-    borderWidth: 1,
-    borderColor: '#E0E6ED',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-  },
-  requestName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#2C3E50',
-  },
-  requestEmail: {
-    fontSize: 13,
-    color: '#7F8C8D',
-    marginTop: 2,
-  },
-  requestDate: {
-    fontSize: 12,
-    color: '#95A5A6',
-    marginTop: 4,
-    marginBottom: 10,
-  },
-  requestActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  approveButton: {
-    flex: 1,
-    backgroundColor: '#27AE60',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  approveButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  denyButton: {
-    flex: 1,
-    backgroundColor: '#E74C3C',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  denyButtonText: {
-    color: '#FFFFFF',
     fontWeight: '600',
   },
   buttonDisabled: {

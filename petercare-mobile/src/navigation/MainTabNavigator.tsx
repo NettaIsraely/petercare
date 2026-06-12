@@ -1,16 +1,20 @@
 import React from 'react';
-import { TouchableOpacity } from 'react-native';
+import { TouchableOpacity, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Home, CalendarDays, Warehouse, BarChart3, User } from 'lucide-react-native';
+import { Home, CalendarDays, Warehouse, BarChart3, User, LayoutDashboard } from 'lucide-react-native';
 import HomeScreen from '../screens/HomeScreen';
 import ScheduleScreen from '../screens/ScheduleScreen';
 import HorsesStackNavigator from './HorsesStackNavigator';
 import InsightsScreen from '../screens/InsightsScreen';
 import { MainTabParamList } from './types';
+import { useAuth } from '../context/AuthContext';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
 export default function MainTabNavigator() {
+  const { user } = useAuth();
+  const isOwner = user?.role === 'OWNER';
+
   return (
     <Tab.Navigator
       screenOptions={({ navigation }) => ({
@@ -28,13 +32,22 @@ export default function MainTabNavigator() {
           fontWeight: '600',
         },
         headerRight: () => (
-          <TouchableOpacity
-            onPress={() => navigation.getParent()?.navigate('ProfileSettings')}
-            style={{ marginRight: 16 }}
-            accessibilityLabel="Open profile settings"
-          >
-            <User size={22} color="#2C3E50" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 16, gap: 12 }}>
+            {isOwner ? (
+              <TouchableOpacity
+                onPress={() => navigation.getParent()?.navigate('OwnerDashboard')}
+                accessibilityLabel="Open owner dashboard"
+              >
+                <LayoutDashboard size={22} color="#2C3E50" />
+              </TouchableOpacity>
+            ) : null}
+            <TouchableOpacity
+              onPress={() => navigation.getParent()?.navigate('ProfileSettings')}
+              accessibilityLabel="Open profile settings"
+            >
+              <User size={22} color="#2C3E50" />
+            </TouchableOpacity>
+          </View>
         ),
       })}
     >

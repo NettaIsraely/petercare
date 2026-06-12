@@ -29,6 +29,7 @@ const linking: LinkingOptions<object> = {
         },
       },
       ProfileSettings: 'profile',
+      OwnerDashboard: 'owner',
     },
   },
 };
@@ -38,7 +39,9 @@ export default function App() {
 
   useEffect(() => {
     const subscription = addNotificationResponseListener((data) => {
-      if (data.type === 'role-request' || data.type === 'role-request-resolved') {
+      if (data.type === 'role-request') {
+        navigationRef.current?.navigate('OwnerDashboard');
+      } else if (data.type === 'role-request-resolved') {
         navigationRef.current?.navigate('ProfileSettings');
       }
     });
