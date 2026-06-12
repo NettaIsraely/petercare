@@ -15,6 +15,7 @@ import { FeedingsModule } from './feedings/feedings.module';
 import { AuthModule } from './auth/auth.module';
 import { RoleRequestsModule } from './role-requests/role-requests.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { buildTypeOrmOptions } from './database/typeorm.config';
 
 @Module({
   imports: [
@@ -26,20 +27,13 @@ import { NotificationsModule } from './notifications/notifications.module';
 
     ScheduleModule.forRoot(),
 
-    // 2. Connect to PostgreSQL (Docker)
+    // 2. Connect to PostgreSQL (Supabase or local Docker)
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get<string>('DB_HOST'),
-        port: configService.get<number>('DB_PORT'),
-        username: configService.get<string>('DB_USERNAME'),
-        password: configService.get<string>('DB_PASSWORD'),
-        database: configService.get<string>('DB_NAME'),
-        autoLoadEntities: true, 
-        synchronize: true,
-        timezone: 'Z',
+        ...buildTypeOrmOptions((key) => configService.get<string>(key)),
+        autoLoadEntities: true,
       }),
     }),
 
