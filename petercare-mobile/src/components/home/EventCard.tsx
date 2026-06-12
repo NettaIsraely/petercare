@@ -9,15 +9,18 @@ import {
 } from 'react-native';
 import { ClipboardList, MessageSquare } from 'lucide-react-native';
 import { TimelineEvent } from '../../types/events';
+import { UserSummary } from '../../types/user';
 import { getEventCardStyle } from '../../utils/userColors';
 import {
   getAssigneeName,
   getAssignedUserId,
+  getColorUserForEvent,
   isEventOwnedByUser,
   isUnassignedFeeding,
   eventHasComments,
 } from '../../utils/scheduleHelpers';
 import EventTypeIcon from '../schedule/EventTypeIcon';
+import AdditionalRiderDots from '../schedule/AdditionalRiderDots';
 import {
   formatShiftLabel,
   formatTimeLabel,
@@ -38,6 +41,7 @@ interface EventCardProps {
   };
   currentUserId?: string;
   showAssignee?: boolean;
+  users?: UserSummary[];
   completed?: boolean;
   showCommentsMarker?: boolean;
 }
@@ -104,17 +108,23 @@ export default function EventCard({
   alertTimes,
   currentUserId,
   showAssignee = false,
+  users,
   completed = false,
   showCommentsMarker = true,
 }: EventCardProps) {
   const assignedUserId = getAssignedUserId(event);
+  const colorUser = getColorUserForEvent(event);
   const isCurrentUser = isEventOwnedByUser(event, currentUserId);
   const cardStyle = getEventCardStyle({
     assignedUserId,
+    colorUser,
+    users,
     isUnassignedFeeding: isUnassignedFeeding(event),
     isCurrentUser: showAssignee ? isCurrentUser : false,
   });
   const assigneeName = showAssignee ? getAssigneeName(event) : undefined;
+  const additionalRiders =
+    showAssignee && event.kind === 'ride' ? event.data.additional_riders ?? [] : [];
   const titleWeight = showAssignee
     ? isCurrentUser
       ? '700'
@@ -144,6 +154,9 @@ export default function EventCard({
           <Text style={[styles.assignee, completed && styles.completedSubtitle]}>
             {assigneeName}
           </Text>
+        ) : null}
+        {additionalRiders.length > 0 ? (
+          <AdditionalRiderDots riders={additionalRiders} />
         ) : null}
       </View>
       {hasComments && (
@@ -185,17 +198,25 @@ export default function EventCard({
 export function OpenTaskCard({
   name,
   assignedUserId,
+  assignedUser,
+  users,
   hasComments = false,
   isCompleting,
   onToggleComplete,
 }: {
   name: string;
   assignedUserId?: string;
+  assignedUser?: UserSummary;
+  users?: UserSummary[];
   hasComments?: boolean;
   isCompleting: boolean;
   onToggleComplete?: () => void;
 }) {
-  const cardStyle = getEventCardStyle({ assignedUserId });
+  const cardStyle = getEventCardStyle({
+    assignedUserId,
+    colorUser: assignedUser,
+    users,
+  });
 
   return (
     <View style={[styles.card, cardStyle]}>

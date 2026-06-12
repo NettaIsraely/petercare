@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { ChevronDown, ChevronUp, ClipboardList } from 'lucide-react-native';
 import { Task } from '../../types/task';
@@ -19,6 +19,8 @@ interface BarnTaskSectionsProps {
   onMarkComplete: (task: Task) => void;
 }
 
+const COMPLETED_PREVIEW_COUNT = 5;
+
 export default function BarnTaskSections({
   openTasks,
   completedTasks,
@@ -28,7 +30,26 @@ export default function BarnTaskSections({
   onTaskPress,
   onMarkComplete,
 }: BarnTaskSectionsProps) {
-  const [completedExpanded, setCompletedExpanded] = useState(completedTasks.length <= 5);
+  const [completedExpanded, setCompletedExpanded] = useState(true);
+  const [showAllCompleted, setShowAllCompleted] = useState(false);
+
+  useEffect(() => {
+    setShowAllCompleted(false);
+  }, [completedTasks]);
+
+  const handleToggleCompletedExpanded = () => {
+    setCompletedExpanded((prev) => {
+      if (prev) {
+        setShowAllCompleted(false);
+      }
+      return !prev;
+    });
+  };
+
+  const hasMoreCompleted = completedTasks.length > COMPLETED_PREVIEW_COUNT;
+  const visibleCompletedTasks = showAllCompleted
+    ? completedTasks
+    : completedTasks.slice(0, COMPLETED_PREVIEW_COUNT);
 
   const renderTask = (task: Task, completed: boolean) => {
     const event = taskToTimelineEvent(task);
@@ -69,7 +90,7 @@ export default function BarnTaskSections({
 
       <TouchableOpacity
         style={styles.sectionHeader}
-        onPress={() => setCompletedExpanded((prev) => !prev)}
+        onPress={handleToggleCompletedExpanded}
         accessibilityRole="button"
         accessibilityState={{ expanded: completedExpanded }}
       >
@@ -90,7 +111,27 @@ export default function BarnTaskSections({
               <Text style={styles.emptyText}>No completed tasks match this filter.</Text>
             </View>
           ) : (
-            completedTasks.map((task) => renderTask(task, true))
+            <>
+              {visibleCompletedTasks.map((task) => renderTask(task, true))}
+              {hasMoreCompleted && (
+                <TouchableOpacity
+                  style={styles.showAllButton}
+                  onPress={() => setShowAllCompleted((prev) => !prev)}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    showAllCompleted
+                      ? 'Show less completed tasks'
+                      : `Show all ${completedTasks.length} completed tasks`
+                  }
+                >
+                  <Text style={styles.showAllButtonText}>
+                    {showAllCompleted
+                      ? 'Show less'
+                      : `Show all (${completedTasks.length})`}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
           )}
         </>
       )}
@@ -156,5 +197,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#7F8C8D',
     textAlign: 'center',
+  },
+  showAllButton: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+  showAllButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#3498DB',
   },
 });

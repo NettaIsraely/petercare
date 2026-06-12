@@ -11,17 +11,23 @@ import {
 } from '../utils/dateHelpers';
 import { RoleRequest } from '../types/roleRequest';
 import { UserRole } from '../types/auth';
+import { ProfileColorKey } from '../types/user';
+import { PROFILE_COLOR_OPTIONS } from '../utils/userColors';
 
 interface ProfileFormState {
   name: string;
   email: string;
+  profileColor: ProfileColorKey;
   morningAlertTime: string;
   eveningAlertTime: string;
 }
 
+const DEFAULT_PROFILE_COLOR = PROFILE_COLOR_OPTIONS[0].key;
+
 const EMPTY_FORM: ProfileFormState = {
   name: '',
   email: '',
+  profileColor: DEFAULT_PROFILE_COLOR,
   morningAlertTime: '',
   eveningAlertTime: '',
 };
@@ -29,12 +35,14 @@ const EMPTY_FORM: ProfileFormState = {
 function applyProfileToForm(profile: {
   name: string;
   email?: string;
+  profile_color?: ProfileColorKey;
   morning_alert_time?: string;
   evening_alert_time?: string;
 }): ProfileFormState {
   return {
     name: profile.name,
     email: profile.email ?? '',
+    profileColor: profile.profile_color ?? DEFAULT_PROFILE_COLOR,
     morningAlertTime: formatTimeForInput(profile.morning_alert_time) || '08:00',
     eveningAlertTime: formatTimeForInput(profile.evening_alert_time) || '18:00',
   };
@@ -93,6 +101,7 @@ export function useProfileSettings() {
     () =>
       form.name !== savedForm.name ||
       form.email !== savedForm.email ||
+      form.profileColor !== savedForm.profileColor ||
       form.morningAlertTime !== savedForm.morningAlertTime ||
       form.eveningAlertTime !== savedForm.eveningAlertTime,
     [form, savedForm]
@@ -146,12 +155,14 @@ export function useProfileSettings() {
       setForm({
         name: user.name,
         email: '',
+        profileColor: DEFAULT_PROFILE_COLOR,
         morningAlertTime: '08:00',
         eveningAlertTime: '18:00',
       });
       setSavedForm({
         name: user.name,
         email: '',
+        profileColor: DEFAULT_PROFILE_COLOR,
         morningAlertTime: '08:00',
         eveningAlertTime: '18:00',
       });
@@ -188,6 +199,10 @@ export function useProfileSettings() {
     setForm((prev) => ({ ...prev, eveningAlertTime }));
   }, []);
 
+  const setProfileColor = useCallback((profileColor: ProfileColorKey) => {
+    setForm((prev) => ({ ...prev, profileColor }));
+  }, []);
+
   const save = useCallback(async () => {
     if (!user) {
       return;
@@ -214,6 +229,7 @@ export function useProfileSettings() {
       const updated = await userService.updateUser(user.userId, {
         name: form.name.trim(),
         email: form.email.toLowerCase().trim(),
+        profile_color: form.profileColor,
         morning_alert_time: morningTime,
         evening_alert_time: eveningTime,
       });
@@ -283,6 +299,7 @@ export function useProfileSettings() {
     setEmail,
     setMorningAlertTime,
     setEveningAlertTime,
+    setProfileColor,
     save,
     requestCaregiverAccess,
     reload: loadProfile,

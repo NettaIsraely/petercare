@@ -11,6 +11,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useProfileSettings } from '../hooks/useProfileSettings';
 import TimePickerField from '../components/common/TimePickerField';
+import ProfileColorPicker from '../components/profile/ProfileColorPicker';
 
 export default function ProfileSettingsScreen() {
   const { logout } = useAuth();
@@ -29,6 +30,7 @@ export default function ProfileSettingsScreen() {
     setEmail,
     setMorningAlertTime,
     setEveningAlertTime,
+    setProfileColor,
     save,
     requestCaregiverAccess,
   } = useProfileSettings();
@@ -72,6 +74,15 @@ export default function ProfileSettingsScreen() {
           placeholderTextColor="#BDC3C7"
           autoCapitalize="none"
           keyboardType="email-address"
+        />
+
+        <Text style={styles.fieldLabel}>Your Color</Text>
+        <Text style={styles.fieldHelper}>
+          This color appears on the schedule for events assigned to you.
+        </Text>
+        <ProfileColorPicker
+          value={form.profileColor}
+          onChange={setProfileColor}
         />
 
         <Text style={styles.fieldLabel}>Role</Text>
@@ -194,6 +205,12 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     marginBottom: 6,
     marginTop: 12,
+  },
+  fieldHelper: {
+    fontSize: 13,
+    color: '#7F8C8D',
+    marginBottom: 10,
+    lineHeight: 18,
   },
   input: {
     backgroundColor: '#FFFFFF',

@@ -6,6 +6,7 @@ import { getEventCardStyle } from '../../utils/userColors';
 import {
   getAssigneeName,
   getAssignedUserId,
+  getColorUserForEvent,
   isEventOwnedByUser,
   isUnassignedFeeding,
   eventHasComments,
@@ -16,6 +17,7 @@ import {
   getShiftDeadlineTime,
 } from '../../utils/dateHelpers';
 import EventTypeIcon from './EventTypeIcon';
+import AdditionalRiderDots from './AdditionalRiderDots';
 
 interface CompactEventBlockProps {
   event: TimelineEvent;
@@ -69,13 +71,16 @@ export default function CompactEventBlock({
   alertTimes,
 }: CompactEventBlockProps) {
   const assignedUserId = getAssignedUserId(event);
+  const colorUser = getColorUserForEvent(event);
   const isCurrentUser = isEventOwnedByUser(event, currentUserId);
   const cardStyle = getEventCardStyle({
     assignedUserId,
+    colorUser,
     isUnassignedFeeding: isUnassignedFeeding(event),
     isCurrentUser,
   });
   const assigneeName = getAssigneeName(event);
+  const additionalRiders = event.kind === 'ride' ? event.data.additional_riders ?? [] : [];
   const subtitle = getCompactSubtitle(event, alertTimes);
   const titleWeight = isCurrentUser ? '700' : '500';
   const hasComments = eventHasComments(event);
@@ -118,6 +123,9 @@ export default function CompactEventBlock({
             <Text style={styles.assignee} numberOfLines={1}>
               {assigneeName}
             </Text>
+          ) : null}
+          {additionalRiders.length > 0 ? (
+            <AdditionalRiderDots riders={additionalRiders} />
           ) : null}
         </View>
       </View>

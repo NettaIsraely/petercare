@@ -176,6 +176,7 @@ export default function ScheduleScreen() {
             sections={listSections}
             onEventPress={handleEventPress}
             currentUserId={currentUserId}
+            users={raw.users}
             alertTimes={alertTimes}
           />
         )}

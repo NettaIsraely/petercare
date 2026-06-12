@@ -74,7 +74,7 @@ export default function PersonalStatsChecklist({ checklist }: PersonalStatsCheck
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>My Stats</Text>
+      <Text style={styles.sectionTitle}>My Weekly Stats</Text>
       <Text style={styles.sectionSubtitle}>Your assigned feedings and tasks this week</Text>
 
       <View style={styles.pillRow}>

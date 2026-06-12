@@ -4,6 +4,7 @@ import { Calendar } from 'react-native-calendars';
 import { TimelineEvent } from '../../types/events';
 import { CalendarMarkedDates } from '../../utils/scheduleHelpers';
 import EventCard from '../home/EventCard';
+import { UserSummary } from '../../types/user';
 
 interface ScheduleMonthlyViewProps {
   markedDates: CalendarMarkedDates;
@@ -12,6 +13,7 @@ interface ScheduleMonthlyViewProps {
   events: TimelineEvent[];
   onEventPress: (event: TimelineEvent) => void;
   currentUserId?: string;
+  users?: UserSummary[];
   alertTimes?: {
     morningTime?: string;
     eveningTime?: string;
@@ -25,6 +27,7 @@ export default function ScheduleMonthlyView({
   events,
   onEventPress,
   currentUserId,
+  users,
   alertTimes,
 }: ScheduleMonthlyViewProps) {
   return (
@@ -54,6 +57,7 @@ export default function ScheduleMonthlyView({
             alertTimes={alertTimes}
             currentUserId={currentUserId}
             showAssignee
+            users={users}
           />
         ))
       )}

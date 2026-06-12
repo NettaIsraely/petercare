@@ -3,14 +3,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UsersService } from './users.service';
-import { User, UserRole } from './entities/user.entity';
+import { User, UserProfileColor, UserRole } from './entities/user.entity';
 
 describe('UsersService', () => {
   let service: UsersService;
   let userRepository: jest.Mocked<
     Pick<
       Repository<User>,
-      'find' | 'findOne' | 'create' | 'save' | 'createQueryBuilder' | 'manager'
+      'find' | 'findOne' | 'create' | 'save' | 'preload' | 'createQueryBuilder' | 'manager'
     >
   >;
 
@@ -24,6 +24,7 @@ describe('UsersService', () => {
     morning_alert_time: '08:00:00',
     evening_alert_time: '18:00:00',
     timezone: 'Asia/Jerusalem',
+    profile_color: UserProfileColor.BLUE,
     created_at: new Date('2026-01-01'),
     updated_at: new Date('2026-01-01'),
   };
@@ -54,6 +55,7 @@ describe('UsersService', () => {
       findOne: jest.fn(),
       create: jest.fn((value) => value as User),
       save: jest.fn(async (value) => value as User),
+      preload: jest.fn(),
       createQueryBuilder: jest.fn(),
       manager: {
         transaction: jest.fn(async (callback) => callback({ update: jest.fn() })),
@@ -104,6 +106,7 @@ describe('UsersService', () => {
       expect.objectContaining({
         role: UserRole.CAREGIVER,
         display_order: 3,
+        profile_color: expect.any(String),
       }),
     );
   });
@@ -156,7 +159,9 @@ describe('UsersService', () => {
   it('initializes display order for existing staff on module init', async () => {
     const uninitializedOwner = { ...owner, display_order: 0 };
     const uninitializedCaregiver = { ...caregiver, display_order: 0 };
-    userRepository.find.mockResolvedValue([uninitializedOwner, uninitializedCaregiver]);
+    userRepository.find
+      .mockResolvedValueOnce([uninitializedOwner, uninitializedCaregiver])
+      .mockResolvedValueOnce([]);
 
     await service.onModuleInit();
 
@@ -164,5 +169,44 @@ describe('UsersService', () => {
       expect.objectContaining({ id: 'owner-id', display_order: 1 }),
       expect.objectContaining({ id: 'caregiver-id', display_order: 2 }),
     ]);
+  });
+
+  it('backfills profile colors for users without one on module init', async () => {
+    const userWithoutColor = { ...guest, profile_color: null };
+    userRepository.find
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([userWithoutColor]);
+
+    await service.onModuleInit();
+
+    expect(userRepository.save).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: 'guest-id',
+        profile_color: expect.any(String),
+      }),
+    ]);
+  });
+
+  it('accepts a valid profile color update', async () => {
+    userRepository.preload = jest.fn().mockResolvedValue({
+      ...owner,
+      profile_color: UserProfileColor.GREEN,
+    });
+    userRepository.save.mockResolvedValue({
+      ...owner,
+      profile_color: UserProfileColor.GREEN,
+    });
+
+    const result = await service.update('owner-id', {
+      profile_color: UserProfileColor.GREEN,
+    });
+
+    expect(result.profile_color).toBe(UserProfileColor.GREEN);
+  });
+
+  it('rejects an invalid profile color update', async () => {
+    await expect(
+      service.update('owner-id', { profile_color: 'pink' as UserProfileColor }),
+    ).rejects.toThrow(BadRequestException);
   });
 });

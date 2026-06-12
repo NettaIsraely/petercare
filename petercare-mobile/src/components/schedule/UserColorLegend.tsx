@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { UserSummary } from '../../types/user';
-import { getUserColor, UNASSIGNED_FEEDING_COLOR } from '../../utils/userColors';
+import { resolveUserColor, UNASSIGNED_FEEDING_COLOR } from '../../utils/userColors';
 
 interface UserColorLegendProps {
   users: UserSummary[];
@@ -26,7 +26,7 @@ export default function UserColorLegend({ users, currentUserId }: UserColorLegen
         {users.map((user) => (
           <View key={user.id} style={styles.chip}>
             <View
-              style={[styles.swatch, { backgroundColor: getUserColor(user.id) }]}
+              style={[styles.swatch, { backgroundColor: resolveUserColor(user) }]}
             />
             <Text style={styles.chipLabel}>
               {getFirstName(user.name)}
@@ -41,7 +41,7 @@ export default function UserColorLegend({ users, currentUserId }: UserColorLegen
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 12,
+    marginTop: 12,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 12,

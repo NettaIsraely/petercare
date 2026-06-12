@@ -45,6 +45,10 @@ export function filterTasksByAssignee(
   return tasks.filter((task) => task.assigned_user?.id === filter);
 }
 
+export function sortCompletedTasksForList(tasks: Task[]): Task[] {
+  return [...tasks].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+}
+
 export function sortTasksForList(tasks: Task[]): Task[] {
   return [...tasks].sort((a, b) => {
     const deadlineA = a.deadline ? normalizeDateString(a.deadline) : null;
@@ -80,7 +84,7 @@ export function buildFilteredBarnTasks(
 
   return {
     openTasks: sortTasksForList(openTasks),
-    completedTasks: sortTasksForList(completedTasks),
+    completedTasks: sortCompletedTasksForList(completedTasks),
   };
 }
 

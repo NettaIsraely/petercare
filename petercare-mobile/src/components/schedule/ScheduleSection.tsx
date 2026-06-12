@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { Wheat, Route, Stethoscope, ClipboardList } from 'lucide-react-native';
 import { TimelineEvent } from '../../types/events';
 import { Task } from '../../types/task';
+import { UserSummary } from '../../types/user';
 import EventCard from '../home/EventCard';
 
 interface ScheduleSectionProps {
@@ -11,6 +12,7 @@ interface ScheduleSectionProps {
   events: TimelineEvent[];
   onEventPress: (event: TimelineEvent) => void;
   currentUserId?: string;
+  users?: UserSummary[];
   alertTimes?: {
     morningTime?: string;
     eveningTime?: string;
@@ -24,6 +26,7 @@ export default function ScheduleSection({
   events,
   onEventPress,
   currentUserId,
+  users,
   alertTimes,
   emptyMessage = 'No items yet.',
 }: ScheduleSectionProps) {
@@ -45,6 +48,7 @@ export default function ScheduleSection({
             onPress={() => onEventPress(event)}
             currentUserId={currentUserId}
             showAssignee
+            users={users}
             alertTimes={alertTimes}
           />
         ))
@@ -57,10 +61,12 @@ export function DatelessTasksSection({
   tasks,
   onTaskPress,
   currentUserId,
+  users,
 }: {
   tasks: Task[];
   onTaskPress: (event: TimelineEvent) => void;
   currentUserId?: string;
+  users?: UserSummary[];
 }) {
   if (tasks.length === 0) {
     return null;
@@ -81,6 +87,7 @@ export function DatelessTasksSection({
           }
           currentUserId={currentUserId}
           showAssignee
+          users={users}
         />
       ))}
     </View>

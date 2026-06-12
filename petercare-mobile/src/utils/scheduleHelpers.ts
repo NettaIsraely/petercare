@@ -10,6 +10,7 @@ import {
   parseTimeToMinutes,
 } from './dateHelpers';
 import { UserSummary } from '../types/user';
+import { ColorUser } from './userColors';
 
 interface AlertTimes {
   morningTime?: string;
@@ -130,7 +131,34 @@ export function isEventOwnedByUser(
   if (!currentUserId) {
     return false;
   }
-  return getAssignedUserId(event) === currentUserId;
+
+  if (getAssignedUserId(event) === currentUserId) {
+    return true;
+  }
+
+  if (event.kind === 'ride') {
+    return (
+      event.data.additional_riders?.some((rider) => rider.id === currentUserId) ??
+      false
+    );
+  }
+
+  return false;
+}
+
+export function getColorUserForEvent(event: TimelineEvent): ColorUser | undefined {
+  switch (event.kind) {
+    case 'feeding':
+      return event.data.assigned_user;
+    case 'task':
+      return event.data.assigned_user;
+    case 'ride':
+      return event.data.primary_rider;
+    case 'treatment':
+      return event.data.user;
+    default:
+      return undefined;
+  }
 }
 
 export function getEventTimeSlot(

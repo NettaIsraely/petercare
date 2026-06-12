@@ -7,8 +7,8 @@ import {
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
-import { User, UserRole } from './entities/user.entity';
+import { In, IsNull, Repository } from 'typeorm';
+import { User, UserProfileColor, UserRole } from './entities/user.entity';
 import * as bcrypt from 'bcrypt';
 import { isValidTimezone } from '../common/timezone.util';
 
@@ -22,6 +22,7 @@ export type PublicUser = {
   evening_alert_time: string;
   timezone: string;
   expo_push_token?: string;
+  profile_color?: UserProfileColor | null;
   created_at: Date;
   updated_at: Date;
 };
@@ -37,6 +38,7 @@ export class UsersService implements OnModuleInit {
 
   async onModuleInit(): Promise<void> {
     await this.ensureDisplayOrdersInitialized();
+    await this.backfillProfileColors();
   }
 
   toPublicUser(user: User): PublicUser {
@@ -50,6 +52,7 @@ export class UsersService implements OnModuleInit {
       evening_alert_time: user.evening_alert_time,
       timezone: user.timezone,
       expo_push_token: user.expo_push_token,
+      profile_color: user.profile_color,
       created_at: user.created_at,
       updated_at: user.updated_at,
     };
@@ -69,6 +72,7 @@ export class UsersService implements OnModuleInit {
       password_hash: hashedPassword,
       role,
       display_order: displayOrder,
+      profile_color: this.pickRandomProfileColor(),
     });
     const saved = await this.userRepository.save(newUser);
     return this.toPublicUser(saved);
@@ -158,6 +162,13 @@ export class UsersService implements OnModuleInit {
       throw new BadRequestException('Invalid IANA timezone identifier.');
     }
 
+    if (
+      updateUserDto.profile_color !== undefined &&
+      !Object.values(UserProfileColor).includes(updateUserDto.profile_color)
+    ) {
+      throw new BadRequestException('Invalid profile color.');
+    }
+
     const updateData: Record<string, unknown> = { id, ...updateUserDto };
 
     if (updateUserDto.password) {
@@ -190,6 +201,27 @@ export class UsersService implements OnModuleInit {
 
     const currentMax = result?.max ? Number(result.max) : 0;
     return currentMax + 1;
+  }
+
+  private pickRandomProfileColor(): UserProfileColor {
+    const colors = Object.values(UserProfileColor);
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  private async backfillProfileColors(): Promise<void> {
+    const usersWithoutColor = await this.userRepository.find({
+      where: { profile_color: IsNull() },
+    });
+
+    if (usersWithoutColor.length === 0) {
+      return;
+    }
+
+    for (const user of usersWithoutColor) {
+      user.profile_color = this.pickRandomProfileColor();
+    }
+
+    await this.userRepository.save(usersWithoutColor);
   }
 
   private async ensureDisplayOrdersInitialized(): Promise<void> {

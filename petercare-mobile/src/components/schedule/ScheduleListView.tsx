@@ -2,12 +2,14 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Wheat, Route, Stethoscope, ClipboardList } from 'lucide-react-native';
 import { ScheduleSectionData, TimelineEvent } from '../../types/events';
+import { UserSummary } from '../../types/user';
 import ScheduleSection, { DatelessTasksSection } from './ScheduleSection';
 
 interface ScheduleListViewProps {
   sections: ScheduleSectionData;
   onEventPress: (event: TimelineEvent) => void;
   currentUserId?: string;
+  users?: UserSummary[];
   alertTimes?: {
     morningTime?: string;
     eveningTime?: string;
@@ -18,6 +20,7 @@ export default function ScheduleListView({
   sections,
   onEventPress,
   currentUserId,
+  users,
   alertTimes,
 }: ScheduleListViewProps) {
   return (
@@ -28,6 +31,7 @@ export default function ScheduleListView({
         events={sections.feedings}
         onEventPress={onEventPress}
         currentUserId={currentUserId}
+        users={users}
         alertTimes={alertTimes}
         emptyMessage="No feedings scheduled."
       />
@@ -37,6 +41,7 @@ export default function ScheduleListView({
         events={sections.rides}
         onEventPress={onEventPress}
         currentUserId={currentUserId}
+        users={users}
         alertTimes={alertTimes}
         emptyMessage="No rides scheduled."
       />
@@ -46,6 +51,7 @@ export default function ScheduleListView({
         events={sections.treatments}
         onEventPress={onEventPress}
         currentUserId={currentUserId}
+        users={users}
         alertTimes={alertTimes}
         emptyMessage="No treatments scheduled."
       />
@@ -55,6 +61,7 @@ export default function ScheduleListView({
         events={sections.tasksWithDeadlines}
         onEventPress={onEventPress}
         currentUserId={currentUserId}
+        users={users}
         alertTimes={alertTimes}
         emptyMessage="No tasks with deadlines."
       />
@@ -62,6 +69,7 @@ export default function ScheduleListView({
         tasks={sections.datelessTasks}
         onTaskPress={onEventPress}
         currentUserId={currentUserId}
+        users={users}
       />
     </View>
   );

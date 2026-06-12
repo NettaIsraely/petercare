@@ -44,7 +44,6 @@ export default function ScheduleCalendarView({
         mode={calendarViewMode}
         onChange={onCalendarViewModeChange}
       />
-      <UserColorLegend users={users} currentUserId={currentUserId} />
 
       {calendarViewMode === 'weekly' ? (
         <ScheduleWeeklyView
@@ -64,8 +63,11 @@ export default function ScheduleCalendarView({
           onEventPress={onEventPress}
           currentUserId={currentUserId}
           alertTimes={alertTimes}
+          users={users}
         />
       )}
+
+      <UserColorLegend users={users} currentUserId={currentUserId} />
     </View>
   );
 }

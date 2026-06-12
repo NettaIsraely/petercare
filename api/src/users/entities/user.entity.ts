@@ -7,6 +7,17 @@ export enum UserRole {
   GUEST = 'GUEST',
 }
 
+export enum UserProfileColor {
+  BLUE = 'blue',
+  GREEN = 'green',
+  RED = 'red',
+  PURPLE = 'purple',
+  BROWN = 'brown',
+  ORANGE = 'orange',
+  GRAY = 'gray',
+  CREAM = 'cream',
+}
+
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -35,6 +46,9 @@ export class User {
 
   @Column({ type: 'varchar', length: 64, default: 'Asia/Jerusalem' })
   timezone!: string;
+
+  @Column({ type: 'enum', enum: UserProfileColor, nullable: true })
+  profile_color?: UserProfileColor | null;
 
   // The device address for push notifications
   @Column({ type: 'varchar', nullable: true })
