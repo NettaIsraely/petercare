@@ -5,7 +5,8 @@ import {
   triggerUnauthorized,
 } from '../services/authService';
 
-const BACKEND_URL = 'http://10.100.102.18:3000';
+const BACKEND_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? 'https://petercare.onrender.com';
 
 export const apiClient = axios.create({
   baseURL: BACKEND_URL,
