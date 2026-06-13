@@ -7,6 +7,8 @@ import { User } from "../users/entities/user.entity";
 import { Repository } from "typeorm";
 import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
+import { FirebaseService } from "../firebase/firebase.service";
+
 @Processor('notifications')
 export class NotificationProcessor extends WorkerHost{
     private readonly logger = new Logger(NotificationProcessor.name);
@@ -16,7 +18,8 @@ export class NotificationProcessor extends WorkerHost{
     constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    private configService: ConfigService
+    private configService: ConfigService,
+    private readonly firebaseService: FirebaseService,
     ) {
         super();
         this.transporter = nodemailer.createTransport({
@@ -27,6 +30,11 @@ export class NotificationProcessor extends WorkerHost{
                 pass: this.configService.get<string>('EMAIL_PASSWORD')
             }
         });
+    }
+
+    private async clearPushToken(user: User): Promise<void> {
+        user.expo_push_token = undefined;
+        await this.userRepository.save(user);
     }
 
     async process(job: Job<any, any, string>): Promise<void> {
@@ -52,40 +60,63 @@ export class NotificationProcessor extends WorkerHost{
 
             default: {
                 // ==========================================
-                // BELT 2: EXPO PUSH NOTIFICATIONS
+                // BELT 2: PUSH NOTIFICATIONS (Expo + Firebase Web)
                 // ==========================================
-                // 1. Look up the user to get their specific device token
                 const user = await this.userRepository.findOne({ where: { id: job.data.userId } });
                 
                 if (!user || !user.expo_push_token) {
-                this.logger.warn(`User ${job.data.userId} has no Expo Push Token registered. Skipping.`);
+                this.logger.warn(`User ${job.data.userId} has no push token registered. Skipping.`);
                 return;
                 }
 
-                // 2. Validate that the token format is correct before sending
-                if (!Expo.isExpoPushToken(user.expo_push_token)) {
-                this.logger.error(`Token ${user.expo_push_token} is not a valid Expo push token`);
-                return;
-                }
-
-                const messages: ExpoPushMessage[] = [];
                 const notificationData = job.data.data ?? (
                   job.data.shiftType ? { shiftType: job.data.shiftType } : {}
                 );
+                const title = 'StableHands';
+                const body = job.data.message;
+
+                if (Expo.isExpoPushToken(user.expo_push_token)) {
+                const messages: ExpoPushMessage[] = [];
                 messages.push({
                 to: user.expo_push_token,
                 sound: 'default' as const, 
-                title: 'StableHands', 
-                body: job.data.message,
+                title, 
+                body,
                 data: notificationData,
                 });
 
-                // 4. Fire the notification to Expo's servers
                 try {
-                let ticketChunk = await this.expo.sendPushNotificationsAsync(messages);
-                this.logger.log(`✅ Successfully sent push notification to ${user.name}`);
+                await this.expo.sendPushNotificationsAsync(messages);
+                this.logger.log(`✅ Successfully sent Expo push notification to ${user.name}`);
                 } catch (error) {
-                this.logger.error(`❌ Error sending push notification:`, error);
+                this.logger.error(`❌ Error sending Expo push notification:`, error);
+                }
+                return;
+                }
+
+                if (!this.firebaseService.isConfigured()) {
+                this.logger.error(
+                  `Token for user ${user.id} is not an Expo token and Firebase Admin is not configured.`,
+                );
+                return;
+                }
+
+                try {
+                await this.firebaseService.sendWebPush(
+                  user.expo_push_token,
+                  title,
+                  body,
+                  notificationData,
+                );
+                this.logger.log(`✅ Successfully sent web push notification to ${user.name}`);
+                } catch (error) {
+                if (this.firebaseService.isInvalidTokenError(error)) {
+                  this.logger.warn(`Clearing invalid web push token for user ${user.id}`);
+                  await this.clearPushToken(user);
+                  return;
+                }
+
+                this.logger.error(`❌ Error sending web push notification:`, error);
                 }
                 break;
             }

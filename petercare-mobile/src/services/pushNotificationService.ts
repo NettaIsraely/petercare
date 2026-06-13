@@ -51,10 +51,6 @@ async function getExpoPushToken(): Promise<string | null> {
 }
 
 export async function syncUserTimezone(userId: string): Promise<void> {
-  if (Platform.OS === 'web') {
-    return;
-  }
-
   try {
     await userService.updateUser(userId, { timezone: getDeviceTimezone() });
   } catch (error) {
@@ -64,6 +60,8 @@ export async function syncUserTimezone(userId: string): Promise<void> {
 
 export async function registerPushToken(userId: string): Promise<void> {
   if (Platform.OS === 'web') {
+    const { registerWebPushToken } = await import('./webPushNotificationService');
+    await registerWebPushToken(userId);
     return;
   }
 

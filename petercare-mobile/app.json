@@ -15,7 +15,8 @@
         "foregroundImage": "./assets/peter-care-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.petercare.app"
     },
     "web": {
       "favicon": "./assets/peter-care-icon.png"
@@ -39,6 +40,12 @@
           "color": "#3498DB"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "885f6550-a15d-44eb-9431-c7398ac58e88"
+      }
+    },
+    "owner": "stable-hands"
   }
 }

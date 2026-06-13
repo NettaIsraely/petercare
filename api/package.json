@@ -39,6 +39,7 @@
     "bcrypt": "^6.0.0",
     "bullmq": "^5.77.6",
     "expo-server-sdk": "^6.1.0",
+    "firebase-admin": "^13.10.0",
     "ioredis": "^5.11.0",
     "luxon": "^3.7.2",
     "nodemailer": "^8.0.10",

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { Platform } from 'react-native';
 import {
   NavigationContainer,
   LinkingOptions,
@@ -38,6 +39,26 @@ export default function App() {
   const navigationRef = useRef<NavigationContainerRef<AppStackParamList>>(null);
 
   useEffect(() => {
+    if (Platform.OS === 'web') {
+      let cleanup: (() => void) | undefined;
+      let isMounted = true;
+
+      void import('./src/services/webPushNotificationService').then(
+        ({ setupWebNotificationHandlers }) => {
+          if (!isMounted) {
+            return;
+          }
+
+          cleanup = setupWebNotificationHandlers(navigationRef);
+        },
+      );
+
+      return () => {
+        isMounted = false;
+        cleanup?.();
+      };
+    }
+
     const subscription = addNotificationResponseListener((data) => {
       if (data.type === 'role-request') {
         navigationRef.current?.navigate('OwnerDashboard');

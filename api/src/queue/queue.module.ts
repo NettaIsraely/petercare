@@ -4,6 +4,7 @@ import { NotificationProcessor } from './notifications.processor';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from '../users/entities/user.entity';
 import { ConfigModule } from '@nestjs/config';
+import { FirebaseModule } from '../firebase/firebase.module';
 
 @Module({
   imports: [
@@ -11,7 +12,8 @@ import { ConfigModule } from '@nestjs/config';
       name: 'notifications',
     }),
     TypeOrmModule.forFeature([User]),
-    ConfigModule
+    ConfigModule,
+    FirebaseModule,
   ],
   providers: [NotificationProcessor],
   exports: [BullModule],
