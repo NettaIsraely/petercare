@@ -19,4 +19,15 @@ describe('AppController', () => {
       expect(appController.getHello()).toBe('Hello World!');
     });
   });
+
+  describe('health', () => {
+    it('should return awake status and ISO timestamp', () => {
+      const result = appController.health();
+
+      expect(result.status).toBe('awake');
+      expect(result.timestamp).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+      );
+    });
+  });
 });
