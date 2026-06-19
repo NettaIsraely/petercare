@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
-  TextInput,
   Modal,
   Pressable,
 } from 'react-native';
@@ -14,8 +13,25 @@ import { Clock, ChevronDown, ChevronUp } from 'lucide-react-native';
 import {
   dateToTimeString,
   formatTimeLabel,
+  normalizeTimeForWebInput,
   timeStringToDate,
 } from '../../utils/dateHelpers';
+
+const WEB_TIME_INPUT_STYLE: React.CSSProperties = {
+  flex: 1,
+  width: '100%',
+  border: 'none',
+  background: 'transparent',
+  padding: 0,
+  margin: 0,
+  fontSize: 15,
+  fontWeight: 500,
+  color: '#2C3E50',
+  fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
+  outline: 'none',
+  cursor: 'pointer',
+  minHeight: 24,
+};
 
 interface TimePickerFieldProps {
   label: string;
@@ -123,24 +139,33 @@ export default function TimePickerField({
   };
 
   if (Platform.OS === 'web') {
+    const webValue = normalizeTimeForWebInput(value);
+    const webMin = minimumTime ? normalizeTimeForWebInput(minimumTime) : undefined;
+    const webMax = maximumTime ? normalizeTimeForWebInput(maximumTime) : undefined;
+
+    const handleWebTimeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+      const nextValue = event.target.value;
+      if (optional && !nextValue) {
+        onChange('');
+        return;
+      }
+      onChange(nextValue);
+    };
+
     return (
       <View style={styles.field}>
         <Text style={styles.label}>{label}</Text>
         <View style={styles.timeRow}>
           <Clock size={18} color="#3498DB" />
-          <TextInput
-            style={[styles.timeText, styles.webTimeInput]}
-            value={value}
-            onChangeText={onChange}
-            placeholder={optional ? 'Optional HH:MM' : 'HH:MM'}
-            placeholderTextColor="#95A5A6"
-            // @ts-expect-error web-only DOM attributes
-            type="time"
-            // @ts-expect-error web-only DOM attributes
-            min={minimumTime}
-            // @ts-expect-error web-only DOM attributes
-            max={maximumTime}
-          />
+          {React.createElement('input', {
+            type: 'time',
+            value: webValue,
+            min: webMin,
+            max: webMax,
+            onChange: handleWebTimeChange,
+            style: WEB_TIME_INPUT_STYLE,
+            'aria-label': label,
+          })}
         </View>
         {optional && value ? (
           <TouchableOpacity style={styles.clearChip} onPress={handleClear}>
@@ -247,13 +272,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#2C3E50',
     fontWeight: '500',
-  },
-  webTimeInput: {
-    borderWidth: 0,
-    backgroundColor: 'transparent',
-    paddingVertical: 0,
-    paddingHorizontal: 0,
-    outlineStyle: 'none',
   },
   timeTextPlaceholder: {
     color: '#95A5A6',

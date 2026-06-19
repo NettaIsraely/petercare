@@ -27,6 +27,7 @@ import {
   getShiftDeadlineTime,
   isToday,
   normalizeDateString,
+  formatUserFacingDate,
 } from '../../utils/dateHelpers';
 
 interface EventCardProps {
@@ -73,13 +74,13 @@ function getEventSubtitle(event: TimelineEvent, alertTimes?: EventCardProps['ale
       const timeLabel = formatTimeLabel(time);
       return isToday(event.data.schedule_date)
         ? timeLabel
-        : `${normalizeDateString(event.data.schedule_date)} · ${timeLabel}`;
+        : `${formatUserFacingDate(event.data.schedule_date)} · ${timeLabel}`;
     }
     case 'ride': {
       const timeRange = `${formatTimeLabel(event.data.start_time)} – ${formatTimeLabel(event.data.end_time)}`;
       return isToday(event.data.date)
         ? timeRange
-        : `${normalizeDateString(event.data.date)} · ${timeRange}`;
+        : `${formatUserFacingDate(event.data.date)} · ${timeRange}`;
     }
     case 'treatment': {
       const durationLabel = event.data.duration_minutes
@@ -87,11 +88,11 @@ function getEventSubtitle(event: TimelineEvent, alertTimes?: EventCardProps['ale
         : 'Scheduled';
       return isToday(event.data.date)
         ? durationLabel
-        : `${normalizeDateString(event.data.date)} · ${durationLabel}`;
+        : `${formatUserFacingDate(event.data.date)} · ${durationLabel}`;
     }
     case 'task':
       if (event.data.deadline) {
-        const deadline = normalizeDateString(event.data.deadline);
+        const deadline = formatUserFacingDate(event.data.deadline);
         return isToday(deadline) ? 'Due today' : `Due ${deadline}`;
       }
       return 'No deadline';

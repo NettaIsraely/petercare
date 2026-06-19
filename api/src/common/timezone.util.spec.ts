@@ -1,9 +1,11 @@
 import { DateTime } from 'luxon';
 import {
   addDaysToDateStr,
+  formatUserFacingDate,
   getLocalDateString,
   getLocalHour,
   isLocalHour,
+  isLocalTime,
   localTimeOnDateToUtc,
 } from './timezone.util';
 
@@ -82,6 +84,18 @@ describe('timezone.util', () => {
         zone: 'utc',
       });
       expect(getLocalDateString(utcNow, 'Asia/Jerusalem')).toBe('2025-07-16');
+    });
+
+    it('formats user-facing dates as DD/MM/YYYY', () => {
+      expect(formatUserFacingDate('2026-06-20')).toBe('20/06/2026');
+    });
+
+    it('detects local time with minute precision', () => {
+      const utcNow = DateTime.fromISO('2025-07-15T17:30:00.000Z', {
+        zone: 'utc',
+      });
+      expect(isLocalTime(utcNow, 'Asia/Jerusalem', 20, 30)).toBe(true);
+      expect(isLocalTime(utcNow, 'Asia/Jerusalem', 20, 0)).toBe(false);
     });
   });
 });

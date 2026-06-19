@@ -41,5 +41,8 @@ export class Feeding {
     unassigned_night_alert_sent_at?: Date | null;
 
     @Column({ type: 'timestamptz', nullable: true })
-    incomplete_alert_sent_at?: Date | null;
+    incomplete_assignee_alert_sent_at?: Date | null;
+
+    @Column({ type: 'timestamptz', nullable: true })
+    incomplete_broadcast_alert_sent_at?: Date | null;
 }

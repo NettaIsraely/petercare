@@ -30,13 +30,13 @@ export interface PersonalChecklist {
 }
 
 function formatWeekLabel(start: Date, end: Date): string {
-  const startLabel = start.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
+  const startLabel = start.toLocaleDateString('he-IL', {
+    day: '2-digit',
+    month: '2-digit',
   });
-  const endLabel = end.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
+  const endLabel = end.toLocaleDateString('he-IL', {
+    day: '2-digit',
+    month: '2-digit',
     year: 'numeric',
   });
   return `${startLabel} – ${endLabel}`;

@@ -12,6 +12,7 @@ import {
 import { Task } from '../tasks/entities/task.entity';
 import { User, UserRole } from '../users/entities/user.entity';
 import { FeedingNotificationsService } from './feeding-notifications.service';
+import { NotificationPreferencesService } from './notification-preferences.service';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import {
@@ -20,8 +21,26 @@ import {
   formatScheduleDate,
   getLocalDateString,
   isLocalHour,
+  isLocalTime,
   resolveUserTimezone,
 } from '../common/timezone.util';
+import {
+  feedingIncompleteAssigneePromptMessage,
+  feedingIncompleteBroadcastAssignedMessage,
+  feedingIncompleteBroadcastUnassignedMessage,
+  taskDeadlineReminderMessage,
+  unassignedNightAlertMessage,
+} from './notification-messages';
+
+const INCOMPLETE_ASSIGNEE_TIMES: Record<ShiftType, { hour: number; minute: number }> = {
+  [ShiftType.MORNING]: { hour: 9, minute: 0 },
+  [ShiftType.EVENING]: { hour: 20, minute: 0 },
+};
+
+const INCOMPLETE_BROADCAST_TIMES: Record<ShiftType, { hour: number; minute: number }> = {
+  [ShiftType.MORNING]: { hour: 10, minute: 0 },
+  [ShiftType.EVENING]: { hour: 20, minute: 30 },
+};
 
 @Injectable()
 export class NotificationsSchedulerService {
@@ -35,22 +54,24 @@ export class NotificationsSchedulerService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly feedingNotifications: FeedingNotificationsService,
+    private readonly notificationPreferences: NotificationPreferencesService,
     @InjectQueue('notifications')
     private readonly notificationQueue: Queue,
     private readonly configService: ConfigService,
   ) {}
 
-  @Cron('0 * * * *')
-  async handleHourlyNotificationScan(): Promise<void> {
+  @Cron('0,30 * * * *')
+  async handleNotificationScan(): Promise<void> {
     try {
       const nowUtc = DateTime.utc();
       await Promise.all([
         this.processUnassignedNightBeforeAlerts(nowUtc),
-        this.processIncompleteFeedingAlerts(nowUtc),
+        this.processIncompleteAssigneeAlerts(nowUtc),
+        this.processIncompleteBroadcastAlerts(nowUtc),
         this.processTaskDeadlineReminders(nowUtc),
       ]);
     } catch (error) {
-      this.logger.error('Hourly notification scan failed', error);
+      this.logger.error('Notification scan failed', error);
     }
   }
 
@@ -90,8 +111,10 @@ export class NotificationsSchedulerService {
     }
 
     for (const feeding of unassignedFeedings) {
-      const dateLabel = formatScheduleDate(feeding.schedule_date);
-      const message = `Tomorrow's ${feeding.shift_type} feeding on ${dateLabel} is still unassigned.`;
+      const message = unassignedNightAlertMessage(
+        feeding.shift_type,
+        feeding.schedule_date,
+      );
 
       await this.feedingNotifications.notifyUsers(
         recipientIds,
@@ -113,14 +136,65 @@ export class NotificationsSchedulerService {
     );
   }
 
-  private async processIncompleteFeedingAlerts(nowUtc: DateTime): Promise<void> {
+  private async processIncompleteAssigneeAlerts(nowUtc: DateTime): Promise<void> {
     const stableTz = this.getStableTimezone();
-    const fallbackRecipientIds = await this.getOwnerAndCaregiverIds();
+    const todayStable = getLocalDateString(nowUtc, stableTz);
 
     const incompleteFeedings = await this.feedingRepository.find({
       where: {
         feeding_status: Not(FeedingStatus.COMPLETE),
-        incomplete_alert_sent_at: IsNull(),
+        incomplete_assignee_alert_sent_at: IsNull(),
+      },
+      relations: { assigned_user: true },
+    });
+
+    let sentCount = 0;
+
+    for (const feeding of incompleteFeedings) {
+      if (!feeding.assigned_user?.id) {
+        continue;
+      }
+
+      const scheduleDate = formatScheduleDate(feeding.schedule_date);
+      if (scheduleDate !== todayStable) {
+        continue;
+      }
+
+      const targetTime = INCOMPLETE_ASSIGNEE_TIMES[feeding.shift_type];
+      if (!isLocalTime(nowUtc, stableTz, targetTime.hour, targetTime.minute)) {
+        continue;
+      }
+
+      await this.feedingNotifications.notifyUsers(
+        [feeding.assigned_user.id],
+        'feeding-incomplete-assignee-alert',
+        feedingIncompleteAssigneePromptMessage(feeding.shift_type),
+        {
+          type: 'feeding-incomplete-assignee',
+          feedingId: feeding.id,
+          shiftType: feeding.shift_type,
+        },
+      );
+
+      feeding.incomplete_assignee_alert_sent_at = nowUtc.toJSDate();
+      await this.feedingRepository.save(feeding);
+      sentCount += 1;
+    }
+
+    if (sentCount > 0) {
+      this.logger.log(`Sent incomplete assignee prompts for ${sentCount} feeding(s)`);
+    }
+  }
+
+  private async processIncompleteBroadcastAlerts(nowUtc: DateTime): Promise<void> {
+    const stableTz = this.getStableTimezone();
+    const todayStable = getLocalDateString(nowUtc, stableTz);
+    const recipientIds = await this.getOwnerAndCaregiverIds();
+
+    const incompleteFeedings = await this.feedingRepository.find({
+      where: {
+        feeding_status: Not(FeedingStatus.COMPLETE),
+        incomplete_broadcast_alert_sent_at: IsNull(),
       },
       relations: { assigned_user: true },
     });
@@ -129,63 +203,44 @@ export class NotificationsSchedulerService {
 
     for (const feeding of incompleteFeedings) {
       const scheduleDate = formatScheduleDate(feeding.schedule_date);
-      const targetHour =
-        feeding.shift_type === ShiftType.MORNING ? 10 : 21;
-
-      if (feeding.assigned_user?.id) {
-        const assigneeTz = resolveUserTimezone(feeding.assigned_user.timezone);
-        const todayLocal = getLocalDateString(nowUtc, assigneeTz);
-
-        if (
-          !isLocalHour(nowUtc, assigneeTz, targetHour) ||
-          scheduleDate !== todayLocal
-        ) {
-          continue;
-        }
-
-        await this.feedingNotifications.notifyUsers(
-          [feeding.assigned_user.id],
-          'feeding-incomplete-alert',
-          `The ${feeding.shift_type} feeding for today has not been marked complete.`,
-          {
-            type: 'feeding-incomplete',
-            feedingId: feeding.id,
-            shiftType: feeding.shift_type,
-          },
-        );
-      } else {
-        const todayStable = getLocalDateString(nowUtc, stableTz);
-
-        if (
-          !isLocalHour(nowUtc, stableTz, targetHour) ||
-          scheduleDate !== todayStable
-        ) {
-          continue;
-        }
-
-        if (fallbackRecipientIds.length === 0) {
-          continue;
-        }
-
-        await this.feedingNotifications.notifyUsers(
-          fallbackRecipientIds,
-          'feeding-incomplete-alert',
-          `The ${feeding.shift_type} feeding for today has not been marked complete.`,
-          {
-            type: 'feeding-incomplete',
-            feedingId: feeding.id,
-            shiftType: feeding.shift_type,
-          },
-        );
+      if (scheduleDate !== todayStable) {
+        continue;
       }
 
-      feeding.incomplete_alert_sent_at = nowUtc.toJSDate();
+      const targetTime = INCOMPLETE_BROADCAST_TIMES[feeding.shift_type];
+      if (!isLocalTime(nowUtc, stableTz, targetTime.hour, targetTime.minute)) {
+        continue;
+      }
+
+      if (recipientIds.length === 0) {
+        continue;
+      }
+
+      const message = feeding.assigned_user?.name
+        ? feedingIncompleteBroadcastAssignedMessage(
+            feeding.shift_type,
+            feeding.assigned_user.name,
+          )
+        : feedingIncompleteBroadcastUnassignedMessage(feeding.shift_type);
+
+      await this.feedingNotifications.notifyUsers(
+        recipientIds,
+        'feeding-incomplete-broadcast-alert',
+        message,
+        {
+          type: 'feeding-incomplete-broadcast',
+          feedingId: feeding.id,
+          shiftType: feeding.shift_type,
+        },
+      );
+
+      feeding.incomplete_broadcast_alert_sent_at = nowUtc.toJSDate();
       await this.feedingRepository.save(feeding);
       sentCount += 1;
     }
 
     if (sentCount > 0) {
-      this.logger.log(`Sent incomplete feeding alerts for ${sentCount} feeding(s)`);
+      this.logger.log(`Sent incomplete broadcast alerts for ${sentCount} feeding(s)`);
     }
   }
 
@@ -220,9 +275,18 @@ export class NotificationsSchedulerService {
         continue;
       }
 
+      const eligibleIds = await this.notificationPreferences.filterEligibleUserIds(
+        [task.assigned_user.id],
+        'task-deadline-reminder',
+      );
+
+      if (eligibleIds.length === 0) {
+        continue;
+      }
+
       await this.notificationQueue.add('task-deadline-reminder', {
         userId: task.assigned_user.id,
-        message: `Reminder: "${task.name}" is due tomorrow.`,
+        message: taskDeadlineReminderMessage(task.name),
         data: {
           type: 'task-deadline-reminder',
           taskId: task.id,

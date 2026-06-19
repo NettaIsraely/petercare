@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { formatUserFacingDate } from '../../utils/dateHelpers';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { CalendarDays, ChevronDown, ChevronUp } from 'lucide-react-native';
@@ -33,7 +34,11 @@ export default function DatePickerField({
     };
   }, [value]);
 
-  const displayText = value || (optional ? 'No date selected' : 'Select a date');
+  const displayText = value
+    ? formatUserFacingDate(value)
+    : optional
+      ? 'No date selected'
+      : 'Select a date';
 
   const handleDayPress = (day: { dateString: string }) => {
     onChange(day.dateString);

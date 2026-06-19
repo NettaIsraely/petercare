@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal,
   View,
@@ -18,8 +18,9 @@ import TimePickerField from '../common/TimePickerField';
 import {
   formatShiftLabel,
   formatTimeForApi,
+  formatTimeForInput,
   formatTimeLabel,
-  normalizeDateString,
+  formatUserFacingDate,
 } from '../../utils/dateHelpers';
 import { isCompletingKey } from '../../utils/completionKeys';
 import { eventHasComments, getEventComments } from '../../utils/scheduleHelpers';
@@ -50,7 +51,7 @@ function getDetailLines(event: TimelineEvent): string[] {
   switch (event.kind) {
     case 'feeding':
       return [
-        `Date: ${normalizeDateString(event.data.schedule_date)}`,
+        `Date: ${formatUserFacingDate(event.data.schedule_date)}`,
         `Shift: ${formatShiftLabel(event.data.shift_type)}`,
         `Status: ${event.data.feeding_status}`,
         event.data.assigned_user
@@ -60,7 +61,7 @@ function getDetailLines(event: TimelineEvent): string[] {
     case 'task':
       return [
         event.data.deadline
-          ? `Deadline: ${normalizeDateString(event.data.deadline)}`
+          ? `Deadline: ${formatUserFacingDate(event.data.deadline)}`
           : 'No deadline',
         event.data.assigned_user
           ? `Assigned to: ${event.data.assigned_user.name}`
@@ -69,7 +70,7 @@ function getDetailLines(event: TimelineEvent): string[] {
       ].filter(Boolean);
     case 'ride':
       return [
-        `Date: ${normalizeDateString(event.data.date)}`,
+        `Date: ${formatUserFacingDate(event.data.date)}`,
         `Time: ${formatTimeLabel(event.data.start_time)} – ${formatTimeLabel(event.data.end_time)}`,
         `Primary rider: ${event.data.primary_rider.name}`,
         event.data.additional_riders?.length
@@ -78,7 +79,7 @@ function getDetailLines(event: TimelineEvent): string[] {
       ].filter(Boolean);
     case 'treatment':
       return [
-        `Date: ${normalizeDateString(event.data.date)}`,
+        `Date: ${formatUserFacingDate(event.data.date)}`,
         `Staff: ${event.data.user.name}`,
         event.data.duration_minutes
           ? `Duration: ${event.data.duration_minutes} min`
@@ -106,6 +107,22 @@ function getHorseDetailSection(event: TimelineEvent): { colors: HorseColor[]; na
   return null;
 }
 
+function getDefaultAlertTime(
+  event: TimelineEvent,
+  alertTimes?: EventDetailModalProps['alertTimes'],
+): string {
+  if (event.kind !== 'feeding') {
+    return '08:00';
+  }
+
+  const alertTime =
+    event.data.shift_type === 'MORNING'
+      ? alertTimes?.morningTime
+      : alertTimes?.eveningTime;
+
+  return formatTimeForInput(alertTime) || '08:00';
+}
+
 export default function EventDetailModal({
   visible,
   event,
@@ -124,6 +141,13 @@ export default function EventDetailModal({
   onEdit,
 }: EventDetailModalProps) {
   const [notificationTime, setNotificationTime] = useState('08:00');
+
+  useEffect(() => {
+    if (!visible || !event) {
+      return;
+    }
+    setNotificationTime(getDefaultAlertTime(event, alertTimes));
+  }, [visible, event, alertTimes]);
 
   if (!event) {
     return null;

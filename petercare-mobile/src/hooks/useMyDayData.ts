@@ -123,10 +123,10 @@ export function useMyDayData() {
   );
 
   const volunteerForFeeding = useCallback(
-    async (feedingId: string) => {
+    async (feedingId: string, notificationTime?: string) => {
       setVolunteeringId(feedingId);
       try {
-        await feedingService.volunteerForFeeding(feedingId);
+        await feedingService.volunteerForFeeding(feedingId, notificationTime);
         await refresh(true);
       } catch (error) {
         console.error('Failed to volunteer for feeding:', error);

@@ -14,6 +14,15 @@ export function normalizeDateString(value: string | Date): string {
   return value.split('T')[0];
 }
 
+export function formatUserFacingDate(value: string | Date): string {
+  const isoDate = normalizeDateString(value);
+  const [year, month, day] = isoDate.split('-');
+  if (!year || !month || !day) {
+    return isoDate;
+  }
+  return `${day}/${month}/${year}`;
+}
+
 export function isToday(value: string | Date): boolean {
   return normalizeDateString(value) === toDateString(new Date());
 }
@@ -37,13 +46,13 @@ export function getWeekRangeLabel(dates: string[]): string {
   const start = new Date(`${dates[0]}T00:00:00`);
   const end = new Date(`${dates[dates.length - 1]}T00:00:00`);
 
-  const startLabel = start.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
+  const startLabel = start.toLocaleDateString('he-IL', {
+    day: '2-digit',
+    month: '2-digit',
   });
-  const endLabel = end.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
+  const endLabel = end.toLocaleDateString('he-IL', {
+    day: '2-digit',
+    month: '2-digit',
     year: start.getFullYear() !== end.getFullYear() ? 'numeric' : undefined,
   });
 
@@ -115,10 +124,7 @@ export function formatWeekDayHeader(dateStr: string): { dayName: string; dateLab
     dayName = date.toLocaleDateString(undefined, { weekday: 'long' });
   }
 
-  const dateLabel = date.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-  });
+  const dateLabel = formatUserFacingDate(normalized);
 
   return { dayName, dateLabel };
 }
@@ -191,9 +197,28 @@ export function formatTimeForInput(apiTime?: string): string {
   }
   const parts = apiTime.split(':');
   if (parts.length >= 2) {
-    return `${parts[0]}:${parts[1]}`;
+    return normalizeTimeForWebInput(`${parts[0]}:${parts[1]}`) || `${parts[0]}:${parts[1]}`;
   }
   return apiTime;
+}
+
+export function normalizeTimeForWebInput(value: string): string {
+  if (!value.trim()) {
+    return '';
+  }
+  const parts = value.trim().split(':');
+  if (parts.length < 2) {
+    return '';
+  }
+  const hours = parseInt(parts[0], 10);
+  const minutes = parseInt(parts[1], 10);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return '';
+  }
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+    return '';
+  }
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 }
 
 const HH_MM_PATTERN = /^([01]?\d|2[0-3]):[0-5]\d$/;

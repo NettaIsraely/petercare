@@ -54,6 +54,33 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   expo_push_token?: string;
 
+  @Column({ type: 'boolean', default: true })
+  push_notifications_enabled!: boolean;
+
+  @Column({ type: 'boolean', default: true })
+  notify_feeding_reminders!: boolean;
+
+  @Column({ type: 'boolean', default: true })
+  notify_shift_reassigned!: boolean;
+
+  @Column({ type: 'boolean', default: true })
+  notify_unassigned_feeding!: boolean;
+
+  @Column({ type: 'boolean', default: true })
+  notify_feeding_incomplete_assignee!: boolean;
+
+  @Column({ type: 'boolean', default: true })
+  notify_feeding_incomplete_broadcast!: boolean;
+
+  @Column({ type: 'boolean', default: true })
+  notify_task_deadlines!: boolean;
+
+  @Column({ type: 'boolean', default: true })
+  notify_role_requests!: boolean;
+
+  @Column({ type: 'boolean', default: true })
+  notify_role_request_resolved!: boolean;
+
   // The temporary token for password resets
   @Column({ type: 'varchar', nullable: true })
   reset_password_token?: string | null;

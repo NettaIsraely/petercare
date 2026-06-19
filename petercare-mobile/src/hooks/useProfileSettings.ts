@@ -11,7 +11,7 @@ import {
 } from '../utils/dateHelpers';
 import { RoleRequest } from '../types/roleRequest';
 import { UserRole } from '../types/auth';
-import { ProfileColorKey } from '../types/user';
+import { NotificationPreferences, ProfileColorKey } from '../types/user';
 import { PROFILE_COLOR_OPTIONS } from '../utils/userColors';
 
 interface ProfileFormState {
@@ -20,9 +20,30 @@ interface ProfileFormState {
   profileColor: ProfileColorKey;
   morningAlertTime: string;
   eveningAlertTime: string;
+  pushNotificationsEnabled: boolean;
+  notifyFeedingReminders: boolean;
+  notifyShiftReassigned: boolean;
+  notifyUnassignedFeeding: boolean;
+  notifyFeedingIncompleteAssignee: boolean;
+  notifyFeedingIncompleteBroadcast: boolean;
+  notifyTaskDeadlines: boolean;
+  notifyRoleRequests: boolean;
+  notifyRoleRequestResolved: boolean;
 }
 
 const DEFAULT_PROFILE_COLOR = PROFILE_COLOR_OPTIONS[0].key;
+
+const DEFAULT_NOTIFICATION_PREFS: NotificationPreferences = {
+  push_notifications_enabled: true,
+  notify_feeding_reminders: true,
+  notify_shift_reassigned: true,
+  notify_unassigned_feeding: true,
+  notify_feeding_incomplete_assignee: true,
+  notify_feeding_incomplete_broadcast: true,
+  notify_task_deadlines: true,
+  notify_role_requests: true,
+  notify_role_request_resolved: true,
+};
 
 const EMPTY_FORM: ProfileFormState = {
   name: '',
@@ -30,6 +51,15 @@ const EMPTY_FORM: ProfileFormState = {
   profileColor: DEFAULT_PROFILE_COLOR,
   morningAlertTime: '',
   eveningAlertTime: '',
+  pushNotificationsEnabled: true,
+  notifyFeedingReminders: true,
+  notifyShiftReassigned: true,
+  notifyUnassignedFeeding: true,
+  notifyFeedingIncompleteAssignee: true,
+  notifyFeedingIncompleteBroadcast: true,
+  notifyTaskDeadlines: true,
+  notifyRoleRequests: true,
+  notifyRoleRequestResolved: true,
 };
 
 function applyProfileToForm(profile: {
@@ -38,6 +68,15 @@ function applyProfileToForm(profile: {
   profile_color?: ProfileColorKey;
   morning_alert_time?: string;
   evening_alert_time?: string;
+  push_notifications_enabled?: boolean;
+  notify_feeding_reminders?: boolean;
+  notify_shift_reassigned?: boolean;
+  notify_unassigned_feeding?: boolean;
+  notify_feeding_incomplete_assignee?: boolean;
+  notify_feeding_incomplete_broadcast?: boolean;
+  notify_task_deadlines?: boolean;
+  notify_role_requests?: boolean;
+  notify_role_request_resolved?: boolean;
 }): ProfileFormState {
   return {
     name: profile.name,
@@ -45,6 +84,27 @@ function applyProfileToForm(profile: {
     profileColor: profile.profile_color ?? DEFAULT_PROFILE_COLOR,
     morningAlertTime: formatTimeForInput(profile.morning_alert_time) || '08:00',
     eveningAlertTime: formatTimeForInput(profile.evening_alert_time) || '18:00',
+    pushNotificationsEnabled:
+      profile.push_notifications_enabled ?? DEFAULT_NOTIFICATION_PREFS.push_notifications_enabled,
+    notifyFeedingReminders:
+      profile.notify_feeding_reminders ?? DEFAULT_NOTIFICATION_PREFS.notify_feeding_reminders,
+    notifyShiftReassigned:
+      profile.notify_shift_reassigned ?? DEFAULT_NOTIFICATION_PREFS.notify_shift_reassigned,
+    notifyUnassignedFeeding:
+      profile.notify_unassigned_feeding ?? DEFAULT_NOTIFICATION_PREFS.notify_unassigned_feeding,
+    notifyFeedingIncompleteAssignee:
+      profile.notify_feeding_incomplete_assignee ??
+      DEFAULT_NOTIFICATION_PREFS.notify_feeding_incomplete_assignee,
+    notifyFeedingIncompleteBroadcast:
+      profile.notify_feeding_incomplete_broadcast ??
+      DEFAULT_NOTIFICATION_PREFS.notify_feeding_incomplete_broadcast,
+    notifyTaskDeadlines:
+      profile.notify_task_deadlines ?? DEFAULT_NOTIFICATION_PREFS.notify_task_deadlines,
+    notifyRoleRequests:
+      profile.notify_role_requests ?? DEFAULT_NOTIFICATION_PREFS.notify_role_requests,
+    notifyRoleRequestResolved:
+      profile.notify_role_request_resolved ??
+      DEFAULT_NOTIFICATION_PREFS.notify_role_request_resolved,
   };
 }
 
@@ -103,7 +163,16 @@ export function useProfileSettings() {
       form.email !== savedForm.email ||
       form.profileColor !== savedForm.profileColor ||
       form.morningAlertTime !== savedForm.morningAlertTime ||
-      form.eveningAlertTime !== savedForm.eveningAlertTime,
+      form.eveningAlertTime !== savedForm.eveningAlertTime ||
+      form.pushNotificationsEnabled !== savedForm.pushNotificationsEnabled ||
+      form.notifyFeedingReminders !== savedForm.notifyFeedingReminders ||
+      form.notifyShiftReassigned !== savedForm.notifyShiftReassigned ||
+      form.notifyUnassignedFeeding !== savedForm.notifyUnassignedFeeding ||
+      form.notifyFeedingIncompleteAssignee !== savedForm.notifyFeedingIncompleteAssignee ||
+      form.notifyFeedingIncompleteBroadcast !== savedForm.notifyFeedingIncompleteBroadcast ||
+      form.notifyTaskDeadlines !== savedForm.notifyTaskDeadlines ||
+      form.notifyRoleRequests !== savedForm.notifyRoleRequests ||
+      form.notifyRoleRequestResolved !== savedForm.notifyRoleRequestResolved,
     [form, savedForm]
   );
 
@@ -158,6 +227,18 @@ export function useProfileSettings() {
         profileColor: DEFAULT_PROFILE_COLOR,
         morningAlertTime: '08:00',
         eveningAlertTime: '18:00',
+        ...DEFAULT_NOTIFICATION_PREFS,
+        pushNotificationsEnabled: DEFAULT_NOTIFICATION_PREFS.push_notifications_enabled,
+        notifyFeedingReminders: DEFAULT_NOTIFICATION_PREFS.notify_feeding_reminders,
+        notifyShiftReassigned: DEFAULT_NOTIFICATION_PREFS.notify_shift_reassigned,
+        notifyUnassignedFeeding: DEFAULT_NOTIFICATION_PREFS.notify_unassigned_feeding,
+        notifyFeedingIncompleteAssignee:
+          DEFAULT_NOTIFICATION_PREFS.notify_feeding_incomplete_assignee,
+        notifyFeedingIncompleteBroadcast:
+          DEFAULT_NOTIFICATION_PREFS.notify_feeding_incomplete_broadcast,
+        notifyTaskDeadlines: DEFAULT_NOTIFICATION_PREFS.notify_task_deadlines,
+        notifyRoleRequests: DEFAULT_NOTIFICATION_PREFS.notify_role_requests,
+        notifyRoleRequestResolved: DEFAULT_NOTIFICATION_PREFS.notify_role_request_resolved,
       });
       setSavedForm({
         name: user.name,
@@ -165,6 +246,17 @@ export function useProfileSettings() {
         profileColor: DEFAULT_PROFILE_COLOR,
         morningAlertTime: '08:00',
         eveningAlertTime: '18:00',
+        pushNotificationsEnabled: DEFAULT_NOTIFICATION_PREFS.push_notifications_enabled,
+        notifyFeedingReminders: DEFAULT_NOTIFICATION_PREFS.notify_feeding_reminders,
+        notifyShiftReassigned: DEFAULT_NOTIFICATION_PREFS.notify_shift_reassigned,
+        notifyUnassignedFeeding: DEFAULT_NOTIFICATION_PREFS.notify_unassigned_feeding,
+        notifyFeedingIncompleteAssignee:
+          DEFAULT_NOTIFICATION_PREFS.notify_feeding_incomplete_assignee,
+        notifyFeedingIncompleteBroadcast:
+          DEFAULT_NOTIFICATION_PREFS.notify_feeding_incomplete_broadcast,
+        notifyTaskDeadlines: DEFAULT_NOTIFICATION_PREFS.notify_task_deadlines,
+        notifyRoleRequests: DEFAULT_NOTIFICATION_PREFS.notify_role_requests,
+        notifyRoleRequestResolved: DEFAULT_NOTIFICATION_PREFS.notify_role_request_resolved,
       });
     } finally {
       setLoading(false);
@@ -203,6 +295,48 @@ export function useProfileSettings() {
     setForm((prev) => ({ ...prev, profileColor }));
   }, []);
 
+  const setPushNotificationsEnabled = useCallback((pushNotificationsEnabled: boolean) => {
+    setForm((prev) => ({ ...prev, pushNotificationsEnabled }));
+  }, []);
+
+  const setNotifyFeedingReminders = useCallback((notifyFeedingReminders: boolean) => {
+    setForm((prev) => ({ ...prev, notifyFeedingReminders }));
+  }, []);
+
+  const setNotifyShiftReassigned = useCallback((notifyShiftReassigned: boolean) => {
+    setForm((prev) => ({ ...prev, notifyShiftReassigned }));
+  }, []);
+
+  const setNotifyUnassignedFeeding = useCallback((notifyUnassignedFeeding: boolean) => {
+    setForm((prev) => ({ ...prev, notifyUnassignedFeeding }));
+  }, []);
+
+  const setNotifyFeedingIncompleteAssignee = useCallback(
+    (notifyFeedingIncompleteAssignee: boolean) => {
+      setForm((prev) => ({ ...prev, notifyFeedingIncompleteAssignee }));
+    },
+    []
+  );
+
+  const setNotifyFeedingIncompleteBroadcast = useCallback(
+    (notifyFeedingIncompleteBroadcast: boolean) => {
+      setForm((prev) => ({ ...prev, notifyFeedingIncompleteBroadcast }));
+    },
+    []
+  );
+
+  const setNotifyTaskDeadlines = useCallback((notifyTaskDeadlines: boolean) => {
+    setForm((prev) => ({ ...prev, notifyTaskDeadlines }));
+  }, []);
+
+  const setNotifyRoleRequests = useCallback((notifyRoleRequests: boolean) => {
+    setForm((prev) => ({ ...prev, notifyRoleRequests }));
+  }, []);
+
+  const setNotifyRoleRequestResolved = useCallback((notifyRoleRequestResolved: boolean) => {
+    setForm((prev) => ({ ...prev, notifyRoleRequestResolved }));
+  }, []);
+
   const save = useCallback(async () => {
     if (!user) {
       return;
@@ -232,6 +366,15 @@ export function useProfileSettings() {
         profile_color: form.profileColor,
         morning_alert_time: morningTime,
         evening_alert_time: eveningTime,
+        push_notifications_enabled: form.pushNotificationsEnabled,
+        notify_feeding_reminders: form.notifyFeedingReminders,
+        notify_shift_reassigned: form.notifyShiftReassigned,
+        notify_unassigned_feeding: form.notifyUnassignedFeeding,
+        notify_feeding_incomplete_assignee: form.notifyFeedingIncompleteAssignee,
+        notify_feeding_incomplete_broadcast: form.notifyFeedingIncompleteBroadcast,
+        notify_task_deadlines: form.notifyTaskDeadlines,
+        notify_role_requests: form.notifyRoleRequests,
+        notify_role_request_resolved: form.notifyRoleRequestResolved,
       });
 
       const nextForm = applyProfileToForm(updated);
@@ -300,6 +443,15 @@ export function useProfileSettings() {
     setMorningAlertTime,
     setEveningAlertTime,
     setProfileColor,
+    setPushNotificationsEnabled,
+    setNotifyFeedingReminders,
+    setNotifyShiftReassigned,
+    setNotifyUnassignedFeeding,
+    setNotifyFeedingIncompleteAssignee,
+    setNotifyFeedingIncompleteBroadcast,
+    setNotifyTaskDeadlines,
+    setNotifyRoleRequests,
+    setNotifyRoleRequestResolved,
     save,
     requestCaregiverAccess,
     reload: loadProfile,

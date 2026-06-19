@@ -207,10 +207,10 @@ export class FeedingsService {
       await assertAssignableUser(this.userRepository, assigned_user_id);
       const isAssigned = !!assigned_user_id;
       updateData.assigned_user = isAssigned ? { id: assigned_user_id } : null;
-      if ((allowedFields as UpdateFeedingDto).feeding_status === undefined) {
-        updateData.feeding_status = isAssigned
-          ? FeedingStatus.ASSIGNED
-          : FeedingStatus.UNASSIGNED;
+      if (!isAssigned) {
+        updateData.feeding_status = FeedingStatus.UNASSIGNED;
+      } else if ((allowedFields as UpdateFeedingDto).feeding_status === undefined) {
+        updateData.feeding_status = FeedingStatus.ASSIGNED;
       }
     }
 
@@ -218,6 +218,15 @@ export class FeedingsService {
 
     if (!feeding) {
       throw new NotFoundException(`Feeding shift with ID ${id} not found`);
+    }
+
+    if (feeding.feeding_status === FeedingStatus.UNASSIGNED) {
+      (feeding as { assigned_user?: User | null }).assigned_user = null;
+    } else if (
+      !feeding.assigned_user?.id &&
+      feeding.feeding_status === FeedingStatus.ASSIGNED
+    ) {
+      feeding.feeding_status = FeedingStatus.UNASSIGNED;
     }
 
     const savedFeeding = await this.feedingRepository.save(feeding);
@@ -234,8 +243,14 @@ export class FeedingsService {
       savedFeeding.assigned_user?.id;
 
     if (markedComplete || savedFeeding.feeding_status === FeedingStatus.COMPLETE) {
+      savedFeeding.incomplete_assignee_alert_sent_at = null;
+      savedFeeding.incomplete_broadcast_alert_sent_at = null;
+      await this.feedingRepository.save(savedFeeding);
       await this.feedingNotifications.cancelFeedingReminder(id);
     } else if (markedIncomplete) {
+      savedFeeding.incomplete_assignee_alert_sent_at = null;
+      savedFeeding.incomplete_broadcast_alert_sent_at = null;
+      await this.feedingRepository.save(savedFeeding);
       const assignee = await this.userRepository.findOne({
         where: { id: savedFeeding.assigned_user!.id },
       });

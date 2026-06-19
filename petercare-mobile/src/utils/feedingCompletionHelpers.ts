@@ -1,13 +1,9 @@
 import { Alert } from 'react-native';
 import { Feeding } from '../types/feeding';
-import { formatShiftLabel, isToday, normalizeDateString } from './dateHelpers';
+import { formatShiftLabel, formatUserFacingDate, isToday, normalizeDateString } from './dateHelpers';
 
 function formatScheduledDateLabel(scheduleDate: string): string {
-  const date = new Date(`${normalizeDateString(scheduleDate)}T00:00:00`);
-  return date.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-  });
+  return formatUserFacingDate(scheduleDate);
 }
 
 export function confirmFeedingCompletionIfNeeded(feeding: Feeding): Promise<boolean> {

@@ -112,8 +112,10 @@ export default function FeedingEditModal({
     try {
       const payload: UpdateFeedingPayload = {
         assigned_user_id: assigneeId ?? null,
-        feeding_status: feedingStatus,
       };
+      if (assigneeId) {
+        payload.feeding_status = feedingStatus;
+      }
 
       const formattedTime = formatTimeForApi(alertTime);
       if (formattedTime && assigneeId) {

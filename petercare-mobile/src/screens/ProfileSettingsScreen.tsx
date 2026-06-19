@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { useProfileSettings } from '../hooks/useProfileSettings';
@@ -31,6 +32,15 @@ export default function ProfileSettingsScreen() {
     setMorningAlertTime,
     setEveningAlertTime,
     setProfileColor,
+    setPushNotificationsEnabled,
+    setNotifyFeedingReminders,
+    setNotifyShiftReassigned,
+    setNotifyUnassignedFeeding,
+    setNotifyFeedingIncompleteAssignee,
+    setNotifyFeedingIncompleteBroadcast,
+    setNotifyTaskDeadlines,
+    setNotifyRoleRequests,
+    setNotifyRoleRequestResolved,
     save,
     requestCaregiverAccess,
   } = useProfileSettings();
@@ -140,6 +150,140 @@ export default function ProfileSettingsScreen() {
         />
       </View>
 
+      <View style={styles.formCard}>
+        <Text style={styles.sectionTitle}>Notifications</Text>
+        <Text style={styles.fieldHelper}>
+          Choose which push notifications you receive. Turn everything off when travelling abroad.
+        </Text>
+
+        <View style={styles.switchRow}>
+          <View style={styles.switchLabelBlock}>
+            <Text style={styles.switchLabel}>All push notifications</Text>
+            <Text style={styles.switchHelper}>Master switch for every notification type below.</Text>
+          </View>
+          <Switch
+            value={form.pushNotificationsEnabled}
+            onValueChange={setPushNotificationsEnabled}
+            trackColor={{ false: '#BDC3C7', true: '#85C1E9' }}
+            thumbColor={form.pushNotificationsEnabled ? '#3498DB' : '#ECF0F1'}
+          />
+        </View>
+
+        <View style={styles.switchRow}>
+          <View style={styles.switchLabelBlock}>
+            <Text style={styles.switchLabel}>Feeding shift reminders</Text>
+            <Text style={styles.switchHelper}>Reminder before your assigned feeding shift.</Text>
+          </View>
+          <Switch
+            value={form.notifyFeedingReminders}
+            onValueChange={setNotifyFeedingReminders}
+            disabled={!form.pushNotificationsEnabled}
+            trackColor={{ false: '#BDC3C7', true: '#85C1E9' }}
+            thumbColor={form.notifyFeedingReminders ? '#3498DB' : '#ECF0F1'}
+          />
+        </View>
+
+        <View style={styles.switchRow}>
+          <View style={styles.switchLabelBlock}>
+            <Text style={styles.switchLabel}>Shift covered alerts</Text>
+            <Text style={styles.switchHelper}>When someone else covers your feeding shift.</Text>
+          </View>
+          <Switch
+            value={form.notifyShiftReassigned}
+            onValueChange={setNotifyShiftReassigned}
+            disabled={!form.pushNotificationsEnabled}
+            trackColor={{ false: '#BDC3C7', true: '#85C1E9' }}
+            thumbColor={form.notifyShiftReassigned ? '#3498DB' : '#ECF0F1'}
+          />
+        </View>
+
+        <View style={styles.switchRow}>
+          <View style={styles.switchLabelBlock}>
+            <Text style={styles.switchLabel}>Unassigned feeding alerts</Text>
+            <Text style={styles.switchHelper}>Tomorrow&apos;s feeding is still unassigned.</Text>
+          </View>
+          <Switch
+            value={form.notifyUnassignedFeeding}
+            onValueChange={setNotifyUnassignedFeeding}
+            disabled={!form.pushNotificationsEnabled}
+            trackColor={{ false: '#BDC3C7', true: '#85C1E9' }}
+            thumbColor={form.notifyUnassignedFeeding ? '#3498DB' : '#ECF0F1'}
+          />
+        </View>
+
+        <View style={styles.switchRow}>
+          <View style={styles.switchLabelBlock}>
+            <Text style={styles.switchLabel}>Feeding completion prompts</Text>
+            <Text style={styles.switchHelper}>Ask you to confirm if you completed your feeding.</Text>
+          </View>
+          <Switch
+            value={form.notifyFeedingIncompleteAssignee}
+            onValueChange={setNotifyFeedingIncompleteAssignee}
+            disabled={!form.pushNotificationsEnabled}
+            trackColor={{ false: '#BDC3C7', true: '#85C1E9' }}
+            thumbColor={form.notifyFeedingIncompleteAssignee ? '#3498DB' : '#ECF0F1'}
+          />
+        </View>
+
+        <View style={styles.switchRow}>
+          <View style={styles.switchLabelBlock}>
+            <Text style={styles.switchLabel}>Horses not fed alerts</Text>
+            <Text style={styles.switchHelper}>When a feeding is still incomplete by 10:00 AM / 20:30 PM.</Text>
+          </View>
+          <Switch
+            value={form.notifyFeedingIncompleteBroadcast}
+            onValueChange={setNotifyFeedingIncompleteBroadcast}
+            disabled={!form.pushNotificationsEnabled}
+            trackColor={{ false: '#BDC3C7', true: '#85C1E9' }}
+            thumbColor={form.notifyFeedingIncompleteBroadcast ? '#3498DB' : '#ECF0F1'}
+          />
+        </View>
+
+        <View style={styles.switchRow}>
+          <View style={styles.switchLabelBlock}>
+            <Text style={styles.switchLabel}>Task deadline reminders</Text>
+            <Text style={styles.switchHelper}>Reminder the day before a task is due.</Text>
+          </View>
+          <Switch
+            value={form.notifyTaskDeadlines}
+            onValueChange={setNotifyTaskDeadlines}
+            disabled={!form.pushNotificationsEnabled}
+            trackColor={{ false: '#BDC3C7', true: '#85C1E9' }}
+            thumbColor={form.notifyTaskDeadlines ? '#3498DB' : '#ECF0F1'}
+          />
+        </View>
+
+        {role === 'OWNER' ? (
+          <View style={styles.switchRow}>
+            <View style={styles.switchLabelBlock}>
+              <Text style={styles.switchLabel}>Caregiver access requests</Text>
+              <Text style={styles.switchHelper}>When a guest requests caregiver access.</Text>
+            </View>
+            <Switch
+              value={form.notifyRoleRequests}
+              onValueChange={setNotifyRoleRequests}
+              disabled={!form.pushNotificationsEnabled}
+              trackColor={{ false: '#BDC3C7', true: '#85C1E9' }}
+              thumbColor={form.notifyRoleRequests ? '#3498DB' : '#ECF0F1'}
+            />
+          </View>
+        ) : null}
+
+        <View style={styles.switchRow}>
+          <View style={styles.switchLabelBlock}>
+            <Text style={styles.switchLabel}>Caregiver request updates</Text>
+            <Text style={styles.switchHelper}>When your caregiver access request is approved or denied.</Text>
+          </View>
+          <Switch
+            value={form.notifyRoleRequestResolved}
+            onValueChange={setNotifyRoleRequestResolved}
+            disabled={!form.pushNotificationsEnabled}
+            trackColor={{ false: '#BDC3C7', true: '#85C1E9' }}
+            thumbColor={form.notifyRoleRequestResolved ? '#3498DB' : '#ECF0F1'}
+          />
+        </View>
+      </View>
+
       <TouchableOpacity
         style={[styles.saveButton, (!hasChanges || saving) && styles.saveButtonDisabled]}
         onPress={save}
@@ -211,6 +355,35 @@ const styles = StyleSheet.create({
     color: '#7F8C8D',
     marginBottom: 10,
     lineHeight: 18,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#2C3E50',
+    marginBottom: 4,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEF2F6',
+  },
+  switchLabelBlock: {
+    flex: 1,
+  },
+  switchLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginBottom: 2,
+  },
+  switchHelper: {
+    fontSize: 12,
+    color: '#7F8C8D',
+    lineHeight: 16,
   },
   input: {
     backgroundColor: '#FFFFFF',

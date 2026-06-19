@@ -1,6 +1,6 @@
 import { Ride } from '../types/ride';
 import { Treatment } from '../types/treatment';
-import { normalizeDateString, parseTimeToMinutes } from './dateHelpers';
+import { normalizeDateString, parseTimeToMinutes, formatUserFacingDate } from './dateHelpers';
 
 export type HorseHistoryEntry =
   | { kind: 'ride'; data: Ride; sortKey: number }
@@ -59,21 +59,12 @@ export function formatShoeingDate(value?: string | null): string {
   }
 
   const datePart = normalizeDateString(value);
-  const date = new Date(`${datePart}T00:00:00`);
-  return date.toLocaleDateString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return formatUserFacingDate(datePart);
 }
 
 export function formatHistoryDate(value: string): string {
   const datePart = normalizeDateString(value);
   const date = new Date(`${datePart}T00:00:00`);
-  return date.toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  const weekday = date.toLocaleDateString('he-IL', { weekday: 'short' });
+  return `${weekday}, ${formatUserFacingDate(datePart)}`;
 }

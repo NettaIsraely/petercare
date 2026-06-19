@@ -60,8 +60,8 @@ export default function HomeScreen() {
     setSelectedEvent(null);
   };
 
-  const handleVolunteer = async (feedingId: string) => {
-    await volunteerForFeeding(feedingId);
+  const handleVolunteer = async (feedingId: string, notificationTime?: string) => {
+    await volunteerForFeeding(feedingId, notificationTime);
     handleCloseDetail();
   };
 

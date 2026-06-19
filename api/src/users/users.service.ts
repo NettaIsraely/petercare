@@ -23,6 +23,15 @@ export type PublicUser = {
   timezone: string;
   expo_push_token?: string;
   profile_color?: UserProfileColor | null;
+  push_notifications_enabled: boolean;
+  notify_feeding_reminders: boolean;
+  notify_shift_reassigned: boolean;
+  notify_unassigned_feeding: boolean;
+  notify_feeding_incomplete_assignee: boolean;
+  notify_feeding_incomplete_broadcast: boolean;
+  notify_task_deadlines: boolean;
+  notify_role_requests: boolean;
+  notify_role_request_resolved: boolean;
   created_at: Date;
   updated_at: Date;
 };
@@ -53,6 +62,15 @@ export class UsersService implements OnModuleInit {
       timezone: user.timezone,
       expo_push_token: user.expo_push_token,
       profile_color: user.profile_color,
+      push_notifications_enabled: user.push_notifications_enabled,
+      notify_feeding_reminders: user.notify_feeding_reminders,
+      notify_shift_reassigned: user.notify_shift_reassigned,
+      notify_unassigned_feeding: user.notify_unassigned_feeding,
+      notify_feeding_incomplete_assignee: user.notify_feeding_incomplete_assignee,
+      notify_feeding_incomplete_broadcast: user.notify_feeding_incomplete_broadcast,
+      notify_task_deadlines: user.notify_task_deadlines,
+      notify_role_requests: user.notify_role_requests,
+      notify_role_request_resolved: user.notify_role_request_resolved,
       created_at: user.created_at,
       updated_at: user.updated_at,
     };

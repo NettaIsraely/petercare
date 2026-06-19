@@ -29,9 +29,11 @@ export async function volunteerForFeeding(
   id: string,
   notificationTime?: string
 ): Promise<Feeding> {
-  const response = await apiClient.patch<Feeding>(`/feedings/${id}/volunteer`, {
-    notification_time: notificationTime,
-  });
+  const body: { notification_time?: string } = {};
+  if (notificationTime !== undefined) {
+    body.notification_time = notificationTime;
+  }
+  const response = await apiClient.patch<Feeding>(`/feedings/${id}/volunteer`, body);
   return response.data;
 }
 

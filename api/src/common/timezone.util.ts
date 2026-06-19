@@ -20,8 +20,26 @@ export function getLocalDateString(utcNow: DateTime, tz: string): string {
 }
 
 export function isLocalHour(utcNow: DateTime, tz: string, hour: number): boolean {
+  return isLocalTime(utcNow, tz, hour, 0);
+}
+
+export function isLocalTime(
+  utcNow: DateTime,
+  tz: string,
+  hour: number,
+  minute: number,
+): boolean {
   const local = utcNow.setZone(tz);
-  return local.hour === hour && local.minute === 0;
+  return local.hour === hour && local.minute === minute;
+}
+
+export function formatUserFacingDate(dateStr: string): string {
+  const isoDate = dateStr.split('T')[0];
+  const [year, month, day] = isoDate.split('-');
+  if (!year || !month || !day) {
+    return dateStr;
+  }
+  return `${day}/${month}/${year}`;
 }
 
 export function addDaysToDateStr(dateStr: string, days: number): string {

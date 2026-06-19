@@ -11,6 +11,12 @@ import { Repository } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
 import { RoleRequest, RoleRequestStatus } from './entities/role-request.entity';
 import { UsersService } from '../users/users.service';
+import {
+  roleRequestAlertMessage,
+  roleRequestApprovedMessage,
+  roleRequestDeniedMessage,
+} from '../notifications/notification-messages';
+import { NotificationPreferencesService } from '../notifications/notification-preferences.service';
 
 @Injectable()
 export class RoleRequestsService {
@@ -22,6 +28,7 @@ export class RoleRequestsService {
     @InjectQueue('notifications')
     private readonly notificationQueue: Queue,
     private readonly usersService: UsersService,
+    private readonly notificationPreferences: NotificationPreferencesService,
   ) {}
 
   async create(userId: string): Promise<RoleRequest> {
@@ -96,7 +103,7 @@ export class RoleRequestsService {
 
     await this.notifyRequester(
       requester.id,
-      'Your caregiver access request was approved.',
+      roleRequestApprovedMessage(),
       'approved',
       request.id,
     );
@@ -118,7 +125,7 @@ export class RoleRequestsService {
 
     await this.notifyRequester(
       request.user.id,
-      'Your caregiver access request was denied. You may submit a new request.',
+      roleRequestDeniedMessage(),
       'denied',
       request.id,
     );
@@ -144,10 +151,16 @@ export class RoleRequestsService {
       where: { role: UserRole.OWNER },
     });
 
-    for (const owner of owners) {
+    const ownerIds = owners.map((owner) => owner.id);
+    const eligibleIds = await this.notificationPreferences.filterEligibleUserIds(
+      ownerIds,
+      'role-request-alert',
+    );
+
+    for (const ownerId of eligibleIds) {
       await this.notificationQueue.add('role-request-alert', {
-        userId: owner.id,
-        message: `${requester.name} requested caregiver access.`,
+        userId: ownerId,
+        message: roleRequestAlertMessage(requester.name),
         data: { type: 'role-request', requestId },
       });
     }
@@ -159,6 +172,15 @@ export class RoleRequestsService {
     resolution: 'approved' | 'denied',
     requestId: string,
   ): Promise<void> {
+    const eligible = await this.notificationPreferences.isUserEligible(
+      userId,
+      'role-request-resolved',
+    );
+
+    if (!eligible) {
+      return;
+    }
+
     await this.notificationQueue.add('role-request-resolved', {
       userId,
       message,

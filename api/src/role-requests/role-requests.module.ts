@@ -7,12 +7,14 @@ import { User } from '../users/entities/user.entity';
 import { QueueModule } from '../queue/queue.module';
 import { RolesGuard } from '../auth/roles.guard';
 import { UsersModule } from '../users/users.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([RoleRequest, User]),
     QueueModule,
     UsersModule,
+    NotificationsModule,
   ],
   controllers: [RoleRequestsController],
   providers: [RoleRequestsService, RolesGuard],

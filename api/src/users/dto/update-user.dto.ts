@@ -10,6 +10,16 @@ export class UpdateUserDto {
     timezone?: string;
     profile_color?: UserProfileColor;
 
+    push_notifications_enabled?: boolean;
+    notify_feeding_reminders?: boolean;
+    notify_shift_reassigned?: boolean;
+    notify_unassigned_feeding?: boolean;
+    notify_feeding_incomplete_assignee?: boolean;
+    notify_feeding_incomplete_broadcast?: boolean;
+    notify_task_deadlines?: boolean;
+    notify_role_requests?: boolean;
+    notify_role_request_resolved?: boolean;
+
     // Background Worker Fields (Password Reset)
     reset_password_token?: string | null;
     reset_password_expires?: Date | null;
