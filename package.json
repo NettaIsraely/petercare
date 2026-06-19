@@ -1,0 +1,11 @@
+{
+  "name": "petercare",
+  "private": true,
+  "scripts": {
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "dev:api": "cd api && npm run start:dev",
+    "dev:mobile": "cd petercare-mobile && npm run start:local",
+    "db:migrate": "cd api && npm run migration:run"
+  }
+}

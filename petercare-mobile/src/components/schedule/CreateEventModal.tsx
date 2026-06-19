@@ -32,6 +32,7 @@ import {
   formatTimeForApi,
   formatShiftLabel,
   formatWeekDayHeader,
+  isValidTimeInput,
   minutesToTimeString,
   parseTimeToMinutes,
   RIDE_DEFAULT_DURATION_MINUTES,
@@ -226,12 +227,19 @@ export default function CreateEventModal({
 
   const handleRideStartChange = (newStart: string) => {
     setRideStart(newStart);
+    if (!isValidTimeInput(newStart)) {
+      return;
+    }
     const newEnd = deriveRideEndFromStart(newStart, rideDurationMinutes);
     setRideEnd(newEnd);
     setRideDurationMinutes(parseTimeToMinutes(newEnd) - parseTimeToMinutes(newStart));
   };
 
   const handleRideEndChange = (newEnd: string) => {
+    if (!isValidTimeInput(newEnd) || !isValidTimeInput(rideStart)) {
+      setRideEnd(newEnd);
+      return;
+    }
     const clampedEnd = clampRideEndTime(rideStart, newEnd);
     setRideEnd(clampedEnd);
     setRideDurationMinutes(parseTimeToMinutes(clampedEnd) - parseTimeToMinutes(rideStart));

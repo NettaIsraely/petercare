@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
   },
   assignee: {
     fontSize: 12,
-    color: '#95A5A6',
+    color: '#2C3E50',
     marginTop: 4,
   },
   assigneeBold: {

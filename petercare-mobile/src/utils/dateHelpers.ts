@@ -127,6 +127,9 @@ export function parseTimeToMinutes(timeStr: string): number {
   const normalized = timeStr.split(':');
   const hours = parseInt(normalized[0], 10);
   const minutes = parseInt(normalized[1], 10);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return NaN;
+  }
   return hours * 60 + minutes;
 }
 
@@ -219,6 +222,9 @@ export const END_OF_DAY_TIME = '23:59';
 const END_OF_DAY_MINUTES = 23 * 60 + 59;
 
 export function minutesToTimeString(minutes: number): string {
+  if (!Number.isFinite(minutes)) {
+    return '00:00';
+  }
   const clamped = Math.max(0, Math.min(END_OF_DAY_MINUTES, minutes));
   const hours = Math.floor(clamped / 60);
   const mins = clamped % 60;

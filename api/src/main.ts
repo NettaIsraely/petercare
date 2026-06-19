@@ -5,6 +5,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { getDatabaseTargetLabel } from './database/typeorm.config';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -21,8 +22,9 @@ async function bootstrap() {
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
 
+  const dbTarget = getDatabaseTargetLabel((key) => process.env[key]);
   logger.log(
-    `Listening on port ${port} (NODE_ENV=${process.env.NODE_ENV ?? 'development'})`,
+    `Listening on port ${port} (NODE_ENV=${process.env.NODE_ENV ?? 'development'}, DB=${dbTarget})`,
   );
 }
 bootstrap();

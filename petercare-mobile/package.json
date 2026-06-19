@@ -34,6 +34,8 @@
   },
   "scripts": {
     "start": "expo start",
+    "start:local": "node scripts/print-lan-ip.mjs && expo start",
+    "print:lan-ip": "node scripts/print-lan-ip.mjs",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",

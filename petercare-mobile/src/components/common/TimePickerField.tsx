@@ -129,13 +129,24 @@ export default function TimePickerField({
         <View style={styles.timeRow}>
           <Clock size={18} color="#3498DB" />
           <TextInput
-            style={styles.timeText}
+            style={[styles.timeText, styles.webTimeInput]}
             value={value}
             onChangeText={onChange}
             placeholder={optional ? 'Optional HH:MM' : 'HH:MM'}
             placeholderTextColor="#95A5A6"
+            // @ts-expect-error web-only DOM attributes
+            type="time"
+            // @ts-expect-error web-only DOM attributes
+            min={minimumTime}
+            // @ts-expect-error web-only DOM attributes
+            max={maximumTime}
           />
         </View>
+        {optional && value ? (
+          <TouchableOpacity style={styles.clearChip} onPress={handleClear}>
+            <Text style={styles.clearChipText}>Clear</Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     );
   }
@@ -236,6 +247,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#2C3E50',
     fontWeight: '500',
+  },
+  webTimeInput: {
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+    outlineStyle: 'none',
   },
   timeTextPlaceholder: {
     color: '#95A5A6',
