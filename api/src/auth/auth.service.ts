@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'src/users/entities/user.entity';
@@ -11,6 +16,8 @@ import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class AuthService {
+    private readonly logger = new Logger(AuthService.name);
+
     constructor(
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
@@ -23,11 +30,13 @@ export class AuthService {
     async login(email: string, password: string) {
         const user = await this.userRepository.findOne({ where: { email } })
         if (!user){
+            this.logger.warn(`Login failed for ${email}`);
             throw new UnauthorizedException('Invalid credentials');
         }
 
         const isMatch = await bcrypt.compare(password, user.password_hash);
         if (!isMatch){
+            this.logger.warn(`Login failed for ${email}`);
             throw new UnauthorizedException('Invalid credentials');
         }
 
@@ -85,6 +94,8 @@ export class AuthService {
             name: user.name,
             token: resetToken,
         });
+
+        this.logger.log(`Password reset email queued for ${user.email}`);
 
         return { message: 'If that email exists, a reset link has been sent.' };
     }

@@ -42,12 +42,16 @@ export class NotificationsSchedulerService {
 
   @Cron('0 * * * *')
   async handleHourlyNotificationScan(): Promise<void> {
-    const nowUtc = DateTime.utc();
-    await Promise.all([
-      this.processUnassignedNightBeforeAlerts(nowUtc),
-      this.processIncompleteFeedingAlerts(nowUtc),
-      this.processTaskDeadlineReminders(nowUtc),
-    ]);
+    try {
+      const nowUtc = DateTime.utc();
+      await Promise.all([
+        this.processUnassignedNightBeforeAlerts(nowUtc),
+        this.processIncompleteFeedingAlerts(nowUtc),
+        this.processTaskDeadlineReminders(nowUtc),
+      ]);
+    } catch (error) {
+      this.logger.error('Hourly notification scan failed', error);
+    }
   }
 
   private getStableTimezone(): string {

@@ -22,26 +22,34 @@ export class FeedingsSchedulerService implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
-    await this.ensureRollingWindow();
+    try {
+      await this.ensureRollingWindow();
+    } catch (error) {
+      this.logger.error('Startup rolling window backfill failed', error);
+    }
   }
 
   @Cron('5 * * * *')
   async handleDailyShiftCreation(): Promise<void> {
-    const stableTz = this.getStableTimezone();
-    const nowUtc = DateTime.utc();
+    try {
+      const stableTz = this.getStableTimezone();
+      const nowUtc = DateTime.utc();
 
-    if (!isLocalHour(nowUtc, stableTz, 0)) {
-      return;
-    }
+      if (!isLocalHour(nowUtc, stableTz, 0)) {
+        return;
+      }
 
-    const todayStable = getLocalDateString(nowUtc, stableTz);
-    const horizonDate = addDaysToDateStr(todayStable, ROLLING_WINDOW_DAYS);
-    const created = await this.feedingsService.ensureShiftsForDate(horizonDate);
+      const todayStable = getLocalDateString(nowUtc, stableTz);
+      const horizonDate = addDaysToDateStr(todayStable, ROLLING_WINDOW_DAYS);
+      const created = await this.feedingsService.ensureShiftsForDate(horizonDate);
 
-    if (created > 0) {
-      this.logger.log(
-        `Daily cron created ${created} feeding shift(s) for ${horizonDate}`,
-      );
+      if (created > 0) {
+        this.logger.log(
+          `Daily cron created ${created} feeding shift(s) for ${horizonDate}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error('Daily shift creation cron failed', error);
     }
   }
 
