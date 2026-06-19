@@ -7,7 +7,7 @@ import { TimelineEvent } from '../../types/events';
 import EventCard from '../home/EventCard';
 import { isCompletingKey } from '../../utils/completionKeys';
 import { taskToTimelineEvent } from '../../utils/taskHelpers';
-import { canPerformAction } from '../../utils/eventPermissions';
+import { canToggleComplete } from '../../utils/eventPermissions';
 
 interface BarnTaskSectionsProps {
   openTasks: Task[];
@@ -16,7 +16,7 @@ interface BarnTaskSectionsProps {
   userRole?: UserRole;
   completingIds: Set<string>;
   onTaskPress: (event: TimelineEvent) => void;
-  onMarkComplete: (task: Task) => void;
+  onToggleComplete: (task: Task) => void;
 }
 
 const COMPLETED_PREVIEW_COUNT = 5;
@@ -28,7 +28,7 @@ export default function BarnTaskSections({
   userRole,
   completingIds,
   onTaskPress,
-  onMarkComplete,
+  onToggleComplete,
 }: BarnTaskSectionsProps) {
   const [completedExpanded, setCompletedExpanded] = useState(true);
   const [showAllCompleted, setShowAllCompleted] = useState(false);
@@ -53,9 +53,7 @@ export default function BarnTaskSections({
 
   const renderTask = (task: Task, completed: boolean) => {
     const event = taskToTimelineEvent(task);
-    const canComplete =
-      !completed &&
-      canPerformAction(userRole, 'complete', event, currentUserId);
+    const canToggle = canToggleComplete(userRole, event, currentUserId);
 
     return (
       <EventCard
@@ -63,9 +61,10 @@ export default function BarnTaskSections({
         event={event}
         showAssignee
         currentUserId={currentUserId}
-        showCheckbox={canComplete}
+        showCheckbox={canToggle}
+        checked={completed}
         isCompleting={isCompletingKey(completingIds, 'task', task.id)}
-        onToggleComplete={canComplete ? () => onMarkComplete(task) : undefined}
+        onToggleComplete={canToggle ? () => onToggleComplete(task) : undefined}
         onPress={() => onTaskPress(event)}
         completed={completed}
       />

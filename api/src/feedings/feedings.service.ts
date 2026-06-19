@@ -228,8 +228,25 @@ export class FeedingsService {
     const markedComplete =
       allowedFields.feeding_status === FeedingStatus.COMPLETE && !wasComplete;
 
+    const markedIncomplete =
+      wasComplete &&
+      allowedFields.feeding_status === FeedingStatus.ASSIGNED &&
+      savedFeeding.assigned_user?.id;
+
     if (markedComplete || savedFeeding.feeding_status === FeedingStatus.COMPLETE) {
       await this.feedingNotifications.cancelFeedingReminder(id);
+    } else if (markedIncomplete) {
+      const assignee = await this.userRepository.findOne({
+        where: { id: savedFeeding.assigned_user!.id },
+      });
+
+      if (assignee) {
+        await this.feedingNotifications.scheduleFeedingReminder(
+          savedFeeding,
+          assignee,
+          notification_time,
+        );
+      }
     } else if (assigneeChanged) {
       await this.feedingNotifications.cancelFeedingReminder(id);
 

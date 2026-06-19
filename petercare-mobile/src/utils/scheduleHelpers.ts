@@ -124,6 +124,19 @@ export function isUnassignedFeeding(event: TimelineEvent): boolean {
   return event.kind === 'feeding' && event.data.feeding_status === 'UNASSIGNED';
 }
 
+export function isEventCompleted(event: TimelineEvent): boolean {
+  switch (event.kind) {
+    case 'feeding':
+      return event.data.feeding_status === 'COMPLETE';
+    case 'task':
+      return event.data.is_complete ?? false;
+    case 'treatment':
+      return event.data.is_complete ?? false;
+    default:
+      return false;
+  }
+}
+
 export function isEventOwnedByUser(
   event: TimelineEvent,
   currentUserId?: string

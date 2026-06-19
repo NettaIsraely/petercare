@@ -55,8 +55,8 @@ export default function MainTabNavigator() {
         name="Home"
         component={HomeScreen}
         options={{
-          title: 'My Week',
-          tabBarLabel: 'My Week',
+          title: 'My Schedule',
+          tabBarLabel: 'My Schedule',
           tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
         }}
       />

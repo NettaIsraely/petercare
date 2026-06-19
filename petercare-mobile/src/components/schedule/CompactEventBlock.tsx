@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Pressable, Text, StyleSheet } from 'react-native';
-import { MessageSquare } from 'lucide-react-native';
+import { Check, MessageSquare } from 'lucide-react-native';
 import { TimelineEvent } from '../../types/events';
 import { getEventCardStyle } from '../../utils/userColors';
 import {
@@ -10,6 +10,7 @@ import {
   isEventOwnedByUser,
   isUnassignedFeeding,
   eventHasComments,
+  isEventCompleted,
 } from '../../utils/scheduleHelpers';
 import {
   formatShiftLabel,
@@ -84,13 +85,19 @@ export default function CompactEventBlock({
   const subtitle = getCompactSubtitle(event, alertTimes);
   const titleWeight = isCurrentUser ? '700' : '500';
   const hasComments = eventHasComments(event);
+  const completed = isEventCompleted(event);
 
   return (
     <Pressable
-      style={[styles.block, cardStyle]}
+      style={[styles.block, cardStyle, completed && styles.completedBlock]}
       onPress={onPress}
       accessibilityRole="button"
     >
+      {completed && (
+        <View style={styles.completedBadge} accessibilityLabel="Completed">
+          <Check size={10} color="#27AE60" />
+        </View>
+      )}
       <View style={styles.row}>
         <View style={styles.iconColumn}>
           <EventTypeIcon
@@ -103,7 +110,11 @@ export default function CompactEventBlock({
         <View style={styles.content}>
           <View style={styles.titleRow}>
             <Text
-              style={[styles.title, { fontWeight: titleWeight }]}
+              style={[
+                styles.title,
+                { fontWeight: titleWeight },
+                completed && styles.completedTitle,
+              ]}
               numberOfLines={2}
             >
               {getCompactTitle(event)}
@@ -115,12 +126,18 @@ export default function CompactEventBlock({
             )}
           </View>
           {subtitle ? (
-            <Text style={styles.subtitle} numberOfLines={1}>
+            <Text
+              style={[styles.subtitle, completed && styles.completedSubtitle]}
+              numberOfLines={1}
+            >
               {subtitle}
             </Text>
           ) : null}
           {assigneeName ? (
-            <Text style={styles.assignee} numberOfLines={1}>
+            <Text
+              style={[styles.assignee, styles.assigneeBold, completed && styles.completedSubtitle]}
+              numberOfLines={1}
+            >
               {assigneeName}
             </Text>
           ) : null}
@@ -138,6 +155,16 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 6,
     marginBottom: 4,
+    position: 'relative',
+  },
+  completedBlock: {
+    opacity: 0.75,
+  },
+  completedBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    zIndex: 1,
   },
   row: {
     flexDirection: 'row',
@@ -160,6 +187,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#2C3E50',
   },
+  completedTitle: {
+    textDecorationLine: 'line-through',
+    color: '#95A5A6',
+  },
   commentsMarker: {
     marginTop: 1,
   },
@@ -168,9 +199,15 @@ const styles = StyleSheet.create({
     color: '#7F8C8D',
     marginTop: 2,
   },
+  completedSubtitle: {
+    color: '#BDC3C7',
+  },
   assignee: {
     fontSize: 10,
     color: '#95A5A6',
     marginTop: 2,
+  },
+  assigneeBold: {
+    fontWeight: '700',
   },
 });

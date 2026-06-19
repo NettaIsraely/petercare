@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
-import Svg, { Rect, Text as SvgText } from 'react-native-svg';
+import Svg, { Rect } from 'react-native-svg';
 import { HorseRideCount, WeekRange } from '../../utils/insightsHelpers';
 
 interface HorseActivityChartProps {
@@ -24,7 +24,6 @@ export default function HorseActivityChart({
   const barMaxWidth = chartWidth - NAME_WIDTH - COUNT_WIDTH - 8;
   const maxCount = Math.max(...horseRideCounts.map((item) => item.count), 1);
   const hasAnyRides = horseRideCounts.some((item) => item.count > 0);
-  const chartHeight = Math.max(horseRideCounts.length * ROW_HEIGHT, ROW_HEIGHT);
 
   return (
     <View style={styles.container}>
@@ -37,48 +36,35 @@ export default function HorseActivityChart({
         ) : !hasAnyRides ? (
           <Text style={styles.emptyText}>No rides recorded this week.</Text>
         ) : (
-          <Svg width={chartWidth} height={chartHeight}>
-            {horseRideCounts.map((item, index) => {
-              const y = index * ROW_HEIGHT;
-              const barWidth =
-                item.count > 0
-                  ? Math.max((item.count / maxCount) * barMaxWidth, 8)
-                  : 0;
+          horseRideCounts.map((item) => {
+            const barWidth =
+              item.count > 0 ? Math.max((item.count / maxCount) * barMaxWidth, 8) : 0;
 
-              return (
-                <React.Fragment key={item.horseId}>
-                  <SvgText
-                    x={0}
-                    y={y + ROW_HEIGHT / 2 + 5}
-                    fontSize={14}
-                    fontWeight="500"
-                    fill="#2C3E50"
-                  >
-                    {item.horseName.length > 12
-                      ? `${item.horseName.slice(0, 11)}…`
-                      : item.horseName}
-                  </SvgText>
-                  <Rect
-                    x={NAME_WIDTH}
-                    y={y + (ROW_HEIGHT - BAR_HEIGHT) / 2}
-                    width={barWidth}
-                    height={BAR_HEIGHT}
-                    fill="#3498DB"
-                    rx={4}
-                  />
-                  <SvgText
-                    x={chartWidth - COUNT_WIDTH}
-                    y={y + ROW_HEIGHT / 2 + 5}
-                    fontSize={14}
-                    fontWeight="700"
-                    fill="#3498DB"
-                  >
-                    {String(item.count)}
-                  </SvgText>
-                </React.Fragment>
-              );
-            })}
-          </Svg>
+            return (
+              <View key={item.horseId} style={styles.row}>
+                <Text style={styles.horseName} numberOfLines={1}>
+                  {item.horseName.length > 12
+                    ? `${item.horseName.slice(0, 11)}…`
+                    : item.horseName}
+                </Text>
+                <View style={styles.barContainer}>
+                  <Svg width={barMaxWidth} height={BAR_HEIGHT}>
+                    {barWidth > 0 && (
+                      <Rect
+                        x={0}
+                        y={0}
+                        width={barWidth}
+                        height={BAR_HEIGHT}
+                        fill="#3498DB"
+                        rx={4}
+                      />
+                    )}
+                  </Svg>
+                </View>
+                <Text style={styles.count}>{String(item.count)}</Text>
+              </View>
+            );
+          })
         )}
       </View>
     </View>
@@ -106,6 +92,28 @@ const styles = StyleSheet.create({
     padding: CARD_PADDING,
     borderWidth: 1,
     borderColor: '#E0E6ED',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: ROW_HEIGHT,
+  },
+  horseName: {
+    width: NAME_WIDTH,
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#2C3E50',
+  },
+  barContainer: {
+    flex: 1,
+    marginHorizontal: 4,
+  },
+  count: {
+    width: COUNT_WIDTH,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#3498DB',
+    textAlign: 'right',
   },
   emptyText: {
     fontSize: 14,

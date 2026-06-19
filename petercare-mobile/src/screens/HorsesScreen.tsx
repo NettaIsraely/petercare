@@ -54,7 +54,7 @@ export default function HorsesScreen() {
     createTask,
     updateTask,
     claimTask,
-    markTaskComplete,
+    toggleTaskComplete,
     markEventComplete,
     currentUserId,
   } = useTasksData();
@@ -154,7 +154,7 @@ export default function HorsesScreen() {
           userRole={user?.role}
           completingIds={completingIds}
           onTaskPress={handleTaskPress}
-          onMarkComplete={markTaskComplete}
+          onToggleComplete={toggleTaskComplete}
         />
 
         <HorsesSection

@@ -94,15 +94,22 @@ export function isWithinNext7Days(value: string | Date): boolean {
   return getNext7DayStrings().includes(dateStr);
 }
 
+export function isOnOrAfterToday(value: string | Date): boolean {
+  return normalizeDateString(value) >= toDateString(new Date());
+}
+
 export function formatWeekDayHeader(dateStr: string): { dayName: string; dateLabel: string } {
-  const weekDays = getNext7DayStrings();
-  const index = weekDays.indexOf(normalizeDateString(dateStr));
-  const date = new Date(`${normalizeDateString(dateStr)}T00:00:00`);
+  const normalized = normalizeDateString(dateStr);
+  const today = toDateString(new Date());
+  const tomorrowDate = new Date();
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrow = toDateString(tomorrowDate);
+  const date = new Date(`${normalized}T00:00:00`);
 
   let dayName: string;
-  if (index === 0) {
+  if (normalized === today) {
     dayName = 'Today';
-  } else if (index === 1) {
+  } else if (normalized === tomorrow) {
     dayName = 'Tomorrow';
   } else {
     dayName = date.toLocaleDateString(undefined, { weekday: 'long' });

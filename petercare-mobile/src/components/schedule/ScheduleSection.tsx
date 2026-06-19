@@ -5,6 +5,7 @@ import { TimelineEvent } from '../../types/events';
 import { Task } from '../../types/task';
 import { UserSummary } from '../../types/user';
 import EventCard from '../home/EventCard';
+import { isEventCompleted } from '../../utils/scheduleHelpers';
 
 interface ScheduleSectionProps {
   title: string;
@@ -50,6 +51,7 @@ export default function ScheduleSection({
             showAssignee
             users={users}
             alertTimes={alertTimes}
+            completed={isEventCompleted(event)}
           />
         ))
       )}
@@ -78,18 +80,20 @@ export function DatelessTasksSection({
         <ClipboardList size={20} color="#2C3E50" />
         <Text style={styles.title}>Master To-Do (No Deadline)</Text>
       </View>
-      {tasks.map((task) => (
-        <EventCard
-          key={task.id}
-          event={{ kind: 'task', data: task, sortMinutes: 0 }}
-          onPress={() =>
-            onTaskPress({ kind: 'task', data: task, sortMinutes: 0 })
-          }
-          currentUserId={currentUserId}
-          showAssignee
-          users={users}
-        />
-      ))}
+      {tasks.map((task) => {
+        const event: TimelineEvent = { kind: 'task', data: task, sortMinutes: 0 };
+        return (
+          <EventCard
+            key={task.id}
+            event={event}
+            onPress={() => onTaskPress(event)}
+            currentUserId={currentUserId}
+            showAssignee
+            users={users}
+            completed={isEventCompleted(event)}
+          />
+        );
+      })}
     </View>
   );
 }

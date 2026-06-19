@@ -193,5 +193,8 @@ export function pickFeedingUpdateFields(
   if (dto.feeding_status === FeedingStatus.COMPLETE) {
     allowed.feeding_status = FeedingStatus.COMPLETE;
   }
+  if (dto.feeding_status === FeedingStatus.ASSIGNED) {
+    allowed.feeding_status = FeedingStatus.ASSIGNED;
+  }
   return allowed;
 }

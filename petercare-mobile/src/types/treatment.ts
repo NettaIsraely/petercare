@@ -30,4 +30,5 @@ export interface UpdateTreatmentPayload {
   user_id?: string;
   date?: string;
   duration_minutes?: number;
+  is_complete?: boolean;
 }

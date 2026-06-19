@@ -22,4 +22,5 @@ export interface CreateFeedingPayload {
 export interface UpdateFeedingPayload {
   assigned_user_id?: string | null;
   notification_time?: string;
+  feeding_status?: FeedingStatus;
 }

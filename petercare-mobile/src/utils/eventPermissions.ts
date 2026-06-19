@@ -1,5 +1,6 @@
 import { UserRole } from '../types/auth';
 import { TimelineEvent } from '../types/events';
+import { isEventCompleted } from './scheduleHelpers';
 
 export type EventAction = 'create' | 'edit' | 'volunteer' | 'claim' | 'complete' | 'takeOver';
 
@@ -118,4 +119,15 @@ export function canPerformAction(
     default:
       return false;
   }
+}
+
+export function canToggleComplete(
+  role: UserRole | undefined,
+  event: TimelineEvent,
+  userId?: string
+): boolean {
+  if (isEventCompleted(event)) {
+    return canEditEvent(role, event, userId);
+  }
+  return canPerformAction(role, 'complete', event, userId);
 }

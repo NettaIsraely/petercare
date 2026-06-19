@@ -11,7 +11,7 @@ import {
 import { X } from 'lucide-react-native';
 import { Feeding } from '../../types/feeding';
 import { UserSummary } from '../../types/user';
-import { UpdateFeedingPayload } from '../../types/feeding';
+import { FeedingStatus, UpdateFeedingPayload } from '../../types/feeding';
 import TimePickerField from '../common/TimePickerField';
 import { formatShiftLabel, formatTimeForApi, formatTimeForInput } from '../../utils/dateHelpers';
 
@@ -85,6 +85,7 @@ export default function FeedingEditModal({
 }: FeedingEditModalProps) {
   const [assigneeId, setAssigneeId] = useState<string | undefined>();
   const [alertTime, setAlertTime] = useState('08:00');
+  const [feedingStatus, setFeedingStatus] = useState<FeedingStatus>('ASSIGNED');
   const [error, setError] = useState<string | null>(null);
 
   const userOptions = useMemo(
@@ -98,6 +99,7 @@ export default function FeedingEditModal({
     }
     setAssigneeId(feeding.assigned_user?.id);
     setAlertTime(getDefaultAlertTime(feeding, users));
+    setFeedingStatus(feeding.feeding_status);
     setError(null);
   }, [visible, feeding, users]);
 
@@ -110,6 +112,7 @@ export default function FeedingEditModal({
     try {
       const payload: UpdateFeedingPayload = {
         assigned_user_id: assigneeId ?? null,
+        feeding_status: feedingStatus,
       };
 
       const formattedTime = formatTimeForApi(alertTime);
@@ -153,6 +156,46 @@ export default function FeedingEditModal({
                 onChange={setAlertTime}
                 optional
               />
+            ) : null}
+
+            {assigneeId ? (
+              <View style={styles.field}>
+                <Text style={styles.label}>Status</Text>
+                <View style={styles.statusRow}>
+                  <TouchableOpacity
+                    style={[
+                      styles.chip,
+                      feedingStatus !== 'COMPLETE' && styles.chipSelected,
+                    ]}
+                    onPress={() => setFeedingStatus('ASSIGNED')}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        feedingStatus !== 'COMPLETE' && styles.chipTextSelected,
+                      ]}
+                    >
+                      Assigned
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.chip,
+                      feedingStatus === 'COMPLETE' && styles.chipSelected,
+                    ]}
+                    onPress={() => setFeedingStatus('COMPLETE')}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        feedingStatus === 'COMPLETE' && styles.chipTextSelected,
+                      ]}
+                    >
+                      Complete
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             ) : null}
 
             {error && <Text style={styles.errorText}>{error}</Text>}
@@ -220,6 +263,11 @@ const styles = StyleSheet.create({
   },
   chipRow: {
     flexGrow: 0,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   chip: {
     paddingHorizontal: 12,

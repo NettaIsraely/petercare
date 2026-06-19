@@ -5,6 +5,7 @@ import { TimelineEvent } from '../../types/events';
 import { CalendarMarkedDates } from '../../utils/scheduleHelpers';
 import EventCard from '../home/EventCard';
 import { UserSummary } from '../../types/user';
+import { isEventCompleted } from '../../utils/scheduleHelpers';
 
 interface ScheduleMonthlyViewProps {
   markedDates: CalendarMarkedDates;
@@ -58,6 +59,7 @@ export default function ScheduleMonthlyView({
             currentUserId={currentUserId}
             showAssignee
             users={users}
+            completed={isEventCompleted(event)}
           />
         ))
       )}

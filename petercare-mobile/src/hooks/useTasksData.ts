@@ -109,15 +109,19 @@ export function useTasksData() {
     [refresh]
   );
 
-  const markTaskComplete = useCallback(
+  const toggleTaskComplete = useCallback(
     async (task: Task) => {
       const key = completingKey('task', task.id);
       setCompletingIds((prev) => new Set(prev).add(key));
       try {
-        await taskService.markTaskComplete(task.id);
+        if (task.is_complete) {
+          await taskService.updateTask(task.id, { is_complete: false });
+        } else {
+          await taskService.markTaskComplete(task.id);
+        }
         await refresh({ silent: true });
       } catch (error) {
-        console.error('Failed to mark task complete:', error);
+        console.error('Failed to toggle task completion:', error);
       } finally {
         setCompletingIds((prev) => {
           const next = new Set(prev);
@@ -134,9 +138,9 @@ export function useTasksData() {
       if (event.kind !== 'task') {
         return;
       }
-      await markTaskComplete(event.data);
+      await toggleTaskComplete(event.data);
     },
-    [markTaskComplete]
+    [toggleTaskComplete]
   );
 
   return {
@@ -152,7 +156,7 @@ export function useTasksData() {
     createTask,
     updateTask,
     claimTask,
-    markTaskComplete,
+    toggleTaskComplete,
     markEventComplete,
     currentUserId: user?.userId,
   };

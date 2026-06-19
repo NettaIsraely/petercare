@@ -118,6 +118,7 @@ export default function EditEventModal({
   const [treatmentDuration, setTreatmentDuration] = useState('');
   const [treatmentHorseIds, setTreatmentHorseIds] = useState<string[]>([]);
   const [treatmentUserId, setTreatmentUserId] = useState('');
+  const [treatmentIsComplete, setTreatmentIsComplete] = useState(false);
 
   useEffect(() => {
     if (!visible || !kind) {
@@ -149,6 +150,7 @@ export default function EditEventModal({
       );
       setTreatmentHorseIds(treatment.horses.map((h) => h.id));
       setTreatmentUserId(treatment.user.id);
+      setTreatmentIsComplete(treatment.is_complete ?? false);
     }
   }, [visible, kind, ride, treatment]);
 
@@ -224,6 +226,7 @@ export default function EditEventModal({
             : undefined,
           horse_ids: treatmentHorseIds,
           user_id: treatmentUserId,
+          is_complete: treatmentIsComplete,
         });
       }
       onClose();
@@ -411,6 +414,37 @@ export default function EditEventModal({
                   selectedId={treatmentUserId}
                   onSelect={(id) => setTreatmentUserId(id ?? '')}
                 />
+                <View style={styles.field}>
+                  <Text style={styles.label}>Status</Text>
+                  <View style={styles.rowWrap}>
+                    <TouchableOpacity
+                      style={[styles.chip, !treatmentIsComplete && styles.chipSelected]}
+                      onPress={() => setTreatmentIsComplete(false)}
+                    >
+                      <Text
+                        style={[
+                          styles.chipText,
+                          !treatmentIsComplete && styles.chipTextSelected,
+                        ]}
+                      >
+                        Open
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.chip, treatmentIsComplete && styles.chipSelected]}
+                      onPress={() => setTreatmentIsComplete(true)}
+                    >
+                      <Text
+                        style={[
+                          styles.chipText,
+                          treatmentIsComplete && styles.chipTextSelected,
+                        ]}
+                      >
+                        Complete
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </>
             )}
 

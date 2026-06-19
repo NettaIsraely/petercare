@@ -12,7 +12,7 @@ export default function WelcomeHeader({ name, feedings, rides, tasks }: WelcomeH
   return (
     <View style={styles.container}>
       <Text style={styles.greeting}>Hello, {name}</Text>
-      <Text style={styles.subtitle}>Here is your week at a glance</Text>
+      <Text style={styles.subtitle}>Here is your schedule at a glance</Text>
       <View style={styles.pillRow}>
         <View style={styles.pill}>
           <Text style={styles.pillCount}>{feedings}</Text>

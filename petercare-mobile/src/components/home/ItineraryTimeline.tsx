@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { WeekDaySection } from '../../types/events';
 import { UserRole } from '../../types/auth';
 import { isCompletingKey } from '../../utils/completionKeys';
-import { canPerformAction } from '../../utils/eventPermissions';
+import { canToggleComplete } from '../../utils/eventPermissions';
+import { isEventCompleted } from '../../utils/scheduleHelpers';
 import EventCard from './EventCard';
 
 interface ItineraryTimelineProps {
   daySections: WeekDaySection[];
-  onMarkComplete: (event: WeekDaySection['events'][number]) => void;
+  onToggleComplete: (event: WeekDaySection['events'][number]) => void;
+  onEventPress: (event: WeekDaySection['events'][number]) => void;
   completingIds: Set<string>;
   userRole?: UserRole;
   currentUserId?: string;
@@ -20,7 +22,8 @@ interface ItineraryTimelineProps {
 
 export default function ItineraryTimeline({
   daySections,
-  onMarkComplete,
+  onToggleComplete,
+  onEventPress,
   completingIds,
   userRole,
   currentUserId,
@@ -30,7 +33,7 @@ export default function ItineraryTimeline({
     return (
       <View style={styles.container}>
         <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>No events scheduled for you this week.</Text>
+          <Text style={styles.emptyText}>No events scheduled for you.</Text>
         </View>
       </View>
     );
@@ -44,7 +47,8 @@ export default function ItineraryTimeline({
             {section.dayName} · {section.dateLabel}
           </Text>
           {section.events.map((event) => {
-            const canComplete = canPerformAction(userRole, 'complete', event, currentUserId);
+            const completed = isEventCompleted(event);
+            const canToggle = canToggleComplete(userRole, event, currentUserId);
             const isCompleting =
               event.kind === 'feeding'
                 ? isCompletingKey(completingIds, 'feeding', event.data.id)
@@ -58,10 +62,13 @@ export default function ItineraryTimeline({
               <EventCard
                 key={`${event.kind}-${event.data.id}`}
                 event={event}
-                showCheckbox={canComplete}
+                showCheckbox={canToggle}
+                checked={completed}
+                completed={completed}
                 isCompleting={isCompleting}
                 alertTimes={alertTimes}
-                onToggleComplete={canComplete ? () => onMarkComplete(event) : undefined}
+                onToggleComplete={canToggle ? () => onToggleComplete(event) : undefined}
+                onPress={() => onEventPress(event)}
               />
             );
           })}

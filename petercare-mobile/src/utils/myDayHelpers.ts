@@ -6,11 +6,10 @@ import { Treatment } from '../types/treatment';
 import { UserSummary } from '../types/user';
 import {
   formatWeekDayHeader,
-  getNext7DayStrings,
   getShiftDeadlineTime,
+  isOnOrAfterToday,
   isPastShiftDeadline,
   isToday,
-  isWithinNext7Days,
   normalizeDateString,
   parseTimeToMinutes,
 } from './dateHelpers';
@@ -25,6 +24,49 @@ function isUserOnRide(ride: Ride, userId: string): boolean {
     return true;
   }
   return ride.additional_riders?.some((rider) => rider.id === userId) ?? false;
+}
+
+function getUserFutureScheduleDates(
+  userId: string,
+  feedings: Feeding[],
+  tasks: Task[],
+  rides: Ride[],
+  treatments: Treatment[]
+): string[] {
+  const dates = new Set<string>();
+
+  feedings.forEach((feeding) => {
+    if (
+      feeding.assigned_user?.id === userId &&
+      isOnOrAfterToday(feeding.schedule_date)
+    ) {
+      dates.add(normalizeDateString(feeding.schedule_date));
+    }
+  });
+
+  tasks.forEach((task) => {
+    if (
+      task.deadline &&
+      task.assigned_user?.id === userId &&
+      isOnOrAfterToday(task.deadline)
+    ) {
+      dates.add(normalizeDateString(task.deadline));
+    }
+  });
+
+  rides.forEach((ride) => {
+    if (isUserOnRide(ride, userId) && isOnOrAfterToday(ride.date)) {
+      dates.add(normalizeDateString(ride.date));
+    }
+  });
+
+  treatments.forEach((treatment) => {
+    if (treatment.user.id === userId && isOnOrAfterToday(treatment.date)) {
+      dates.add(normalizeDateString(treatment.date));
+    }
+  });
+
+  return Array.from(dates).sort();
 }
 
 function getFeedingSortMinutes(feeding: Feeding, alertTimes: AlertTimes): number {
@@ -51,8 +93,7 @@ function getEventsForDate(
     .filter(
       (f) =>
         normalizeDateString(f.schedule_date) === normalizedDate &&
-        f.assigned_user?.id === userId &&
-        f.feeding_status !== 'COMPLETE'
+        f.assigned_user?.id === userId
     )
     .map((feeding) => ({
       kind: 'feeding' as const,
@@ -74,8 +115,7 @@ function getEventsForDate(
     .filter(
       (t) =>
         normalizeDateString(t.date) === normalizedDate &&
-        t.user.id === userId &&
-        !(t.is_complete ?? false)
+        t.user.id === userId
     )
     .map((treatment) => ({
       kind: 'treatment' as const,
@@ -88,8 +128,7 @@ function getEventsForDate(
       (t) =>
         t.deadline &&
         normalizeDateString(t.deadline) === normalizedDate &&
-        t.assigned_user?.id === userId &&
-        !(t.is_complete ?? false)
+        t.assigned_user?.id === userId
     )
     .map((task) => ({
       kind: 'task' as const,
@@ -112,23 +151,21 @@ export function computeMyWeek(
 ): MyWeekData {
   const todayFeedings = feedings.filter((f) => isToday(f.schedule_date));
 
-  const userWeekFeedings = feedings.filter(
+  const userScheduleFeedings = feedings.filter(
     (f) =>
-      isWithinNext7Days(f.schedule_date) &&
-      f.assigned_user?.id === userId &&
-      f.feeding_status !== 'COMPLETE'
+      isOnOrAfterToday(f.schedule_date) &&
+      f.assigned_user?.id === userId
   );
 
-  const weekRides = rides.filter(
-    (r) => isWithinNext7Days(r.date) && isUserOnRide(r, userId)
+  const scheduleRides = rides.filter(
+    (r) => isOnOrAfterToday(r.date) && isUserOnRide(r, userId)
   );
 
-  const userWeekTasks = tasks.filter(
+  const userScheduleTasks = tasks.filter(
     (t) =>
       t.deadline &&
-      isWithinNext7Days(t.deadline) &&
-      t.assigned_user?.id === userId &&
-      !(t.is_complete ?? false)
+      isOnOrAfterToday(t.deadline) &&
+      t.assigned_user?.id === userId
   );
 
   const unassignedFeedings = todayFeedings.filter(
@@ -147,7 +184,7 @@ export function computeMyWeek(
       )
   );
 
-  const daySections = getNext7DayStrings()
+  const daySections = getUserFutureScheduleDates(userId, feedings, tasks, rides, treatments)
     .map((date) => {
       const events = getEventsForDate(
         date,
@@ -172,9 +209,9 @@ export function computeMyWeek(
 
   return {
     summaryCounts: {
-      feedings: userWeekFeedings.length,
-      rides: weekRides.length,
-      tasks: userWeekTasks.length,
+      feedings: userScheduleFeedings.length,
+      rides: scheduleRides.length,
+      tasks: userScheduleTasks.length,
     },
     unassignedFeedings,
     overdueFeedings,

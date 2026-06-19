@@ -7,7 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { ClipboardList, MessageSquare } from 'lucide-react-native';
+import { Check, ClipboardList, MessageSquare } from 'lucide-react-native';
 import { TimelineEvent } from '../../types/events';
 import { UserSummary } from '../../types/user';
 import { getEventCardStyle } from '../../utils/userColors';
@@ -32,6 +32,7 @@ import {
 interface EventCardProps {
   event: TimelineEvent;
   showCheckbox?: boolean;
+  checked?: boolean;
   isCompleting?: boolean;
   onToggleComplete?: () => void;
   onPress?: () => void;
@@ -102,6 +103,7 @@ function getEventSubtitle(event: TimelineEvent, alertTimes?: EventCardProps['ale
 export default function EventCard({
   event,
   showCheckbox = false,
+  checked = false,
   isCompleting = false,
   onToggleComplete,
   onPress,
@@ -151,7 +153,13 @@ export default function EventCard({
           {getEventSubtitle(event, alertTimes)}
         </Text>
         {assigneeName ? (
-          <Text style={[styles.assignee, completed && styles.completedSubtitle]}>
+          <Text
+            style={[
+              styles.assignee,
+              showAssignee && styles.assigneeBold,
+              completed && styles.completedSubtitle,
+            ]}
+          >
             {assigneeName}
           </Text>
         ) : null}
@@ -166,13 +174,21 @@ export default function EventCard({
       )}
       {showCheckbox && (
         <TouchableOpacity
-          style={[styles.checkbox, isCompleting && styles.checkboxLoading]}
+          style={[
+            styles.checkbox,
+            checked && styles.checkboxChecked,
+            isCompleting && styles.checkboxLoading,
+          ]}
           onPress={onToggleComplete}
           disabled={isCompleting}
           accessibilityRole="checkbox"
-          accessibilityState={{ checked: false, busy: isCompleting }}
+          accessibilityState={{ checked, busy: isCompleting }}
         >
-          {isCompleting && <ActivityIndicator size="small" color="#3498DB" />}
+          {isCompleting ? (
+            <ActivityIndicator size="small" color={checked ? '#FFFFFF' : '#3498DB'} />
+          ) : checked ? (
+            <Check size={16} color="#FFFFFF" />
+          ) : null}
         </TouchableOpacity>
       )}
     </>
@@ -279,6 +295,9 @@ const styles = StyleSheet.create({
     color: '#95A5A6',
     marginTop: 4,
   },
+  assigneeBold: {
+    fontWeight: '700',
+  },
   commentsMarker: {
     marginLeft: 8,
     justifyContent: 'center',
@@ -292,6 +311,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
+  },
+  checkboxChecked: {
+    backgroundColor: '#3498DB',
+    borderColor: '#3498DB',
   },
   checkboxLoading: {
     borderColor: '#AED6F1',

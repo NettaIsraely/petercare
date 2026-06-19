@@ -18,6 +18,13 @@ export async function markFeedingComplete(id: string): Promise<Feeding> {
   return response.data;
 }
 
+export async function markFeedingIncomplete(id: string): Promise<Feeding> {
+  const response = await apiClient.patch<Feeding>(`/feedings/${id}`, {
+    feeding_status: 'ASSIGNED',
+  });
+  return response.data;
+}
+
 export async function volunteerForFeeding(
   id: string,
   notificationTime?: string
