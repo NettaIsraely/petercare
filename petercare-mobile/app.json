@@ -16,7 +16,8 @@
         "backgroundColor": "#FFFFFF"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.petercare.app"
+      "package": "com.petercare.app",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/peter-care-icon.png"

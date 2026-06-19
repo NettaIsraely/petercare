@@ -37,7 +37,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build:web": "node scripts/generate-firebase-sw.mjs && expo export -p web && node scripts/copy-public-assets.mjs"
+    "build:web": "node scripts/generate-firebase-sw.mjs && expo export -p web && node scripts/copy-public-assets.mjs",
+    "verify:android-push": "node scripts/verify-android-push-setup.mjs"
   },
   "private": true
 }

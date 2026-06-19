@@ -23,6 +23,15 @@ async function getExpoPushToken(): Promise<string | null> {
     return null;
   }
 
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#3498DB',
+    });
+  }
+
   const { status: existingStatus } = await Notifications.getPermissionsAsync();
   let finalStatus = existingStatus;
 
@@ -45,7 +54,7 @@ async function getExpoPushToken(): Promise<string | null> {
     );
     return token.data;
   } catch (error) {
-    console.warn('Failed to get Expo push token:', error);
+    console.error('Failed to get Expo push token:', error);
     return null;
   }
 }
@@ -79,7 +88,7 @@ export async function registerPushToken(userId: string): Promise<void> {
       timezone,
     });
   } catch (error) {
-    console.warn('Failed to register push token:', error);
+    console.error('Failed to register push token:', error);
   }
 }
 

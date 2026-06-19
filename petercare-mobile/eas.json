@@ -10,16 +10,30 @@
     },
     "preview": {
       "distribution": "internal",
+      "environment": "preview",
       "android": {
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://petercare.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://petercare.onrender.com",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyDkgLr9rV4PnM3L971kbj1KQanqm0tPvDY",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "peter-care.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "peter-care",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "1013215369894",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:1013215369894:web:f700ca60c7b9c51d6af267",
+        "EXPO_PUBLIC_FIREBASE_VAPID_KEY": "BCL0cpv9u1eLp60lMDMhfM_dOX_x-lYZ8X6fLLDKylpoJTOpsUhBUwd7_quzT8i8isguxjYoSxsCATY2lL4NmOI"
       }
     },
     "production": {
+      "environment": "production",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://petercare.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://petercare.onrender.com",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyDkgLr9rV4PnM3L971kbj1KQanqm0tPvDY",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "peter-care.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "peter-care",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "1013215369894",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:1013215369894:web:f700ca60c7b9c51d6af267",
+        "EXPO_PUBLIC_FIREBASE_VAPID_KEY": "BCL0cpv9u1eLp60lMDMhfM_dOX_x-lYZ8X6fLLDKylpoJTOpsUhBUwd7_quzT8i8isguxjYoSxsCATY2lL4NmOI"
       }
     }
   }

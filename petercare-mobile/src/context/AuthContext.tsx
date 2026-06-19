@@ -4,8 +4,10 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 import { apiClient } from '../api/client';
 import {
   clearToken,
@@ -32,6 +34,11 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const userRef = useRef<AuthUser | null>(null);
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   const logout = useCallback(async () => {
     await clearToken();
@@ -114,6 +121,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       setUnauthorizedHandler(null);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      if (nextState !== 'active') {
+        return;
+      }
+
+      const session = userRef.current;
+      if (session) {
+        void registerPushToken(session.userId);
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription.remove();
     };
   }, []);
 
