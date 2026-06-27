@@ -1,7 +1,8 @@
 import { DateTime, Settings } from 'luxon';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bullmq';
-import { ShiftType } from '../feedings/entities/feeding.entity';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { Feeding, FeedingStatus, ShiftType } from '../feedings/entities/feeding.entity';
 import {
   FeedingNotificationsService,
   resolveFeedingAlertUtc,
@@ -57,10 +58,12 @@ describe('FeedingNotificationsService', () => {
   let service: FeedingNotificationsService;
   let queueAdd: jest.Mock;
   let queueGetJob: jest.Mock;
+  let feedingFind: jest.Mock;
 
   beforeEach(async () => {
     queueAdd = jest.fn();
     queueGetJob = jest.fn().mockResolvedValue(null);
+    feedingFind = jest.fn().mockResolvedValue([]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -77,6 +80,12 @@ describe('FeedingNotificationsService', () => {
           useValue: {
             filterEligibleUserIds: jest.fn(async (ids: string[]) => ids),
             isUserEligible: jest.fn(async () => true),
+          },
+        },
+        {
+          provide: getRepositoryToken(Feeding),
+          useValue: {
+            find: feedingFind,
           },
         },
       ],
@@ -135,5 +144,50 @@ describe('FeedingNotificationsService', () => {
     );
 
     expect(queueAdd.mock.calls[0][2].delay).toBe(0);
+  });
+
+  it('reschedules reminders for assigned feedings on or after today', async () => {
+    const fixedNow = DateTime.fromISO('2026-06-19T10:00:00.000Z').toMillis();
+    Settings.now = () => fixedNow;
+
+    const user = { id: 'user-1', ...mockAssignee } as never;
+    const tomorrowFeeding = {
+      id: 'feeding-1',
+      schedule_date: new Date('2026-06-21T00:00:00.000Z'),
+      shift_type: ShiftType.MORNING,
+      feeding_status: FeedingStatus.ASSIGNED,
+    };
+
+    feedingFind.mockResolvedValue([tomorrowFeeding]);
+
+    await service.rescheduleFeedingRemindersForUser(user);
+
+    expect(feedingFind).toHaveBeenCalledWith({
+      where: {
+        assigned_user: { id: 'user-1' },
+        feeding_status: FeedingStatus.ASSIGNED,
+        schedule_date: expect.any(Object),
+      },
+    });
+    expect(queueAdd).toHaveBeenCalledTimes(1);
+    expect(queueAdd).toHaveBeenCalledWith(
+      'feeding-reminder',
+      expect.objectContaining({ userId: 'user-1' }),
+      expect.objectContaining({
+        jobId: 'feeding-reminder-feeding-1',
+        delay: expect.any(Number),
+      }),
+    );
+  });
+
+  it('does not enqueue reminders when user has no upcoming assigned feedings', async () => {
+    feedingFind.mockResolvedValue([]);
+
+    await service.rescheduleFeedingRemindersForUser({
+      id: 'user-1',
+      ...mockAssignee,
+    } as never);
+
+    expect(queueAdd).not.toHaveBeenCalled();
   });
 });

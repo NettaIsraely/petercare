@@ -4,6 +4,8 @@ import {
   feedingIncompleteBroadcastAssignedMessage,
   feedingIncompleteBroadcastUnassignedMessage,
   feedingReminderMessage,
+  eventModifiedMessage,
+  rideJoinedMessage,
   shiftReassignedMessage,
   unassignedNightAlertMessage,
 } from './notification-messages';
@@ -11,7 +13,7 @@ import {
 describe('notification-messages', () => {
   it('formats feeding reminder with title-case shift label', () => {
     expect(feedingReminderMessage(ShiftType.MORNING)).toBe(
-      'Reminder: You have the Morning feeding shift coming up!',
+      'Reminder: Feed the horses! You have the Morning feeding shift today!',
     );
   });
 
@@ -44,6 +46,18 @@ describe('notification-messages', () => {
   it('formats incomplete broadcast when unassigned', () => {
     expect(feedingIncompleteBroadcastUnassignedMessage(ShiftType.MORNING)).toBe(
       "Today's Morning feeding has not been marked complete and is still unassigned.",
+    );
+  });
+
+  it('formats event modified message', () => {
+    expect(eventModifiedMessage('Alex', 'ride', '2026-06-20')).toBe(
+      'Alex updated your ride on 20/06/2026.',
+    );
+  });
+
+  it('formats ride joined message', () => {
+    expect(rideJoinedMessage('Alex', '2026-06-20')).toBe(
+      'Alex joined your ride on 20/06/2026.',
     );
   });
 });

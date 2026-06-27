@@ -24,7 +24,7 @@ import {
 } from '../../utils/dateHelpers';
 import { isCompletingKey } from '../../utils/completionKeys';
 import { eventHasComments, getEventComments } from '../../utils/scheduleHelpers';
-import { canEditEvent, canPerformAction } from '../../utils/eventPermissions';
+import { canEditEvent, canPerformAction, canDeleteEvent, canJoinRide } from '../../utils/eventPermissions';
 
 interface EventDetailModalProps {
   visible: boolean;
@@ -45,6 +45,9 @@ interface EventDetailModalProps {
   onClaim: (taskId: string) => void;
   onMarkComplete: (event: TimelineEvent) => void;
   onEdit?: (event: TimelineEvent) => void;
+  onJoin?: (event: TimelineEvent) => void;
+  onDelete?: (event: TimelineEvent) => void;
+  deletingId?: string | null;
 }
 
 function getDetailLines(event: TimelineEvent): string[] {
@@ -139,6 +142,9 @@ export default function EventDetailModal({
   onClaim,
   onMarkComplete,
   onEdit,
+  onJoin,
+  onDelete,
+  deletingId,
 }: EventDetailModalProps) {
   const [notificationTime, setNotificationTime] = useState('08:00');
 
@@ -157,12 +163,15 @@ export default function EventDetailModal({
   const showTakeOver = onTakeOver && canPerformAction(userRole, 'takeOver', event, currentUserId);
   const showClaim = canPerformAction(userRole, 'claim', event, currentUserId);
   const showComplete = canPerformAction(userRole, 'complete', event, currentUserId);
+  const showJoin = onJoin && canJoinRide(userRole, event, currentUserId);
   const showEdit = onEdit && canEditEvent(userRole, event, currentUserId);
+  const showDelete = onDelete && canDeleteEvent(userRole, event);
 
   const eventId = event.data.id;
   const isVolunteering = volunteeringId === eventId;
   const isTakingOver = takingOverId === eventId;
   const isClaiming = claimingId === eventId;
+  const isDeleting = deletingId === eventId;
   const isCompleting =
     (event.kind === 'feeding' || event.kind === 'task' || event.kind === 'treatment') &&
     isCompletingKey(completingIds, event.kind, eventId);
@@ -312,12 +321,35 @@ export default function EventDetailModal({
               </TouchableOpacity>
             )}
 
+            {showJoin && (
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={() => onJoin(event)}
+              >
+                <Text style={styles.primaryButtonText}>Join Ride</Text>
+              </TouchableOpacity>
+            )}
+
             {showEdit && (
               <TouchableOpacity
                 style={styles.secondaryButton}
                 onPress={() => onEdit(event)}
               >
                 <Text style={styles.secondaryButtonText}>{getEditLabel()}</Text>
+              </TouchableOpacity>
+            )}
+
+            {showDelete && (
+              <TouchableOpacity
+                style={[styles.secondaryButton, styles.deleteButton]}
+                onPress={() => onDelete(event)}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator color="#C0392B" />
+                ) : (
+                  <Text style={styles.deleteButtonText}>Delete</Text>
+                )}
               </TouchableOpacity>
             )}
           </ScrollView>
@@ -435,5 +467,14 @@ const styles = StyleSheet.create({
     color: '#2C3E50',
     fontSize: 16,
     fontWeight: '600',
+  },
+  deleteButton: {
+    borderColor: '#F5B7B1',
+    backgroundColor: '#FDEDEC',
+  },
+  deleteButtonText: {
+    color: '#C0392B',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

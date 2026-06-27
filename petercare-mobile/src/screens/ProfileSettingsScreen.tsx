@@ -41,6 +41,7 @@ export default function ProfileSettingsScreen() {
     setNotifyTaskDeadlines,
     setNotifyRoleRequests,
     setNotifyRoleRequestResolved,
+    setNotifyEventModified,
     save,
     requestCaregiverAccess,
   } = useProfileSettings();
@@ -250,6 +251,22 @@ export default function ProfileSettingsScreen() {
             disabled={!form.pushNotificationsEnabled}
             trackColor={{ false: '#BDC3C7', true: '#85C1E9' }}
             thumbColor={form.notifyTaskDeadlines ? '#3498DB' : '#ECF0F1'}
+          />
+        </View>
+
+        <View style={styles.switchRow}>
+          <View style={styles.switchLabelBlock}>
+            <Text style={styles.switchLabel}>Event change alerts</Text>
+            <Text style={styles.switchHelper}>
+              When someone else edits an event you&apos;re part of, or joins your ride.
+            </Text>
+          </View>
+          <Switch
+            value={form.notifyEventModified}
+            onValueChange={setNotifyEventModified}
+            disabled={!form.pushNotificationsEnabled}
+            trackColor={{ false: '#BDC3C7', true: '#85C1E9' }}
+            thumbColor={form.notifyEventModified ? '#3498DB' : '#ECF0F1'}
           />
         </View>
 

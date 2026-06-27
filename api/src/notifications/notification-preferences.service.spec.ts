@@ -17,6 +17,7 @@ describe('NotificationPreferencesService', () => {
     notify_task_deadlines: true,
     notify_role_requests: true,
     notify_role_request_resolved: true,
+    notify_event_modified: true,
   };
 
   beforeEach(async () => {
@@ -63,5 +64,15 @@ describe('NotificationPreferencesService', () => {
       'feeding-reminder',
     );
     expect(eligible).toEqual(['user-1']);
+  });
+
+  it('uses notify_event_modified for event-modified and ride-joined alerts', async () => {
+    const users = [{ ...mockUser, notify_event_modified: false }];
+    jest.spyOn(service['userRepository'], 'find').mockResolvedValue(users as User[]);
+
+    const modified = await service.filterEligibleUserIds(['user-1'], 'event-modified-alert');
+    const joined = await service.filterEligibleUserIds(['user-1'], 'ride-joined-alert');
+    expect(modified).toEqual([]);
+    expect(joined).toEqual([]);
   });
 });

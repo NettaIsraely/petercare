@@ -5,6 +5,12 @@ import { RidesService } from './rides.service';
 import { Ride } from './entities/ride.entity';
 import { User } from '../users/entities/user.entity';
 import { UserRole } from '../users/entities/user.entity';
+import { EventNotificationsService } from '../notifications/event-notifications.service';
+
+const eventNotificationsMock = {
+  notifyEventModified: jest.fn(),
+  notifyRideJoined: jest.fn(),
+};
 
 const authUser = {
   userId: 'owner-id',
@@ -93,6 +99,10 @@ describe('RidesService', () => {
         {
           provide: getRepositoryToken(User),
           useValue: userRepository,
+        },
+        {
+          provide: EventNotificationsService,
+          useValue: eventNotificationsMock,
         },
       ],
     }).compile();
@@ -195,14 +205,17 @@ describe('RidesService', () => {
     };
 
     beforeEach(() => {
-      findOneMock.mockResolvedValue(existingRide);
+      findOneMock.mockResolvedValue({
+        ...existingRide,
+        comments: 'Updated',
+      });
     });
 
     it('allows comment-only updates without conflicts', async () => {
       const ride = await service.update('ride-1', { comments: 'Updated note' }, authUser);
 
       expect(saveMock).toHaveBeenCalled();
-      expect(ride).toEqual({ id: 'ride-1', comments: 'Updated' });
+      expect(ride).toMatchObject({ id: 'ride-1', comments: 'Updated' });
     });
 
     it('throws ConflictException when updated slot overlaps another ride', async () => {

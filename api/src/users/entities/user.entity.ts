@@ -81,6 +81,9 @@ export class User {
   @Column({ type: 'boolean', default: true })
   notify_role_request_resolved!: boolean;
 
+  @Column({ type: 'boolean', default: true })
+  notify_event_modified!: boolean;
+
   // The temporary token for password resets
   @Column({ type: 'varchar', nullable: true })
   reset_password_token?: string | null;

@@ -67,6 +67,7 @@ export function useScheduleData() {
   const [creating, setCreating] = useState(false);
   const [volunteeringBatch, setVolunteeringBatch] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const assignableUsers = useMemo(
     () => orderUsersForAssignment(raw.assignableUsers, user?.userId),
@@ -407,6 +408,33 @@ export function useScheduleData() {
     [refresh]
   );
 
+  const deleteEvent = useCallback(
+    async (event: TimelineEvent) => {
+      setDeletingId(event.data.id);
+      try {
+        switch (event.kind) {
+          case 'ride':
+            await rideService.deleteRide(event.data.id);
+            break;
+          case 'task':
+            await taskService.deleteTask(event.data.id);
+            break;
+          case 'treatment':
+            await treatmentService.deleteTreatment(event.data.id);
+            break;
+          default:
+            return;
+        }
+        await refresh(true);
+      } catch (error) {
+        console.error('Failed to delete event:', error);
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [refresh]
+  );
+
   return {
     raw,
     assignableUsers,
@@ -440,6 +468,8 @@ export function useScheduleData() {
     updateFeeding,
     updateRide,
     updateTreatment,
+    deleteEvent,
+    deletingId,
     currentUserId: user?.userId,
     userRole: user?.role,
   };

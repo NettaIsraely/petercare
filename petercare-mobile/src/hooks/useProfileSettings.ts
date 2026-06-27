@@ -29,6 +29,7 @@ interface ProfileFormState {
   notifyTaskDeadlines: boolean;
   notifyRoleRequests: boolean;
   notifyRoleRequestResolved: boolean;
+  notifyEventModified: boolean;
 }
 
 const DEFAULT_PROFILE_COLOR = PROFILE_COLOR_OPTIONS[0].key;
@@ -43,6 +44,7 @@ const DEFAULT_NOTIFICATION_PREFS: NotificationPreferences = {
   notify_task_deadlines: true,
   notify_role_requests: true,
   notify_role_request_resolved: true,
+  notify_event_modified: true,
 };
 
 const EMPTY_FORM: ProfileFormState = {
@@ -60,6 +62,7 @@ const EMPTY_FORM: ProfileFormState = {
   notifyTaskDeadlines: true,
   notifyRoleRequests: true,
   notifyRoleRequestResolved: true,
+  notifyEventModified: true,
 };
 
 function applyProfileToForm(profile: {
@@ -77,6 +80,7 @@ function applyProfileToForm(profile: {
   notify_task_deadlines?: boolean;
   notify_role_requests?: boolean;
   notify_role_request_resolved?: boolean;
+  notify_event_modified?: boolean;
 }): ProfileFormState {
   return {
     name: profile.name,
@@ -105,6 +109,8 @@ function applyProfileToForm(profile: {
     notifyRoleRequestResolved:
       profile.notify_role_request_resolved ??
       DEFAULT_NOTIFICATION_PREFS.notify_role_request_resolved,
+    notifyEventModified:
+      profile.notify_event_modified ?? DEFAULT_NOTIFICATION_PREFS.notify_event_modified,
   };
 }
 
@@ -172,7 +178,8 @@ export function useProfileSettings() {
       form.notifyFeedingIncompleteBroadcast !== savedForm.notifyFeedingIncompleteBroadcast ||
       form.notifyTaskDeadlines !== savedForm.notifyTaskDeadlines ||
       form.notifyRoleRequests !== savedForm.notifyRoleRequests ||
-      form.notifyRoleRequestResolved !== savedForm.notifyRoleRequestResolved,
+      form.notifyRoleRequestResolved !== savedForm.notifyRoleRequestResolved ||
+      form.notifyEventModified !== savedForm.notifyEventModified,
     [form, savedForm]
   );
 
@@ -239,6 +246,7 @@ export function useProfileSettings() {
         notifyTaskDeadlines: DEFAULT_NOTIFICATION_PREFS.notify_task_deadlines,
         notifyRoleRequests: DEFAULT_NOTIFICATION_PREFS.notify_role_requests,
         notifyRoleRequestResolved: DEFAULT_NOTIFICATION_PREFS.notify_role_request_resolved,
+        notifyEventModified: DEFAULT_NOTIFICATION_PREFS.notify_event_modified,
       });
       setSavedForm({
         name: user.name,
@@ -257,6 +265,7 @@ export function useProfileSettings() {
         notifyTaskDeadlines: DEFAULT_NOTIFICATION_PREFS.notify_task_deadlines,
         notifyRoleRequests: DEFAULT_NOTIFICATION_PREFS.notify_role_requests,
         notifyRoleRequestResolved: DEFAULT_NOTIFICATION_PREFS.notify_role_request_resolved,
+        notifyEventModified: DEFAULT_NOTIFICATION_PREFS.notify_event_modified,
       });
     } finally {
       setLoading(false);
@@ -337,6 +346,10 @@ export function useProfileSettings() {
     setForm((prev) => ({ ...prev, notifyRoleRequestResolved }));
   }, []);
 
+  const setNotifyEventModified = useCallback((notifyEventModified: boolean) => {
+    setForm((prev) => ({ ...prev, notifyEventModified }));
+  }, []);
+
   const save = useCallback(async () => {
     if (!user) {
       return;
@@ -375,6 +388,7 @@ export function useProfileSettings() {
         notify_task_deadlines: form.notifyTaskDeadlines,
         notify_role_requests: form.notifyRoleRequests,
         notify_role_request_resolved: form.notifyRoleRequestResolved,
+        notify_event_modified: form.notifyEventModified,
       });
 
       const nextForm = applyProfileToForm(updated);
@@ -452,6 +466,7 @@ export function useProfileSettings() {
     setNotifyTaskDeadlines,
     setNotifyRoleRequests,
     setNotifyRoleRequestResolved,
+    setNotifyEventModified,
     save,
     requestCaregiverAccess,
     reload: loadProfile,

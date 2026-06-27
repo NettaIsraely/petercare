@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
   assertAssignableUser,
+  assertCanDeleteEvent,
   assertCanEditEvent,
   assertCanTakeOverFeeding,
   assertGuestCannotMutate,
@@ -37,14 +38,42 @@ describe('event-permissions', () => {
     expect(() => assertCanEditEvent(caregiver, 'feeding', feeding)).not.toThrow();
   });
 
-  it('blocks caregivers from editing feedings assigned to others', () => {
+  it('allows caregivers to edit feedings assigned to others', () => {
     const feeding = {
       feeding_status: 'ASSIGNED',
       assigned_user: { id: 'other-id' },
       shift_type: 'MORNING',
     } as any;
 
-    expect(() => assertCanEditEvent(caregiver, 'feeding', feeding)).toThrow(ForbiddenException);
+    expect(() => assertCanEditEvent(caregiver, 'feeding', feeding)).not.toThrow();
+  });
+
+  it('allows caregivers to edit rides, tasks, and treatments assigned to others', () => {
+    const ride = {
+      primary_rider: { id: 'other-id' },
+      additional_riders: [],
+    } as any;
+    const task = { assigned_user: { id: 'other-id' } } as any;
+    const treatment = { user: { id: 'other-id' } } as any;
+
+    expect(() => assertCanEditEvent(caregiver, 'ride', ride)).not.toThrow();
+    expect(() => assertCanEditEvent(caregiver, 'task', task)).not.toThrow();
+    expect(() => assertCanEditEvent(caregiver, 'treatment', treatment)).not.toThrow();
+  });
+
+  it('blocks feeding deletes for all roles', () => {
+    expect(() => assertCanDeleteEvent(owner, 'feeding')).toThrow(BadRequestException);
+    expect(() => assertCanDeleteEvent(caregiver, 'feeding')).toThrow(BadRequestException);
+  });
+
+  it('allows owner and caregiver to delete rides, tasks, and treatments', () => {
+    expect(() => assertCanDeleteEvent(owner, 'ride')).not.toThrow();
+    expect(() => assertCanDeleteEvent(caregiver, 'task')).not.toThrow();
+    expect(() => assertCanDeleteEvent(caregiver, 'treatment')).not.toThrow();
+  });
+
+  it('blocks guests from deleting events', () => {
+    expect(() => assertCanDeleteEvent(guest, 'ride')).toThrow(ForbiddenException);
   });
 
   it('whitelists feeding update fields', () => {

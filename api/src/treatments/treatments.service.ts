@@ -11,10 +11,11 @@ import {
   AuthUser,
   assertAssignableUser,
   assertCanCompleteEvent,
+  assertCanDeleteEvent,
   assertCanEditEvent,
   assertGuestCannotMutate,
-  assertOwnerOnly,
 } from '../common/event-permissions';
+import { EventNotificationsService } from '../notifications/event-notifications.service';
 
 @Injectable()
 export class TreatmentsService {
@@ -25,6 +26,7 @@ export class TreatmentsService {
     private readonly horseRepository: Repository<Horse>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly eventNotifications: EventNotificationsService,
   ) {}
 
   async create(createTreatmentDto: CreateTreatmentDto, authUser: AuthUser): Promise<Treatment> {
@@ -114,7 +116,9 @@ export class TreatmentsService {
       await this.updateLastShoeingDates(saved);
     }
 
-    return this.findOne(saved.id);
+    const full = await this.findOne(saved.id);
+    await this.eventNotifications.notifyEventModified(authUser, 'treatment', full);
+    return full;
   }
 
   private async updateLastShoeingDates(treatment: Treatment): Promise<void> {
@@ -126,7 +130,7 @@ export class TreatmentsService {
   }
 
   async remove(id: string, authUser: AuthUser): Promise<void> {
-    assertOwnerOnly(authUser);
+    assertCanDeleteEvent(authUser, 'treatment');
 
     const result = await this.treatmentRepository.delete(id);
     if (result.affected === 0) {

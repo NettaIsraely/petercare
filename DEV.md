@@ -110,6 +110,24 @@ Keep `USE_LOCAL_DATABASE=true` in `.env` for day-to-day API development so the r
 | Migration fails on fresh DB | Run `npm run infra:down`, remove the Docker volume if needed, `npm run infra:up`, then `npm run db:migrate`. The init script enables `uuid-ossp`. |
 | Redis connection errors | Run `npm run infra:up` — Redis is required for notification queues. |
 
+## Production email (password reset)
+
+Password reset emails require SMTP credentials on Render. Without them, the API queues jobs but delivery fails.
+
+1. Sign up for a transactional provider (e.g. [Resend](https://resend.com) or SendGrid).
+2. Verify the `stablehands.app` domain (add SPF/DKIM DNS records the provider gives you).
+3. In the Render dashboard for the API service, set:
+   - `EMAIL_HOST` — e.g. `smtp.resend.com`
+   - `EMAIL_PORT` — `587`
+   - `EMAIL_USER` — e.g. `resend` (Resend) or `apikey` (SendGrid)
+   - `EMAIL_PASSWORD` — your provider API key
+   - `EMAIL_FROM` — `"StableHands Support" <noreply@stablehands.app>` (must match verified domain)
+4. Redeploy the API service.
+5. Check startup logs for `Email SMTP verified (...)` — if missing, credentials or DNS are wrong.
+6. Trigger forgot-password and confirm logs show `OTP email sent to [...] messageId=...` and the email arrives.
+
+Do not use Ethereal in production; it only delivers to a preview URL, not real inboxes.
+
 ## Script reference
 
 | Command | Description |

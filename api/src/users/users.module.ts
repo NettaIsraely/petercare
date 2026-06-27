@@ -4,9 +4,10 @@ import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { User } from './entities/user.entity';
 import { RolesGuard } from '../auth/roles.guard';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User])],
+  imports: [TypeOrmModule.forFeature([User]), NotificationsModule],
   controllers: [UsersController],
   providers: [UsersService, RolesGuard],
   exports: [UsersService],

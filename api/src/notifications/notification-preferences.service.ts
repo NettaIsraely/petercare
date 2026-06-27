@@ -11,7 +11,8 @@ export type NotificationPreferenceKey =
   | 'notify_feeding_incomplete_broadcast'
   | 'notify_task_deadlines'
   | 'notify_role_requests'
-  | 'notify_role_request_resolved';
+  | 'notify_role_request_resolved'
+  | 'notify_event_modified';
 
 export const NOTIFICATION_JOB_PREFERENCE: Record<string, NotificationPreferenceKey> = {
   'feeding-reminder': 'notify_feeding_reminders',
@@ -22,6 +23,8 @@ export const NOTIFICATION_JOB_PREFERENCE: Record<string, NotificationPreferenceK
   'task-deadline-reminder': 'notify_task_deadlines',
   'role-request-alert': 'notify_role_requests',
   'role-request-resolved': 'notify_role_request_resolved',
+  'event-modified-alert': 'notify_event_modified',
+  'ride-joined-alert': 'notify_event_modified',
 };
 
 @Injectable()
@@ -57,6 +60,7 @@ export class NotificationPreferencesService {
         notify_task_deadlines: true,
         notify_role_requests: true,
         notify_role_request_resolved: true,
+        notify_event_modified: true,
       },
     });
 

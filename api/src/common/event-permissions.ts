@@ -55,55 +55,30 @@ export async function assertAssignableUsers(
 
 export function assertCanEditEvent(
   user: AuthUser,
-  eventKind: EventKind,
-  entity: Feeding | Task | Ride | Treatment,
+  _eventKind: EventKind,
+  _entity: Feeding | Task | Ride | Treatment,
 ): void {
   assertGuestCannotMutate(user);
 
-  if (user.role === UserRole.OWNER) {
+  if (user.role === UserRole.OWNER || user.role === UserRole.CAREGIVER) {
     return;
   }
 
-  if (user.role !== UserRole.CAREGIVER) {
-    throw new ForbiddenException('You do not have permission to edit this event');
+  throw new ForbiddenException('You do not have permission to edit this event');
+}
+
+export function assertCanDeleteEvent(user: AuthUser, eventKind: EventKind): void {
+  assertGuestCannotMutate(user);
+
+  if (eventKind === 'feeding') {
+    throw new BadRequestException('Feeding shifts cannot be deleted');
   }
 
-  switch (eventKind) {
-    case 'feeding': {
-      const feeding = entity as Feeding;
-      const isUnassigned = feeding.feeding_status === FeedingStatus.UNASSIGNED;
-      const isMine = feeding.assigned_user?.id === user.userId;
-      if (!isUnassigned && !isMine) {
-        throw new ForbiddenException('You can only edit unassigned feedings or feedings assigned to you');
-      }
-      return;
-    }
-    case 'task': {
-      const task = entity as Task;
-      const isUnassigned = !task.assigned_user?.id;
-      const isMine = task.assigned_user?.id === user.userId;
-      if (!isUnassigned && !isMine) {
-        throw new ForbiddenException('You can only edit unassigned tasks or tasks assigned to you');
-      }
-      return;
-    }
-    case 'ride': {
-      const ride = entity as Ride;
-      const isPrimary = ride.primary_rider?.id === user.userId;
-      const isAdditional = ride.additional_riders?.some((r) => r.id === user.userId);
-      if (!isPrimary && !isAdditional) {
-        throw new ForbiddenException('You can only edit rides where you are a rider');
-      }
-      return;
-    }
-    case 'treatment': {
-      const treatment = entity as Treatment;
-      if (treatment.user?.id !== user.userId) {
-        throw new ForbiddenException('You can only edit treatments assigned to you');
-      }
-      return;
-    }
+  if (user.role === UserRole.OWNER || user.role === UserRole.CAREGIVER) {
+    return;
   }
+
+  throw new ForbiddenException('You do not have permission to delete this event');
 }
 
 export function assertCanVolunteerFeeding(user: AuthUser, feeding: Feeding): void {

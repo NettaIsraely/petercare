@@ -22,8 +22,10 @@ import CreateEventModal from '../components/schedule/CreateEventModal';
 import TaskFormModal from '../components/tasks/TaskFormModal';
 import FeedingEditModal from '../components/schedule/FeedingEditModal';
 import EditEventModal from '../components/schedule/EditEventModal';
+import JoinRideModal from '../components/schedule/JoinRideModal';
 import { canCreateEvents } from '../utils/eventPermissions';
 import { confirmFeedingTakeOver } from '../utils/feedingTakeOverHelpers';
+import { confirmEventDelete } from '../utils/eventDeleteHelpers';
 
 export default function ScheduleScreen() {
   const { user } = useAuth();
@@ -36,6 +38,7 @@ export default function ScheduleScreen() {
   const [editFeeding, setEditFeeding] = useState<Feeding | null>(null);
   const [editRide, setEditRide] = useState<Ride | null>(null);
   const [editTreatment, setEditTreatment] = useState<Treatment | null>(null);
+  const [joinRide, setJoinRide] = useState<Ride | null>(null);
 
   const {
     raw,
@@ -70,6 +73,8 @@ export default function ScheduleScreen() {
     updateFeeding,
     updateRide,
     updateTreatment,
+    deleteEvent,
+    deletingId,
     currentUserId,
     userRole,
   } = useScheduleData();
@@ -133,6 +138,24 @@ export default function ScheduleScreen() {
         setEditTreatment(event.data);
         break;
     }
+  };
+
+  const handleJoin = (event: TimelineEvent) => {
+    if (event.kind !== 'ride') {
+      return;
+    }
+    handleCloseDetail();
+    setJoinRide(event.data);
+  };
+
+  const handleDelete = async (event: TimelineEvent) => {
+    const confirmed = await confirmEventDelete(event);
+    if (!confirmed) {
+      return;
+    }
+
+    await deleteEvent(event);
+    handleCloseDetail();
   };
 
   if (loading && !refreshing) {
@@ -202,6 +225,9 @@ export default function ScheduleScreen() {
         onClaim={handleClaim}
         onMarkComplete={handleMarkComplete}
         onEdit={handleEdit}
+        onJoin={handleJoin}
+        onDelete={handleDelete}
+        deletingId={deletingId}
       />
 
       <CreateEventModal
@@ -255,6 +281,16 @@ export default function ScheduleScreen() {
         }}
         onSubmitRide={updateRide}
         onSubmitTreatment={updateTreatment}
+      />
+
+      <JoinRideModal
+        visible={!!joinRide}
+        ride={joinRide}
+        horses={raw.horses}
+        currentUserId={currentUserId}
+        submitting={updating}
+        onClose={() => setJoinRide(null)}
+        onSubmit={updateRide}
       />
     </View>
   );

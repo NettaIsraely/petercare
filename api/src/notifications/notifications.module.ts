@@ -5,6 +5,7 @@ import { Task } from '../tasks/entities/task.entity';
 import { User } from '../users/entities/user.entity';
 import { QueueModule } from '../queue/queue.module';
 import { FeedingNotificationsService } from './feeding-notifications.service';
+import { EventNotificationsService } from './event-notifications.service';
 import { NotificationsSchedulerService } from './notifications-scheduler.service';
 import { NotificationPreferencesService } from './notification-preferences.service';
 
@@ -15,9 +16,14 @@ import { NotificationPreferencesService } from './notification-preferences.servi
   ],
   providers: [
     FeedingNotificationsService,
+    EventNotificationsService,
     NotificationsSchedulerService,
     NotificationPreferencesService,
   ],
-  exports: [FeedingNotificationsService, NotificationPreferencesService],
+  exports: [
+    FeedingNotificationsService,
+    EventNotificationsService,
+    NotificationPreferencesService,
+  ],
 })
 export class NotificationsModule {}

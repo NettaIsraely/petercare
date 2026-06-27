@@ -5,31 +5,21 @@ import { Job } from "bullmq";
 import { Expo, ExpoPushMessage } from "expo-server-sdk";
 import { User } from "../users/entities/user.entity";
 import { Repository } from "typeorm";
-import * as nodemailer from 'nodemailer';
-import { ConfigService } from '@nestjs/config';
 import { FirebaseService } from "../firebase/firebase.service";
+import { EmailService } from "../email/email.service";
 
 @Processor('notifications')
 export class NotificationProcessor extends WorkerHost{
     private readonly logger = new Logger(NotificationProcessor.name);
-    private expo = new Expo(); 
-    private transporter: nodemailer.Transporter;
+    private expo = new Expo();
 
     constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    private configService: ConfigService,
     private readonly firebaseService: FirebaseService,
+    private readonly emailService: EmailService,
     ) {
         super();
-        this.transporter = nodemailer.createTransport({
-            host: this.configService.get<string>('EMAIL_HOST'),
-            port: this.configService.get<number>('EMAIL_PORT'),
-            auth: {
-                user: this.configService.get<string>('EMAIL_USER'),
-                pass: this.configService.get<string>('EMAIL_PASSWORD')
-            }
-        });
     }
 
     private async clearPushToken(user: User): Promise<void> {
@@ -42,21 +32,34 @@ export class NotificationProcessor extends WorkerHost{
 
         switch (job.name) {
             case 'password-reset-email': {
-                // ==========================================
-                // BELT 1: EMAIL NOTIFICATIONS
-                // ==========================================
+                if (!this.emailService.isConfigured()) {
+                    this.logger.error(
+                        `Cannot send password reset email to [${job.data.email}]: email is not configured.`,
+                    );
+                    throw new Error('Email is not configured.');
+                }
+
                 this.logger.log(`📧 Sending OTP code email to [${job.data.email}]`);
-                        
-                        await this.transporter.sendMail({
-                            from: '"StableHands Support" <noreply@stablehands.app>',
-                            to: job.data.email,
-                            subject: 'Your Password Reset Code',
-                            text: `Hello ${job.data.name},\n\nSomeone requested a password reset for your account. If this was you, please enter the following 6-digit code in the app to reset your password:\n\n${job.data.token}\n\nThis code will expire in 1 hour. If you did not request this, please ignore this email.`,
-                        });
-                        
-                        this.logger.log(`✅ OTP email sent!`);
-                        break;
-                        }
+
+                try {
+                    const result = await this.emailService.sendPasswordResetEmail(
+                        job.data.email,
+                        job.data.name,
+                        job.data.token,
+                    );
+                    this.logger.log(
+                        `✅ OTP email sent to [${job.data.email}] messageId=${result.messageId ?? 'unknown'}`,
+                    );
+                } catch (error) {
+                    const message =
+                        error instanceof Error ? error.message : 'Unknown email error';
+                    this.logger.error(
+                        `❌ Failed to send OTP email to [${job.data.email}]: ${message}`,
+                    );
+                    throw error;
+                }
+                break;
+            }
 
             default: {
                 // ==========================================

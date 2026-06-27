@@ -14,9 +14,9 @@ import {
   AuthUser,
   assertAssignableUser,
   assertAssignableUsers,
+  assertCanDeleteEvent,
   assertCanEditEvent,
   assertGuestCannotMutate,
-  assertOwnerOnly,
 } from '../common/event-permissions';
 import {
   buildConflictMessage,
@@ -26,6 +26,10 @@ import {
   dedupeConflictEntries,
   RideConflictParams,
 } from './ride-conflicts';
+import {
+  detectRideJoin,
+  EventNotificationsService,
+} from '../notifications/event-notifications.service';
 
 @Injectable()
 export class RidesService {
@@ -36,6 +40,7 @@ export class RidesService {
     private readonly userRepository: Repository<User>,
     @InjectDataSource()
     private readonly dataSource: DataSource,
+    private readonly eventNotifications: EventNotificationsService,
   ) {}
 
   async create(createRideDto: CreateRideDto, authUser: AuthUser): Promise<Ride> {
@@ -131,11 +136,22 @@ export class RidesService {
       }
 
       return manager.save(ride);
+    }).then(async (savedRide) => {
+      const saved = await this.findOne(savedRide.id);
+      const joined = detectRideJoin(existing, saved, authUser.userId);
+
+      if (joined) {
+        await this.eventNotifications.notifyRideJoined(authUser, saved);
+      } else {
+        await this.eventNotifications.notifyEventModified(authUser, 'ride', saved);
+      }
+
+      return saved;
     });
   }
 
   async remove(id: string, authUser: AuthUser): Promise<void> {
-    assertOwnerOnly(authUser);
+    assertCanDeleteEvent(authUser, 'ride');
 
     const result = await this.ridesRepository.delete(id);
 

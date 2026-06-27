@@ -16,6 +16,7 @@ import { AuthModule } from './auth/auth.module';
 import { RoleRequestsModule } from './role-requests/role-requests.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { FirebaseModule } from './firebase/firebase.module';
+import { EmailModule } from './email/email.module';
 import { buildTypeOrmOptions } from './database/typeorm.config';
 
 @Module({
@@ -59,6 +60,8 @@ import { buildTypeOrmOptions } from './database/typeorm.config';
     RidesModule,
 
     TasksModule,
+
+    EmailModule,
 
     QueueModule,
 

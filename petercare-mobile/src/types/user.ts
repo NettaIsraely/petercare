@@ -20,6 +20,7 @@ export interface NotificationPreferences {
   notify_task_deadlines: boolean;
   notify_role_requests: boolean;
   notify_role_request_resolved: boolean;
+  notify_event_modified: boolean;
 }
 
 export interface UserSummary extends NotificationPreferences {
@@ -51,4 +52,5 @@ export interface UpdateUserPayload {
   notify_task_deadlines?: boolean;
   notify_role_requests?: boolean;
   notify_role_request_resolved?: boolean;
+  notify_event_modified?: boolean;
 }

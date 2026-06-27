@@ -12,13 +12,14 @@ import { FeedingNotificationsService } from '../notifications/feeding-notificati
 import {
   AuthUser,
   assertCanCompleteEvent,
+  assertCanDeleteEvent,
   assertCanEditEvent,
   assertCanTakeOverFeeding,
   assertCanVolunteerFeeding,
   assertAssignableUser,
-  assertOwnerOnly,
   pickFeedingUpdateFields,
 } from '../common/event-permissions';
+import { EventNotificationsService } from '../notifications/event-notifications.service';
 
 @Injectable()
 export class FeedingsService {
@@ -30,6 +31,7 @@ export class FeedingsService {
     private readonly userRepository: Repository<User>,
 
     private readonly feedingNotifications: FeedingNotificationsService,
+    private readonly eventNotifications: EventNotificationsService,
   ) {}
 
   async ensureShiftsForDate(dateStr: string): Promise<number> {
@@ -303,11 +305,21 @@ export class FeedingsService {
       }
     }
 
-    return this.findOne(savedFeeding.id);
+    const fullFeeding = await this.findOne(savedFeeding.id);
+
+    if (assigneeChanged && previousUserId) {
+      await this.eventNotifications.notifyEventModified(authUser, 'feeding', fullFeeding, {
+        excludeUserIds: [previousUserId],
+      });
+    } else {
+      await this.eventNotifications.notifyEventModified(authUser, 'feeding', fullFeeding);
+    }
+
+    return fullFeeding;
   }
 
   async remove(id: string, authUser: AuthUser): Promise<void> {
-    assertOwnerOnly(authUser);
+    assertCanDeleteEvent(authUser, 'feeding');
     await this.feedingNotifications.cancelFeedingReminder(id);
 
     const result = await this.feedingRepository.delete(id);

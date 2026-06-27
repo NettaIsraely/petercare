@@ -10,7 +10,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, Repository } from 'typeorm';
 import { User, UserProfileColor, UserRole } from './entities/user.entity';
 import * as bcrypt from 'bcrypt';
-import { isValidTimezone } from '../common/timezone.util';
+import { isValidTimezone, normalizeTimeString } from '../common/timezone.util';
+import { FeedingNotificationsService } from '../notifications/feeding-notifications.service';
 
 export type PublicUser = {
   id: string;
@@ -32,6 +33,7 @@ export type PublicUser = {
   notify_task_deadlines: boolean;
   notify_role_requests: boolean;
   notify_role_request_resolved: boolean;
+  notify_event_modified: boolean;
   created_at: Date;
   updated_at: Date;
 };
@@ -42,7 +44,8 @@ const ASSIGNABLE_ROLES = [UserRole.OWNER, UserRole.CAREGIVER];
 export class UsersService implements OnModuleInit {
   constructor(
     @InjectRepository(User)
-    private readonly userRepository: Repository<User>
+    private readonly userRepository: Repository<User>,
+    private readonly feedingNotifications: FeedingNotificationsService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -71,6 +74,7 @@ export class UsersService implements OnModuleInit {
       notify_task_deadlines: user.notify_task_deadlines,
       notify_role_requests: user.notify_role_requests,
       notify_role_request_resolved: user.notify_role_request_resolved,
+      notify_event_modified: user.notify_event_modified,
       created_at: user.created_at,
       updated_at: user.updated_at,
     };
@@ -187,6 +191,11 @@ export class UsersService implements OnModuleInit {
       throw new BadRequestException('Invalid profile color.');
     }
 
+    const existing = await this.userRepository.findOne({ where: { id } });
+    if (!existing) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
     const updateData: Record<string, unknown> = { id, ...updateUserDto };
 
     if (updateUserDto.password) {
@@ -200,7 +209,39 @@ export class UsersService implements OnModuleInit {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
     const saved = await this.userRepository.save(user);
+
+    if (this.didAlertScheduleChange(existing, updateUserDto)) {
+      await this.feedingNotifications.rescheduleFeedingRemindersForUser(saved);
+    }
+
     return this.toPublicUser(saved);
+  }
+
+  private didAlertScheduleChange(existing: User, updateUserDto: UpdateUserDto): boolean {
+    if (
+      updateUserDto.morning_alert_time !== undefined &&
+      normalizeTimeString(updateUserDto.morning_alert_time) !==
+        normalizeTimeString(existing.morning_alert_time)
+    ) {
+      return true;
+    }
+
+    if (
+      updateUserDto.evening_alert_time !== undefined &&
+      normalizeTimeString(updateUserDto.evening_alert_time) !==
+        normalizeTimeString(existing.evening_alert_time)
+    ) {
+      return true;
+    }
+
+    if (
+      updateUserDto.timezone !== undefined &&
+      updateUserDto.timezone !== existing.timezone
+    ) {
+      return true;
+    }
+
+    return false;
   }
 
   async remove(id: string): Promise<void> {

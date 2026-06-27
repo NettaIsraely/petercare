@@ -17,31 +17,40 @@ export function canEditEvent(
     return false;
   }
 
-  if (role === 'OWNER') {
+  if (role === 'OWNER' || role === 'CAREGIVER') {
     return true;
   }
 
-  switch (event.kind) {
-    case 'feeding': {
-      const isUnassigned = event.data.feeding_status === 'UNASSIGNED';
-      const isMine = event.data.assigned_user?.id === userId;
-      return isUnassigned || isMine;
-    }
-    case 'task': {
-      const isUnassigned = !event.data.assigned_user?.id;
-      const isMine = event.data.assigned_user?.id === userId;
-      return isUnassigned || isMine;
-    }
-    case 'ride': {
-      const isPrimary = event.data.primary_rider?.id === userId;
-      const isAdditional = event.data.additional_riders?.some((r) => r.id === userId);
-      return isPrimary || !!isAdditional;
-    }
-    case 'treatment':
-      return event.data.user?.id === userId;
-    default:
-      return false;
+  return false;
+}
+
+export function canDeleteEvent(
+  role: UserRole | undefined,
+  event: TimelineEvent,
+): boolean {
+  if (!role || role === 'GUEST') {
+    return false;
   }
+
+  if (event.kind === 'feeding') {
+    return false;
+  }
+
+  return role === 'OWNER' || role === 'CAREGIVER';
+}
+
+export function canJoinRide(
+  role: UserRole | undefined,
+  event: TimelineEvent,
+  userId?: string,
+): boolean {
+  if (!role || role === 'GUEST' || !userId || event.kind !== 'ride') {
+    return false;
+  }
+
+  const isPrimary = event.data.primary_rider?.id === userId;
+  const isAdditional = event.data.additional_riders?.some((r) => r.id === userId);
+  return !isPrimary && !isAdditional;
 }
 
 export function canPerformAction(

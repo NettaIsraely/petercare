@@ -6,7 +6,7 @@ export function formatShiftLabel(shiftType: ShiftType): string {
 }
 
 export function feedingReminderMessage(shiftType: ShiftType): string {
-  return `Reminder: You have the ${formatShiftLabel(shiftType)} feeding shift coming up!`;
+  return `Reminder: Feed the horses! You have the ${formatShiftLabel(shiftType)} feeding shift today!`;
 }
 
 export function shiftReassignedMessage(
@@ -55,4 +55,29 @@ export function roleRequestApprovedMessage(): string {
 
 export function roleRequestDeniedMessage(): string {
   return 'Your caregiver access request was denied. You may submit a new request.';
+}
+
+const EVENT_KIND_LABELS: Record<string, string> = {
+  ride: 'ride',
+  feeding: 'feeding shift',
+  task: 'task',
+  treatment: 'treatment',
+};
+
+export function eventModifiedMessage(
+  editorName: string,
+  eventKind: string,
+  eventDate: Date | string,
+): string {
+  const label = EVENT_KIND_LABELS[eventKind] ?? 'event';
+  const dateLabel = formatUserFacingDate(formatScheduleDate(eventDate));
+  return `${editorName} updated your ${label} on ${dateLabel}.`;
+}
+
+export function rideJoinedMessage(
+  joinerName: string,
+  rideDate: Date | string,
+): string {
+  const dateLabel = formatUserFacingDate(formatScheduleDate(rideDate));
+  return `${joinerName} joined your ride on ${dateLabel}.`;
 }

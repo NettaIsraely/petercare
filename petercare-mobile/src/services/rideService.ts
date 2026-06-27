@@ -15,3 +15,7 @@ export async function updateRide(id: string, payload: UpdateRidePayload): Promis
   const response = await apiClient.patch<Ride>(`/rides/${id}`, payload);
   return response.data;
 }
+
+export async function deleteRide(id: string): Promise<void> {
+  await apiClient.delete(`/rides/${id}`);
+}

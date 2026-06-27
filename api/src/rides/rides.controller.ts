@@ -43,7 +43,7 @@ export class RidesController {
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.OWNER)
+  @Roles(UserRole.OWNER, UserRole.CAREGIVER)
   remove(@Param('id') id: string, @Req() req: { user: AuthUser }) {
     return this.ridesService.remove(id, req.user);
   }

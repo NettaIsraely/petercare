@@ -4,9 +4,13 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UsersService } from './users.service';
 import { User, UserProfileColor, UserRole } from './entities/user.entity';
+import { FeedingNotificationsService } from '../notifications/feeding-notifications.service';
 
 describe('UsersService', () => {
   let service: UsersService;
+  let feedingNotifications: jest.Mocked<
+    Pick<FeedingNotificationsService, 'rescheduleFeedingRemindersForUser'>
+  >;
   let userRepository: jest.Mocked<
     Pick<
       Repository<User>,
@@ -50,6 +54,10 @@ describe('UsersService', () => {
   };
 
   beforeEach(async () => {
+    feedingNotifications = {
+      rescheduleFeedingRemindersForUser: jest.fn(),
+    };
+
     userRepository = {
       find: jest.fn(),
       findOne: jest.fn(),
@@ -68,6 +76,10 @@ describe('UsersService', () => {
         {
           provide: getRepositoryToken(User),
           useValue: userRepository,
+        },
+        {
+          provide: FeedingNotificationsService,
+          useValue: feedingNotifications,
         },
       ],
     }).compile();
@@ -188,6 +200,7 @@ describe('UsersService', () => {
   });
 
   it('accepts a valid profile color update', async () => {
+    userRepository.findOne.mockResolvedValue(owner);
     userRepository.preload = jest.fn().mockResolvedValue({
       ...owner,
       profile_color: UserProfileColor.GREEN,
@@ -202,6 +215,65 @@ describe('UsersService', () => {
     });
 
     expect(result.profile_color).toBe(UserProfileColor.GREEN);
+    expect(feedingNotifications.rescheduleFeedingRemindersForUser).not.toHaveBeenCalled();
+  });
+
+  it('reschedules feeding reminders when morning alert time changes', async () => {
+    userRepository.findOne.mockResolvedValue(owner);
+    userRepository.preload.mockResolvedValue({
+      ...owner,
+      morning_alert_time: '07:00:00',
+    });
+    userRepository.save.mockResolvedValue({
+      ...owner,
+      morning_alert_time: '07:00:00',
+    });
+
+    await service.update('owner-id', { morning_alert_time: '07:00:00' });
+
+    expect(feedingNotifications.rescheduleFeedingRemindersForUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'owner-id',
+        morning_alert_time: '07:00:00',
+      }),
+    );
+  });
+
+  it('reschedules feeding reminders when timezone changes', async () => {
+    userRepository.findOne.mockResolvedValue(owner);
+    userRepository.preload.mockResolvedValue({
+      ...owner,
+      timezone: 'Europe/London',
+    });
+    userRepository.save.mockResolvedValue({
+      ...owner,
+      timezone: 'Europe/London',
+    });
+
+    await service.update('owner-id', { timezone: 'Europe/London' });
+
+    expect(feedingNotifications.rescheduleFeedingRemindersForUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'owner-id',
+        timezone: 'Europe/London',
+      }),
+    );
+  });
+
+  it('does not reschedule feeding reminders when unrelated profile fields change', async () => {
+    userRepository.findOne.mockResolvedValue(owner);
+    userRepository.preload.mockResolvedValue({
+      ...owner,
+      name: 'Updated Owner',
+    });
+    userRepository.save.mockResolvedValue({
+      ...owner,
+      name: 'Updated Owner',
+    });
+
+    await service.update('owner-id', { name: 'Updated Owner' });
+
+    expect(feedingNotifications.rescheduleFeedingRemindersForUser).not.toHaveBeenCalled();
   });
 
   it('rejects an invalid profile color update', async () => {

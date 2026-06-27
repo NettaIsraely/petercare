@@ -21,6 +21,8 @@ import EventDetailModal from '../components/schedule/EventDetailModal';
 import TaskFormModal from '../components/tasks/TaskFormModal';
 import FeedingEditModal from '../components/schedule/FeedingEditModal';
 import EditEventModal from '../components/schedule/EditEventModal';
+import JoinRideModal from '../components/schedule/JoinRideModal';
+import { confirmEventDelete } from '../utils/eventDeleteHelpers';
 
 export default function HomeScreen() {
   const { user } = useAuth();
@@ -30,6 +32,7 @@ export default function HomeScreen() {
   const [editFeeding, setEditFeeding] = useState<Feeding | null>(null);
   const [editRide, setEditRide] = useState<Ride | null>(null);
   const [editTreatment, setEditTreatment] = useState<Treatment | null>(null);
+  const [joinRide, setJoinRide] = useState<Ride | null>(null);
 
   const {
     myWeek,
@@ -48,6 +51,8 @@ export default function HomeScreen() {
     updateTask,
     updateRide,
     updateTreatment,
+    deleteEvent,
+    deletingId,
   } = useMyDayData();
 
   const handleEventPress = (event: TimelineEvent) => {
@@ -86,6 +91,24 @@ export default function HomeScreen() {
         setEditTreatment(event.data);
         break;
     }
+  };
+
+  const handleJoin = (event: TimelineEvent) => {
+    if (event.kind !== 'ride') {
+      return;
+    }
+    handleCloseDetail();
+    setJoinRide(event.data);
+  };
+
+  const handleDelete = async (event: TimelineEvent) => {
+    const confirmed = await confirmEventDelete(event);
+    if (!confirmed) {
+      return;
+    }
+
+    await deleteEvent(event);
+    handleCloseDetail();
   };
 
   if (loading && !refreshing) {
@@ -159,6 +182,9 @@ export default function HomeScreen() {
         onClaim={async () => {}}
         onMarkComplete={handleMarkComplete}
         onEdit={handleEdit}
+        onJoin={handleJoin}
+        onDelete={handleDelete}
+        deletingId={deletingId}
       />
 
       <TaskFormModal
@@ -195,6 +221,16 @@ export default function HomeScreen() {
         }}
         onSubmitRide={updateRide}
         onSubmitTreatment={updateTreatment}
+      />
+
+      <JoinRideModal
+        visible={!!joinRide}
+        ride={joinRide}
+        horses={horses}
+        currentUserId={user?.userId}
+        submitting={updating}
+        onClose={() => setJoinRide(null)}
+        onSubmit={updateRide}
       />
     </>
   );

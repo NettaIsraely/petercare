@@ -46,6 +46,7 @@ export function useMyDayData() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [volunteeringId, setVolunteeringId] = useState<string | null>(null);
   const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
   const [alertTimes, setAlertTimes] = useState<{ morningTime?: string; eveningTime?: string }>({});
@@ -250,6 +251,33 @@ export function useMyDayData() {
     [refresh]
   );
 
+  const deleteEvent = useCallback(
+    async (event: TimelineEvent) => {
+      setDeletingId(event.data.id);
+      try {
+        switch (event.kind) {
+          case 'ride':
+            await rideService.deleteRide(event.data.id);
+            break;
+          case 'task':
+            await taskService.deleteTask(event.data.id);
+            break;
+          case 'treatment':
+            await treatmentService.deleteTreatment(event.data.id);
+            break;
+          default:
+            return;
+        }
+        await refresh(true);
+      } catch (error) {
+        console.error('Failed to delete event:', error);
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [refresh]
+  );
+
   return {
     myWeek,
     horses,
@@ -267,5 +295,7 @@ export function useMyDayData() {
     updateTask,
     updateRide,
     updateTreatment,
+    deleteEvent,
+    deletingId,
   };
 }

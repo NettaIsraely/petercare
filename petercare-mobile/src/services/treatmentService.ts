@@ -25,3 +25,7 @@ export async function markTreatmentComplete(id: string): Promise<Treatment> {
   });
   return response.data;
 }
+
+export async function deleteTreatment(id: string): Promise<void> {
+  await apiClient.delete(`/treatments/${id}`);
+}

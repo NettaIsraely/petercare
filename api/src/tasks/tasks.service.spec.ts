@@ -5,11 +5,19 @@ import { Repository } from 'typeorm';
 import { TasksService } from './tasks.service';
 import { Task } from './entities/task.entity';
 import { User, UserRole } from '../users/entities/user.entity';
+import { EventNotificationsService } from '../notifications/event-notifications.service';
+
+const eventNotificationsMock = {
+  notifyEventModified: jest.fn(),
+  notifyRideJoined: jest.fn(),
+};
 
 describe('TasksService', () => {
   let service: TasksService;
   let userRepository: jest.Mocked<Pick<Repository<User>, 'findOne'>>;
-  let tasksRepository: jest.Mocked<Pick<Repository<Task>, 'create' | 'save'>>;
+  let tasksRepository: jest.Mocked<
+    Pick<Repository<Task>, 'create' | 'save' | 'findOne' | 'preload'>
+  >;
 
   const caregiverAuth = {
     userId: 'caregiver-id',
@@ -24,6 +32,8 @@ describe('TasksService', () => {
     tasksRepository = {
       create: jest.fn((value) => value as Task),
       save: jest.fn(async (value) => value as Task),
+      findOne: jest.fn(),
+      preload: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -36,6 +46,10 @@ describe('TasksService', () => {
         {
           provide: getRepositoryToken(User),
           useValue: userRepository,
+        },
+        {
+          provide: EventNotificationsService,
+          useValue: eventNotificationsMock,
         },
       ],
     }).compile();

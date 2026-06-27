@@ -6,6 +6,12 @@ import { Horse } from 'src/horses/entities/horse.entity';
 import { User } from '../users/entities/user.entity';
 import { UserRole } from '../users/entities/user.entity';
 import { SHOEING_TREATMENT_NAME } from './treatment.constants';
+import { EventNotificationsService } from '../notifications/event-notifications.service';
+
+const eventNotificationsMock = {
+  notifyEventModified: jest.fn(),
+  notifyRideJoined: jest.fn(),
+};
 
 const authUser = {
   userId: 'user-1',
@@ -77,6 +83,7 @@ describe('TreatmentsService', () => {
         { provide: getRepositoryToken(Treatment), useValue: treatmentRepository },
         { provide: getRepositoryToken(Horse), useValue: horseRepository },
         { provide: getRepositoryToken(User), useValue: { findOne: jest.fn() } },
+        { provide: EventNotificationsService, useValue: eventNotificationsMock },
       ],
     }).compile();
 

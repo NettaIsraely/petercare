@@ -10,10 +10,11 @@ import {
   assertAssignableUser,
   assertCanClaimTask,
   assertCanCompleteEvent,
+  assertCanDeleteEvent,
   assertCanEditEvent,
   assertGuestCannotMutate,
-  assertOwnerOnly,
 } from '../common/event-permissions';
+import { EventNotificationsService } from '../notifications/event-notifications.service';
 
 function normalizeDate(value: Date | string | undefined): string | null {
   if (!value) {
@@ -29,6 +30,7 @@ export class TasksService {
     private readonly tasksRepository: Repository<Task>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly eventNotifications: EventNotificationsService,
   ) {}
 
   async create(createTaskDto: CreateTaskDto, authUser: AuthUser): Promise<Task> {
@@ -101,7 +103,10 @@ export class TasksService {
       throw new NotFoundException(`Task with ID ${id} not found`);
     }
 
-    return await this.tasksRepository.save(task);
+    const saved = await this.tasksRepository.save(task);
+    const full = await this.findOne(saved.id);
+    await this.eventNotifications.notifyEventModified(authUser, 'task', full);
+    return full;
   }
 
   async claim(id: string, userId: string, authUser: AuthUser): Promise<Task> {
@@ -121,7 +126,7 @@ export class TasksService {
   }
 
   async remove(id: string, authUser: AuthUser): Promise<void> {
-    assertOwnerOnly(authUser);
+    assertCanDeleteEvent(authUser, 'task');
 
     const result = await this.tasksRepository.delete(id);
     if (result.affected === 0) {
