@@ -1,12 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CreateTreatmentDto } from './dto/create-treatment.dto';
 import { UpdateTreatmentDto } from './dto/update-treatment.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Treatment } from './entities/treatment.entity';
 import { Repository } from 'typeorm';
+import { DateTime } from 'luxon';
 import { Horse } from 'src/horses/entities/horse.entity';
 import { User } from '../users/entities/user.entity';
 import { SHOEING_TREATMENT_NAME } from './treatment.constants';
+import {
+  formatScheduleDate,
+  getLocalDateString,
+  getStableTimezone,
+} from '../common/timezone.util';
 import {
   AuthUser,
   assertAssignableUser,
@@ -27,6 +34,7 @@ export class TreatmentsService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly eventNotifications: EventNotificationsService,
+    private readonly configService: ConfigService,
   ) {}
 
   async create(createTreatmentDto: CreateTreatmentDto, authUser: AuthUser): Promise<Treatment> {
@@ -51,6 +59,25 @@ export class TreatmentsService {
         user: true,
       },
     });
+  }
+
+  async findCompletedForHorse(horseId: string): Promise<Treatment[]> {
+    const horse = await this.horseRepository.findOne({ where: { id: horseId } });
+    if (!horse) {
+      throw new NotFoundException(`Horse with ID ${horseId} not found`);
+    }
+
+    return this.treatmentRepository
+      .createQueryBuilder('treatment')
+      .innerJoin('treatment.horses', 'filterHorse', 'filterHorse.id = :horseId', {
+        horseId,
+      })
+      .leftJoinAndSelect('treatment.horses', 'horses')
+      .leftJoinAndSelect('treatment.user', 'user')
+      .where('treatment.is_complete = :complete', { complete: true })
+      .orderBy('treatment.date', 'DESC')
+      .addOrderBy('treatment.created_at', 'DESC')
+      .getMany();
   }
 
   async findOne(id: string): Promise<Treatment> {
@@ -84,9 +111,22 @@ export class TreatmentsService {
 
     if (isCompleteOnly) {
       assertCanCompleteEvent(authUser, 'treatment', existing);
-    } else {
-      assertCanEditEvent(authUser, 'treatment', existing);
+      const wasIncomplete = !existing.is_complete;
+      existing.is_complete = true;
+      const saved = await this.treatmentRepository.save(existing);
+
+      if (
+        this.shouldRecomputeShoeingSync(existing, saved, updateTreatmentDto, true, wasIncomplete)
+      ) {
+        await this.recomputeLastShoeingDatesForHorses(this.collectHorseIds(existing, saved));
+      }
+
+      const full = await this.findOne(saved.id);
+      await this.eventNotifications.notifyEventModified(authUser, 'treatment', full);
+      return full;
     }
+
+    assertCanEditEvent(authUser, 'treatment', existing);
 
     const updateData: Record<string, unknown> = { id, ...updateTreatmentDto };
 
@@ -109,11 +149,8 @@ export class TreatmentsService {
 
     const saved = await this.treatmentRepository.save(treatment);
 
-    const isNewlyComplete =
-      updateTreatmentDto.is_complete === true && !existing.is_complete;
-
-    if (isNewlyComplete && saved.name === SHOEING_TREATMENT_NAME) {
-      await this.updateLastShoeingDates(saved);
+    if (this.shouldRecomputeShoeingSync(existing, saved, updateTreatmentDto, false, false)) {
+      await this.recomputeLastShoeingDatesForHorses(this.collectHorseIds(existing, saved));
     }
 
     const full = await this.findOne(saved.id);
@@ -121,20 +158,132 @@ export class TreatmentsService {
     return full;
   }
 
-  private async updateLastShoeingDates(treatment: Treatment): Promise<void> {
-    const treatmentWithHorses = await this.findOne(treatment.id);
-    for (const horse of treatmentWithHorses.horses) {
-      horse.last_shoeing_date = treatmentWithHorses.date;
-      await this.horseRepository.save(horse);
+  async syncDueShoeingDates(nowUtc: DateTime): Promise<number> {
+    const stableTz = getStableTimezone(this.configService);
+    const todayLocal = getLocalDateString(nowUtc, stableTz);
+
+    const dueTreatments = (
+      await this.treatmentRepository
+        .createQueryBuilder('treatment')
+        .leftJoinAndSelect('treatment.horses', 'horses')
+        .where('treatment.name = :name', { name: SHOEING_TREATMENT_NAME })
+        .andWhere('treatment.is_complete = :complete', { complete: true })
+        .andWhere('treatment.date = :today', { today: todayLocal })
+        .getMany()
+    ).filter((treatment) => formatScheduleDate(treatment.date) === todayLocal);
+
+    const horseIds = this.collectHorseIds(...dueTreatments);
+    if (horseIds.length > 0) {
+      await this.recomputeLastShoeingDatesForHorses(horseIds, nowUtc);
     }
+    return dueTreatments.length;
+  }
+
+  async recomputeLastShoeingDatesForHorses(
+    horseIds: string[],
+    nowUtc: DateTime = DateTime.utc(),
+  ): Promise<void> {
+    const uniqueHorseIds = [...new Set(horseIds)];
+    for (const horseId of uniqueHorseIds) {
+      await this.recomputeLastShoeingDateForHorse(horseId, nowUtc);
+    }
+  }
+
+  async recomputeLastShoeingDateForHorse(
+    horseId: string,
+    nowUtc: DateTime = DateTime.utc(),
+  ): Promise<void> {
+    const horse = await this.horseRepository.findOne({ where: { id: horseId } });
+    if (!horse) {
+      return;
+    }
+
+    const stableTz = getStableTimezone(this.configService);
+    const todayLocal = getLocalDateString(nowUtc, stableTz);
+
+    const latestShoeing = await this.treatmentRepository
+      .createQueryBuilder('treatment')
+      .innerJoin('treatment.horses', 'horse', 'horse.id = :horseId', { horseId })
+      .where('treatment.name = :name', { name: SHOEING_TREATMENT_NAME })
+      .andWhere('treatment.is_complete = :complete', { complete: true })
+      .andWhere('treatment.date <= :today', { today: todayLocal })
+      .orderBy('treatment.date', 'DESC')
+      .addOrderBy('treatment.created_at', 'DESC')
+      .getOne();
+
+    horse.last_shoeing_date = latestShoeing?.date ?? (null as unknown as Date);
+    await this.horseRepository.save(horse);
+  }
+
+  private collectHorseIds(...treatments: Treatment[]): string[] {
+    const horseIds = new Set<string>();
+    for (const treatment of treatments) {
+      for (const horse of treatment.horses ?? []) {
+        horseIds.add(horse.id);
+      }
+    }
+    return [...horseIds];
+  }
+
+  private shouldRecomputeShoeingSync(
+    existing: Treatment,
+    saved: Treatment,
+    updateTreatmentDto: UpdateTreatmentDto,
+    isCompleteOnly: boolean,
+    wasIncomplete: boolean,
+  ): boolean {
+    const affectsShoeing =
+      existing.name === SHOEING_TREATMENT_NAME || saved.name === SHOEING_TREATMENT_NAME;
+
+    if (!affectsShoeing) {
+      return false;
+    }
+
+    if (isCompleteOnly) {
+      return updateTreatmentDto.is_complete === true && wasIncomplete;
+    }
+
+    const newlyComplete =
+      updateTreatmentDto.is_complete === true && !existing.is_complete;
+    const newlyIncomplete =
+      updateTreatmentDto.is_complete === false && existing.is_complete;
+    const dateChanged =
+      updateTreatmentDto.date !== undefined &&
+      formatScheduleDate(existing.date) !== formatScheduleDate(updateTreatmentDto.date);
+    const horsesChanged =
+      updateTreatmentDto.horse_ids !== undefined &&
+      !this.sameHorseIds(existing.horses, updateTreatmentDto.horse_ids);
+    const nameChanged =
+      updateTreatmentDto.name !== undefined && existing.name !== updateTreatmentDto.name;
+
+    return newlyComplete || newlyIncomplete || dateChanged || horsesChanged || nameChanged;
+  }
+
+  private sameHorseIds(horses: Horse[], horseIds: string[]): boolean {
+    const existingIds = [...new Set(horses.map((horse) => horse.id))].sort();
+    const nextIds = [...new Set(horseIds)].sort();
+    return (
+      existingIds.length === nextIds.length &&
+      existingIds.every((id, index) => id === nextIds[index])
+    );
   }
 
   async remove(id: string, authUser: AuthUser): Promise<void> {
     assertCanDeleteEvent(authUser, 'treatment');
 
+    const existing = await this.findOne(id);
+    const horseIds =
+      existing.name === SHOEING_TREATMENT_NAME && existing.is_complete
+        ? this.collectHorseIds(existing)
+        : [];
+
     const result = await this.treatmentRepository.delete(id);
     if (result.affected === 0) {
       throw new NotFoundException(`Treatment with ID ${id} not found`);
+    }
+
+    if (horseIds.length > 0) {
+      await this.recomputeLastShoeingDatesForHorses(horseIds);
     }
   }
 }

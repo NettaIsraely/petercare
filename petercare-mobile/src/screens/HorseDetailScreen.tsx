@@ -116,7 +116,7 @@ export default function HorseDetailScreen({ route, navigation }: Props) {
           <Text style={styles.profileValue}>{formatShoeingDate(lastShoeingDate)}</Text>
         </View>
 
-        <HorseHistoryLog rides={rides} treatments={treatments} />
+        <HorseHistoryLog horseId={horseId} rides={rides} treatments={treatments} />
       </ScrollView>
 
       {isOwner ? (

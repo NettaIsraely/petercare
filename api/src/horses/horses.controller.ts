@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { HorsesService } from './horses.service';
 import { CreateHorseDto } from './dto/create-horse.dto';
 import { UpdateHorseDto } from './dto/update-horse.dto';
@@ -6,11 +15,15 @@ import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { Roles } from 'src/auth/roles.decorator';
 import { UserRole } from 'src/users/entities/user.entity';
+import { TreatmentsService } from '../treatments/treatments.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('horses')
 export class HorsesController {
-  constructor(private readonly horsesService: HorsesService) {}
+  constructor(
+    private readonly horsesService: HorsesService,
+    private readonly treatmentsService: TreatmentsService,
+  ) {}
 
   @Post()
   @UseGuards(RolesGuard)
@@ -22,6 +35,11 @@ export class HorsesController {
   @Get()
   findAll() {
     return this.horsesService.findAll();
+  }
+
+  @Get(':id/treatments')
+  findTreatments(@Param('id') id: string) {
+    return this.treatmentsService.findCompletedForHorse(id);
   }
 
   @Get(':id')

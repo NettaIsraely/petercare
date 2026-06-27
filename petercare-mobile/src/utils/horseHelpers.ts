@@ -15,7 +15,7 @@ export function filterTreatmentsForHorse(
   horseId: string
 ): Treatment[] {
   return treatments.filter((treatment) =>
-    treatment.horses.some((horse) => horse.id === horseId)
+    (treatment.horses ?? []).some((horse) => horse.id === horseId)
   );
 }
 

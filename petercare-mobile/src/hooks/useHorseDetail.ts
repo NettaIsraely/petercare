@@ -2,11 +2,10 @@ import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { withApiAction } from '../api/apiActionContext';
 import * as rideService from '../services/rideService';
-import * as treatmentService from '../services/treatmentService';
+import * as horseService from '../services/horseService';
 import {
   buildSeparatedHorseHistory,
   filterRidesForHorse,
-  filterTreatmentsForHorse,
   HorseHistoryEntry,
 } from '../utils/horseHelpers';
 
@@ -30,14 +29,11 @@ export function useHorseDetail(horseId: string) {
           async () => {
             const [rides, treatments] = await Promise.all([
               rideService.getAllRides(),
-              treatmentService.getAllTreatments(),
+              horseService.getHorseTreatments(horseId),
             ]);
 
             const horseRides = filterRidesForHorse(rides, horseId);
-            const horseTreatments = filterTreatmentsForHorse(treatments, horseId).filter(
-              (treatment) => treatment.is_complete ?? false
-            );
-            const separated = buildSeparatedHorseHistory(horseRides, horseTreatments);
+            const separated = buildSeparatedHorseHistory(horseRides, treatments);
             setRides(separated.rides);
             setTreatments(separated.treatments);
           },
