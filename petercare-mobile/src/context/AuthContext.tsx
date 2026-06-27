@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import axios from 'axios';
 import { AppState, type AppStateStatus } from 'react-native';
 import { apiClient } from '../api/client';
 import {
@@ -88,9 +89,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async function restoreSession() {
       try {
         const session = await getSession();
-        if (isMounted) {
-          setUser(session);
-          if (session) {
+        if (!session) {
+          if (isMounted) {
+            setUser(null);
+          }
+          return;
+        }
+
+        try {
+          const refreshedUser = await refreshSession();
+          if (isMounted && refreshedUser) {
+            void syncUserTimezone(refreshedUser.userId);
+            void registerPushToken(refreshedUser.userId);
+          }
+        } catch (error) {
+          const is401 =
+            axios.isAxiosError(error) && error.response?.status === 401;
+          if (isMounted && !is401) {
+            setUser(session);
             void syncUserTimezone(session.userId);
             void registerPushToken(session.userId);
           }
@@ -112,7 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [refreshSession]);
 
   useEffect(() => {
     setUnauthorizedHandler(() => {
