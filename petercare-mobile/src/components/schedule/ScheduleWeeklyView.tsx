@@ -5,9 +5,12 @@ import { TimelineEvent } from '../../types/events';
 import {
   getRollingWeekDateStrings,
   getWeekRangeLabel,
+  isToday,
   shiftDateByWeeks,
+  toDateString,
 } from '../../utils/dateHelpers';
 import WeekDayColumns from './WeekDayColumns';
+import JumpToTodayButton from '../shared/JumpToTodayButton';
 
 interface ScheduleWeeklyViewProps {
   selectedDate: string;
@@ -43,6 +46,10 @@ export default function ScheduleWeeklyView({
     onSelectDate(shiftDateByWeeks(selectedDate, 1));
   };
 
+  const handleJumpToToday = () => {
+    onSelectDate(toDateString(new Date()));
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.navRow}>
@@ -54,7 +61,17 @@ export default function ScheduleWeeklyView({
         >
           <ChevronLeft size={20} color="#3498DB" />
         </TouchableOpacity>
-        <Text style={styles.weekLabel}>{weekLabel}</Text>
+        <View style={styles.navCenter}>
+          <Text style={styles.weekLabel}>{weekLabel}</Text>
+          {!isToday(selectedDate) ? (
+            <JumpToTodayButton
+              label="Today"
+              variant="compact-pill"
+              onPress={handleJumpToToday}
+              style={styles.todayButton}
+            />
+          ) : null}
+        </View>
         <TouchableOpacity
           style={styles.navButton}
           onPress={handleNextWeek}
@@ -86,6 +103,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
+  navCenter: {
+    alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 8,
+  },
   navButton: {
     padding: 8,
     borderRadius: 8,
@@ -97,5 +119,8 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#2C3E50',
+  },
+  todayButton: {
+    marginTop: 4,
   },
 });

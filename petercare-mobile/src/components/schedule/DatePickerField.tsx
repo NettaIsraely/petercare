@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { formatUserFacingDate } from '../../utils/dateHelpers';
+import React, { useEffect, useMemo, useState } from 'react';
+import { formatUserFacingDate, toDateString } from '../../utils/dateHelpers';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import { CalendarDays, ChevronDown, ChevronUp } from 'lucide-react-native';
@@ -24,6 +24,14 @@ export default function DatePickerField({
   optional = false,
 }: DatePickerFieldProps) {
   const [expanded, setExpanded] = useState(false);
+  const today = toDateString(new Date());
+  const [displayMonth, setDisplayMonth] = useState(value || today);
+
+  useEffect(() => {
+    if (value) {
+      setDisplayMonth(value);
+    }
+  }, [value]);
 
   const markedDates = useMemo(() => {
     if (!value) {
@@ -50,12 +58,27 @@ export default function DatePickerField({
     setExpanded(false);
   };
 
+  const handleToday = () => {
+    onChange(today);
+    setDisplayMonth(today);
+  };
+
+  const handleToggleExpanded = () => {
+    setExpanded((prev) => {
+      const next = !prev;
+      if (next) {
+        setDisplayMonth(value || today);
+      }
+      return next;
+    });
+  };
+
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
       <TouchableOpacity
         style={styles.dateRow}
-        onPress={() => setExpanded((prev) => !prev)}
+        onPress={handleToggleExpanded}
         accessibilityRole="button"
         accessibilityLabel={`${label}, ${displayText}`}
       >
@@ -70,15 +93,23 @@ export default function DatePickerField({
         )}
       </TouchableOpacity>
 
-      {optional && value ? (
-        <TouchableOpacity style={styles.clearChip} onPress={handleClear}>
-          <Text style={styles.clearChipText}>Clear</Text>
-        </TouchableOpacity>
+      {expanded ? (
+        <View style={styles.chipRow}>
+          <TouchableOpacity style={styles.actionChip} onPress={handleToday}>
+            <Text style={styles.todayChipText}>Today</Text>
+          </TouchableOpacity>
+          {optional && value ? (
+            <TouchableOpacity style={styles.actionChip} onPress={handleClear}>
+              <Text style={styles.clearChipText}>Clear</Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
       ) : null}
 
       {expanded && (
         <Calendar
-          current={value || undefined}
+          initialDate={displayMonth}
+          onMonthChange={(month) => setDisplayMonth(month.dateString)}
           markedDates={markedDates}
           onDayPress={handleDayPress}
           theme={CALENDAR_THEME}
@@ -121,15 +152,23 @@ const styles = StyleSheet.create({
     color: '#95A5A6',
     fontWeight: '400',
   },
-  clearChip: {
-    alignSelf: 'flex-start',
+  chipRow: {
+    flexDirection: 'row',
+    gap: 8,
     marginTop: 8,
+  },
+  actionChip: {
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E0E6ED',
+  },
+  todayChipText: {
+    fontSize: 13,
+    color: '#3498DB',
+    fontWeight: '600',
   },
   clearChipText: {
     fontSize: 13,

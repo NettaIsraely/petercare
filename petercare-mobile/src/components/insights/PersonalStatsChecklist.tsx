@@ -8,6 +8,8 @@ import { formatShiftLabel, normalizeDateString } from '../../utils/dateHelpers';
 
 interface PersonalStatsChecklistProps {
   checklist: PersonalChecklist;
+  isCurrentWeek?: boolean;
+  weekLabel?: string;
 }
 
 function formatChecklistDate(value: string): string {
@@ -68,14 +70,21 @@ function TaskRow({ task }: { task: Task }) {
   );
 }
 
-export default function PersonalStatsChecklist({ checklist }: PersonalStatsChecklistProps) {
+export default function PersonalStatsChecklist({
+  checklist,
+  isCurrentWeek = true,
+  weekLabel,
+}: PersonalStatsChecklistProps) {
   const { feedings, tasks, summary } = checklist;
   const isEmpty = feedings.length === 0 && tasks.length === 0;
+  const subtitle = isCurrentWeek
+    ? 'Your assigned feedings and tasks this week'
+    : `Your assigned feedings and tasks for ${weekLabel ?? 'this week'}`;
 
   return (
     <View style={styles.container}>
       <Text style={styles.sectionTitle}>My Weekly Stats</Text>
-      <Text style={styles.sectionSubtitle}>Your assigned feedings and tasks this week</Text>
+      <Text style={styles.sectionSubtitle}>{subtitle}</Text>
 
       <View style={styles.pillRow}>
         <View style={styles.pill}>

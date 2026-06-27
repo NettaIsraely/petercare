@@ -1,20 +1,16 @@
 import React from 'react';
-import {
-  View,
-  ScrollView,
-  RefreshControl,
-  ActivityIndicator,
-  StyleSheet,
-} from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useInsightsData } from '../hooks/useInsightsData';
-import HorseActivityChart from '../components/insights/HorseActivityChart';
-import PersonalStatsChecklist from '../components/insights/PersonalStatsChecklist';
+import { useAuth } from '../context/AuthContext';
+import InsightsWeekPager from '../components/insights/InsightsWeekPager';
 
 export default function InsightsScreen() {
+  const { user } = useAuth();
   const {
+    weekOffset,
+    setWeekOffset,
     weekRange,
-    horseRideCounts,
-    personalChecklist,
+    cachedData,
     loading,
     refreshing,
     refresh,
@@ -29,20 +25,17 @@ export default function InsightsScreen() {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={() => refresh(true)}
-          tintColor="#3498DB"
-        />
-      }
-    >
-      <HorseActivityChart weekRange={weekRange} horseRideCounts={horseRideCounts} />
-      <PersonalStatsChecklist checklist={personalChecklist} />
-    </ScrollView>
+    <View style={styles.container}>
+      <InsightsWeekPager
+        weekOffset={weekOffset}
+        setWeekOffset={setWeekOffset}
+        weekRange={weekRange}
+        cachedData={cachedData}
+        userId={user?.userId ?? ''}
+        refreshing={refreshing}
+        onRefresh={() => refresh(true)}
+      />
+    </View>
   );
 }
 
@@ -50,10 +43,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F7FA',
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 32,
   },
   loadingContainer: {
     flex: 1,

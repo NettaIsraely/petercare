@@ -62,6 +62,29 @@ export function getCurrentWeekRange(referenceDate = new Date()): WeekRange {
   };
 }
 
+export function getWeekRangeForOffset(
+  weekOffset: number,
+  referenceDate = new Date()
+): WeekRange {
+  const currentWeek = getCurrentWeekRange(referenceDate);
+  const startDate = new Date(`${currentWeek.start}T00:00:00`);
+  startDate.setDate(startDate.getDate() + weekOffset * 7);
+
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + 6);
+
+  return {
+    start: toDateString(startDate),
+    end: toDateString(endDate),
+    label: formatWeekLabel(startDate, endDate),
+  };
+}
+
+export function isCurrentCalendarWeek(weekRange: WeekRange): boolean {
+  const currentWeek = getCurrentWeekRange();
+  return weekRange.start === currentWeek.start;
+}
+
 export function isDateInRange(
   value: string | Date | undefined | null,
   range: WeekRange
