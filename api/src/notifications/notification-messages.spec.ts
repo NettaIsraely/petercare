@@ -50,9 +50,7 @@ describe('notification-messages', () => {
   });
 
   it('formats event modified message', () => {
-    expect(eventModifiedMessage('Alex', 'ride', '2026-06-20')).toBe(
-      'Alex updated your ride on 20/06/2026.',
-    );
+    expect(eventModifiedMessage('Alex')).toBe('Alex made changes to this event.');
   });
 
   it('formats ride joined message', () => {

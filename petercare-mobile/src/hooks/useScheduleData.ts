@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import { withApiAction } from '../api/apiActionContext';
 import { useAuth } from '../context/AuthContext';
 import * as feedingService from '../services/feedingService';
 import * as taskService from '../services/taskService';
@@ -158,19 +159,24 @@ export function useScheduleData() {
       }
 
       try {
-        const [feedings, tasks, rides, treatments, horses, users, assignableUsers, profile] =
-          await Promise.all([
-            feedingService.getAllFeedings(),
-            taskService.getAllTasks(),
-            rideService.getAllRides(),
-            treatmentService.getAllTreatments(),
-            horseService.getAllHorses(),
-            userService.getAllUsers(),
-            userService.getAssignableUsers(),
-            userService.getUserById(user.userId).catch(() => undefined),
-          ]);
+        await withApiAction(
+          isPullRefresh ? 'pull-refresh:Schedule' : 'tab:Schedule',
+          async () => {
+            const [feedings, tasks, rides, treatments, horses, users, assignableUsers, profile] =
+              await Promise.all([
+                feedingService.getAllFeedings(),
+                taskService.getAllTasks(),
+                rideService.getAllRides(),
+                treatmentService.getAllTreatments(),
+                horseService.getAllHorses(),
+                userService.getAllUsers(),
+                userService.getAssignableUsers(),
+                userService.getUserById(user.userId).catch(() => undefined),
+              ]);
 
-        setRaw({ feedings, tasks, rides, treatments, horses, users, assignableUsers, profile });
+            setRaw({ feedings, tasks, rides, treatments, horses, users, assignableUsers, profile });
+          },
+        );
       } catch (error) {
         console.error('Failed to load schedule data:', error);
       } finally {

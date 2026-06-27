@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import { withApiAction } from '../api/apiActionContext';
 import { useAuth } from '../context/AuthContext';
 import * as feedingService from '../services/feedingService';
 import * as horseService from '../services/horseService';
@@ -80,14 +81,19 @@ export function useInsightsData() {
       }
 
       try {
-        const [horses, rides, feedings, tasks] = await Promise.all([
-          horseService.getAllHorses(),
-          rideService.getAllRides(),
-          feedingService.getAllFeedings(),
-          taskService.getAllTasks(),
-        ]);
+        await withApiAction(
+          isPullRefresh ? 'pull-refresh:Reports' : 'tab:Reports',
+          async () => {
+            const [horses, rides, feedings, tasks] = await Promise.all([
+              horseService.getAllHorses(),
+              rideService.getAllRides(),
+              feedingService.getAllFeedings(),
+              taskService.getAllTasks(),
+            ]);
 
-        setCachedData({ horses, rides, feedings, tasks });
+            setCachedData({ horses, rides, feedings, tasks });
+          },
+        );
       } catch (error) {
         console.error('Failed to load insights data:', error);
       } finally {

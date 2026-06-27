@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import { withApiAction } from '../api/apiActionContext';
 import * as horseService from '../services/horseService';
 import { CreateHorsePayload, Horse } from '../types/horse';
 
@@ -18,8 +19,13 @@ export function useHorseDirectory() {
     }
 
     try {
-      const data = await horseService.getAllHorses();
-      setHorses(data);
+      await withApiAction(
+        options?.pull ? 'pull-refresh:Barn/horses' : 'tab:Barn/horses',
+        async () => {
+          const data = await horseService.getAllHorses();
+          setHorses(data);
+        },
+      );
     } catch (error) {
       console.error('Failed to load horses:', error);
     } finally {

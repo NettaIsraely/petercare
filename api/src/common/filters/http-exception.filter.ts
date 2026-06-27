@@ -4,13 +4,13 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
-  Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { HttpRequestLogService } from '../logging/http-request-log.service';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger('HTTP');
+  constructor(private readonly httpRequestLogService: HttpRequestLogService) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -46,21 +46,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? messageText
         : messageText.join(', ');
 
-    const userId = (request as Request & { user?: { userId?: string } }).user
-      ?.userId;
-    const userSuffix = userId ? ` user=${userId}` : '';
-    const line = `${request.method} ${request.url} ${status} ${logMessage}${userSuffix}`;
-
-    if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
-      const stack = exception instanceof Error ? exception.stack : undefined;
-      if (process.env.NODE_ENV !== 'production' && stack) {
-        this.logger.error(line, stack);
-      } else {
-        this.logger.error(line);
-      }
-    } else {
-      this.logger.warn(line);
-    }
+    const startedAt = request.requestStartedAt ?? Date.now();
+    this.httpRequestLogService.logError({
+      request,
+      status,
+      durationMs: Date.now() - startedAt,
+      message: logMessage,
+    });
 
     response
       .status(status)

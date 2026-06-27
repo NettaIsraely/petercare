@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import { withApiAction } from '../api/apiActionContext';
 import { useAuth } from '../context/AuthContext';
 import * as taskService from '../services/taskService';
 import * as userService from '../services/userService';
@@ -39,12 +40,17 @@ export function useTasksData() {
       }
 
       try {
-        const [taskData, userData] = await Promise.all([
-          taskService.getAllTasks(),
-          userService.getAssignableUsers(),
-        ]);
-        setTasks(taskData);
-        setAssignableUsersRaw(userData);
+        await withApiAction(
+          options?.pull ? 'pull-refresh:Barn/tasks' : 'tab:Barn/tasks',
+          async () => {
+            const [taskData, userData] = await Promise.all([
+              taskService.getAllTasks(),
+              userService.getAssignableUsers(),
+            ]);
+            setTasks(taskData);
+            setAssignableUsersRaw(userData);
+          },
+        );
       } catch (error) {
         console.error('Failed to load tasks:', error);
       } finally {

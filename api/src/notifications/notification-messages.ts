@@ -57,21 +57,8 @@ export function roleRequestDeniedMessage(): string {
   return 'Your caregiver access request was denied. You may submit a new request.';
 }
 
-const EVENT_KIND_LABELS: Record<string, string> = {
-  ride: 'ride',
-  feeding: 'feeding shift',
-  task: 'task',
-  treatment: 'treatment',
-};
-
-export function eventModifiedMessage(
-  editorName: string,
-  eventKind: string,
-  eventDate: Date | string,
-): string {
-  const label = EVENT_KIND_LABELS[eventKind] ?? 'event';
-  const dateLabel = formatUserFacingDate(formatScheduleDate(eventDate));
-  return `${editorName} updated your ${label} on ${dateLabel}.`;
+export function eventModifiedMessage(editorName: string): string {
+  return `${editorName} made changes to this event.`;
 }
 
 export function rideJoinedMessage(

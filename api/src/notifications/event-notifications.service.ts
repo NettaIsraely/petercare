@@ -74,19 +74,14 @@ export class EventNotificationsService {
     options?: { excludeUserIds?: string[] },
   ): Promise<void> {
     const allStakeholders = getEventStakeholderIds(eventKind, entity);
-    if (allStakeholders.includes(editor.userId)) {
-      return;
-    }
-
-    const exclude = new Set(options?.excludeUserIds ?? []);
+    const exclude = new Set([editor.userId, ...(options?.excludeUserIds ?? [])]);
     const stakeholders = allStakeholders.filter((userId) => !exclude.has(userId));
 
     if (stakeholders.length === 0) {
       return;
     }
 
-    const eventDate = this.getEventDate(eventKind, entity);
-    const message = eventModifiedMessage(editor.name, eventKind, eventDate);
+    const message = eventModifiedMessage(editor.name);
 
     await this.feedingNotifications.notifyUsers(
       stakeholders,
@@ -122,25 +117,5 @@ export class EventNotificationsService {
         rideId: ride.id,
       },
     );
-  }
-
-  private getEventDate(
-    eventKind: EventKind,
-    entity: Feeding | Task | Ride | Treatment,
-  ): Date | string {
-    switch (eventKind) {
-      case 'ride':
-        return (entity as Ride).date;
-      case 'feeding':
-        return (entity as Feeding).schedule_date;
-      case 'task': {
-        const task = entity as Task;
-        return task.deadline ?? new Date();
-      }
-      case 'treatment':
-        return (entity as Treatment).date;
-      default:
-        return new Date();
-    }
   }
 }

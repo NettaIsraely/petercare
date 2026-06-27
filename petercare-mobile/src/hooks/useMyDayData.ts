@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import { withApiAction } from '../api/apiActionContext';
 import { useAuth } from '../context/AuthContext';
 import * as feedingService from '../services/feedingService';
 import * as taskService from '../services/taskService';
@@ -87,26 +88,31 @@ export function useMyDayData() {
       }
 
       try {
-        const [feedings, tasks, rides, treatments, horsesData, usersData, profile] =
-          await Promise.all([
-            feedingService.getAllFeedings(),
-            taskService.getAllTasks(),
-            rideService.getAllRides(),
-            treatmentService.getAllTreatments(),
-            horseService.getAllHorses(),
-            userService.getAssignableUsers(),
-            userService.getUserById(user.userId).catch(() => undefined),
-          ]);
+        await withApiAction(
+          isPullRefresh ? 'pull-refresh:MySchedule' : 'tab:MySchedule',
+          async () => {
+            const [feedings, tasks, rides, treatments, horsesData, usersData, profile] =
+              await Promise.all([
+                feedingService.getAllFeedings(),
+                taskService.getAllTasks(),
+                rideService.getAllRides(),
+                treatmentService.getAllTreatments(),
+                horseService.getAllHorses(),
+                userService.getAssignableUsers(),
+                userService.getUserById(user.userId).catch(() => undefined),
+              ]);
 
-        applyRawData({
-          feedings,
-          tasks,
-          rides,
-          treatments,
-          horses: horsesData,
-          assignableUsers: usersData,
-          profile,
-        });
+            applyRawData({
+              feedings,
+              tasks,
+              rides,
+              treatments,
+              horses: horsesData,
+              assignableUsers: usersData,
+              profile,
+            });
+          },
+        );
       } catch (error) {
         console.error('Failed to load My Schedule data:', error);
       } finally {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { withApiAction } from '../api/apiActionContext';
 import { useAuth } from '../context/AuthContext';
 import { decodeToken, getToken } from '../services/authService';
 import * as userService from '../services/userService';
@@ -279,7 +280,7 @@ export function useProfileSettings() {
   useFocusEffect(
     useCallback(() => {
       if (!loading && user) {
-        void loadRoleRequestData();
+        void withApiAction('screen:Profile', () => loadRoleRequestData());
       }
     }, [loading, user, loadRoleRequestData])
   );

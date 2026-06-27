@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { withApiAction } from '../api/apiActionContext';
 import * as roleRequestService from '../services/roleRequestService';
 import * as userService from '../services/userService';
 import { RoleRequest } from '../types/roleRequest';
@@ -61,7 +62,9 @@ export function useOwnerDashboard(isOwner: boolean) {
   }, [isOwner]);
 
   const reload = useCallback(async () => {
-    await Promise.all([loadPendingRequests(), loadUsers()]);
+    await withApiAction('screen:OwnerDashboard', async () => {
+      await Promise.all([loadPendingRequests(), loadUsers()]);
+    });
   }, [loadPendingRequests, loadUsers]);
 
   useEffect(() => {

@@ -18,9 +18,11 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { FirebaseModule } from './firebase/firebase.module';
 import { EmailModule } from './email/email.module';
 import { buildTypeOrmOptions } from './database/typeorm.config';
+import { LoggingModule } from './common/logging/logging.module';
 
 @Module({
   imports: [
+    LoggingModule,
     // 1. Load Environment Variables
     ConfigModule.forRoot({
       isGlobal: true, 

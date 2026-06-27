@@ -142,6 +142,9 @@ export class RidesService {
 
       if (joined) {
         await this.eventNotifications.notifyRideJoined(authUser, saved);
+        await this.eventNotifications.notifyEventModified(authUser, 'ride', saved, {
+          excludeUserIds: saved.primary_rider?.id ? [saved.primary_rider.id] : [],
+        });
       } else {
         await this.eventNotifications.notifyEventModified(authUser, 'ride', saved);
       }

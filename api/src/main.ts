@@ -5,6 +5,8 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { HttpRequestLogService } from './common/logging/http-request-log.service';
+import { requestContextMiddleware } from './common/logging/request-context.middleware';
 import { getDatabaseTargetLabel } from './database/typeorm.config';
 
 async function bootstrap() {
@@ -16,8 +18,11 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule);
   app.enableCors();
-  app.useGlobalFilters(new HttpExceptionFilter());
-  app.useGlobalInterceptors(new LoggingInterceptor());
+  app.use(requestContextMiddleware);
+
+  const httpRequestLogService = app.get(HttpRequestLogService);
+  app.useGlobalFilters(new HttpExceptionFilter(httpRequestLogService));
+  app.useGlobalInterceptors(new LoggingInterceptor(httpRequestLogService));
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
