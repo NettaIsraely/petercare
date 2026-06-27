@@ -45,7 +45,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "test": "jest",
-    "build:web": "node scripts/generate-firebase-sw.mjs && expo export -p web && node scripts/copy-public-assets.mjs",
+    "build:web": "node scripts/sync-web-icons.mjs && node scripts/generate-firebase-sw.mjs && expo export -p web && node scripts/copy-public-assets.mjs",
+    "sync:icons": "node scripts/sync-web-icons.mjs",
     "verify:android-push": "node scripts/verify-android-push-setup.mjs"
   },
   "private": true

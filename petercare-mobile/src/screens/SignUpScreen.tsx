@@ -54,7 +54,7 @@ export default function SignUpScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Create Account</Text>
-      <Text style={styles.subtitle}>Join StableHands</Text>
+      <Text style={styles.subtitle}>Join Peter Care</Text>
 
       <TextInput
         style={styles.input}

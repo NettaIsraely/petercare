@@ -121,7 +121,7 @@ Password reset emails require SMTP credentials on Render. Without them, the API 
    - `EMAIL_PORT` — `587`
    - `EMAIL_USER` — e.g. `resend` (Resend) or `apikey` (SendGrid)
    - `EMAIL_PASSWORD` — your provider API key
-   - `EMAIL_FROM` — `"StableHands Support" <noreply@stablehands.app>` (must match verified domain)
+   - `EMAIL_FROM` — `"Peter Care Support" <noreply@stablehands.app>` (must match verified domain)
 4. Redeploy the API service.
 5. Check startup logs for `Email SMTP verified (...)` — if missing, credentials or DNS are wrong.
 6. Trigger forgot-password and confirm logs show `OTP email sent to [...] messageId=...` and the email arrives.

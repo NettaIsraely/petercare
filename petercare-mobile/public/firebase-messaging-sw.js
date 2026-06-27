@@ -3,11 +3,11 @@ importScripts('https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js'
 importScripts('https://www.gstatic.com/firebasejs/11.6.0/firebase-messaging-compat.js');
 
 firebase.initializeApp({
-  "apiKey": "",
-  "authDomain": "",
-  "projectId": "",
-  "messagingSenderId": "",
-  "appId": ""
+  "apiKey": "AIzaSyDkgLr9rV4PnM3L971kbj1KQanqm0tPvDY",
+  "authDomain": "peter-care.firebaseapp.com",
+  "projectId": "peter-care",
+  "messagingSenderId": "1013215369894",
+  "appId": "1:1013215369894:web:f700ca60c7b9c51d6af267"
 });
 
 const messaging = firebase.messaging();
@@ -25,7 +25,7 @@ function getNotificationPath(data) {
 }
 
 messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title || 'StableHands';
+  const title = payload.notification?.title || 'Peter Care';
   const body = payload.notification?.body || '';
   const data = payload.data || {};
 

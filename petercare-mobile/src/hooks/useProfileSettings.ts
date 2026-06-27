@@ -343,10 +343,6 @@ export function useProfileSettings() {
     setForm((prev) => ({ ...prev, notifyRoleRequests }));
   }, []);
 
-  const setNotifyRoleRequestResolved = useCallback((notifyRoleRequestResolved: boolean) => {
-    setForm((prev) => ({ ...prev, notifyRoleRequestResolved }));
-  }, []);
-
   const setNotifyEventModified = useCallback((notifyEventModified: boolean) => {
     setForm((prev) => ({ ...prev, notifyEventModified }));
   }, []);
@@ -466,7 +462,6 @@ export function useProfileSettings() {
     setNotifyFeedingIncompleteBroadcast,
     setNotifyTaskDeadlines,
     setNotifyRoleRequests,
-    setNotifyRoleRequestResolved,
     setNotifyEventModified,
     save,
     requestCaregiverAccess,

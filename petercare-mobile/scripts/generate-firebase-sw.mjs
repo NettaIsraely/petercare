@@ -65,7 +65,7 @@ function getNotificationPath(data) {
 }
 
 messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title || 'StableHands';
+  const title = payload.notification?.title || 'Peter Care';
   const body = payload.notification?.body || '';
   const data = payload.data || {};
 

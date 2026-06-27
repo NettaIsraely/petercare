@@ -141,13 +141,14 @@ export function setupWebNotificationHandlers(
 
     unsubscribe = onMessage(messaging, (payload) => {
       const data = (payload.data ?? {}) as Record<string, unknown>;
-      const title = payload.notification?.title ?? 'StableHands';
+      const title = payload.notification?.title ?? 'Peter Care';
       const body = payload.notification?.body ?? '';
 
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
         const notification = new Notification(title, {
           body,
           data,
+          icon: '/apple-touch-icon.png',
         });
 
         notification.onclick = () => {

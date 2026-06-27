@@ -40,7 +40,6 @@ export default function ProfileSettingsScreen() {
     setNotifyFeedingIncompleteBroadcast,
     setNotifyTaskDeadlines,
     setNotifyRoleRequests,
-    setNotifyRoleRequestResolved,
     setNotifyEventModified,
     save,
     requestCaregiverAccess,
@@ -285,20 +284,6 @@ export default function ProfileSettingsScreen() {
             />
           </View>
         ) : null}
-
-        <View style={styles.switchRow}>
-          <View style={styles.switchLabelBlock}>
-            <Text style={styles.switchLabel}>Caregiver request updates</Text>
-            <Text style={styles.switchHelper}>When your caregiver access request is approved or denied.</Text>
-          </View>
-          <Switch
-            value={form.notifyRoleRequestResolved}
-            onValueChange={setNotifyRoleRequestResolved}
-            disabled={!form.pushNotificationsEnabled}
-            trackColor={{ false: '#BDC3C7', true: '#85C1E9' }}
-            thumbColor={form.notifyRoleRequestResolved ? '#3498DB' : '#ECF0F1'}
-          />
-        </View>
       </View>
 
       <TouchableOpacity

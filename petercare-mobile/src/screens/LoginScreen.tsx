@@ -95,7 +95,7 @@ export default function LoginScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>StableHands</Text>
+      <Text style={styles.title}>Peter Care</Text>
       
       {/* 1. LOGIN VIEW */}
       {viewMode === 'login' && (

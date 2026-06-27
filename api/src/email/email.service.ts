@@ -55,7 +55,7 @@ export class EmailService implements OnModuleInit {
   }
 
   getFromAddress(): string {
-    return this.settings?.from ?? '"StableHands Support" <noreply@stablehands.app>';
+    return this.settings?.from ?? '"Peter Care Support" <noreply@stablehands.app>';
   }
 
   async sendPasswordResetEmail(

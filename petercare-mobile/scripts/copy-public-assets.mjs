@@ -6,7 +6,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = resolve(__dirname, '..');
 const distDir = resolve(rootDir, 'dist');
 
-const filesToCopy = ['apple-touch-icon.png', 'firebase-messaging-sw.js'];
+const filesToCopy = ['apple-touch-icon.png', 'firebase-messaging-sw.js', 'manifest.webmanifest'];
 
 for (const fileName of filesToCopy) {
   const sourcePath = resolve(rootDir, 'public', fileName);

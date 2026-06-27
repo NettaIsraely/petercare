@@ -5,14 +5,14 @@
     "version": "1.0.1",
     "scheme": "stablehands",
     "orientation": "portrait",
-    "icon": "./assets/peter-care-icon.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/peter-care-icon.png",
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#FFFFFF"
       },
       "predictiveBackGestureEnabled": false,
@@ -20,14 +20,14 @@
       "googleServicesFile": "./google-services.json"
     },
     "web": {
-      "favicon": "./assets/peter-care-icon.png"
+      "favicon": "./assets/icon.png"
     },
     "plugins": [
       [
         "expo-splash-screen",
         {
           "backgroundColor": "#FFFFFF",
-          "image": "./assets/peter-care-icon.png",
+          "image": "./assets/icon.png",
           "imageWidth": 200,
           "resizeMode": "contain"
         }
@@ -37,7 +37,7 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/peter-care-icon.png",
+          "icon": "./assets/icon.png",
           "color": "#3498DB"
         }
       ]

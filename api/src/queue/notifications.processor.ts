@@ -75,7 +75,7 @@ export class NotificationProcessor extends WorkerHost{
                 const notificationData = job.data.data ?? (
                   job.data.shiftType ? { shiftType: job.data.shiftType } : {}
                 );
-                const title = 'StableHands';
+                const title = 'Peter Care';
                 const body = job.data.message;
 
                 if (Expo.isExpoPushToken(user.expo_push_token)) {

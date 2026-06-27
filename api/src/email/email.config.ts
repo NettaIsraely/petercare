@@ -1,7 +1,7 @@
 import type SMTPTransport from 'nodemailer/lib/smtp-transport';
 
 export const DEFAULT_EMAIL_FROM =
-  '"StableHands Support" <noreply@stablehands.app>';
+  '"Peter Care Support" <noreply@stablehands.app>';
 
 export interface EmailSettings {
   host: string;
