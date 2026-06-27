@@ -7,7 +7,6 @@ import {
   isFirebaseConfigured,
 } from '../config/firebase.web';
 import { AppStackParamList } from '../navigation/types';
-import { getDeviceTimezone } from './pushNotificationService';
 import * as userService from './userService';
 
 const SERVICE_WORKER_PATH = '/firebase-messaging-sw.js';
@@ -123,7 +122,6 @@ export async function registerWebPushToken(userId: string): Promise<void> {
 
     await userService.updateUser(userId, {
       expo_push_token: token,
-      timezone: getDeviceTimezone(),
     });
   } catch (error) {
     console.warn('Failed to register web push token:', error);

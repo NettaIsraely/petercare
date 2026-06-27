@@ -2,6 +2,7 @@ import { DateTime, Settings } from 'luxon';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getQueueToken } from '@nestjs/bullmq';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
 import { Feeding, FeedingStatus, ShiftType } from '../feedings/entities/feeding.entity';
 import {
   FeedingNotificationsService,
@@ -21,7 +22,7 @@ describe('resolveFeedingAlertUtc', () => {
     shift_type: ShiftType.MORNING,
   };
 
-  it('uses HH:MM:SS override on the shift schedule date in assignee timezone', () => {
+  it('uses HH:MM:SS override on the shift schedule date in stable timezone', () => {
     const alertUtc = resolveFeedingAlertUtc(futureFeeding, mockAssignee, '08:00:00');
     expect(alertUtc.toISO()).toBe('2026-06-21T05:00:00.000Z');
   });
@@ -46,6 +47,16 @@ describe('resolveFeedingAlertUtc', () => {
       '2026-06-21T06:30:00.000Z',
     );
     expect(alertUtc.toISO()).toBe('2026-06-21T06:30:00.000Z');
+  });
+
+  it('uses stable timezone regardless of assignee timezone field', () => {
+    const alertUtc = resolveFeedingAlertUtc(
+      futureFeeding,
+      mockAssignee,
+      '08:00:00',
+      'Asia/Jerusalem',
+    );
+    expect(alertUtc.toISO()).toBe('2026-06-21T05:00:00.000Z');
   });
 
   it('does not treat HH:MM:SS as today at that UTC instant', () => {
@@ -87,6 +98,10 @@ describe('FeedingNotificationsService', () => {
           useValue: {
             find: feedingFind,
           },
+        },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn(() => 'Asia/Jerusalem') },
         },
       ],
     }).compile();

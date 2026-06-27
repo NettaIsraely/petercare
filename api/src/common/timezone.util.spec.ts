@@ -4,6 +4,7 @@ import {
   formatUserFacingDate,
   getLocalDateString,
   getLocalHour,
+  getStableTimezone,
   isLocalHour,
   isLocalTime,
   localTimeOnDateToUtc,
@@ -75,6 +76,17 @@ describe('timezone.util', () => {
   });
 
   describe('calendar date helpers', () => {
+    it('returns configured stable timezone', () => {
+      expect(getStableTimezone({ get: () => 'Europe/London' })).toBe('Europe/London');
+      expect(getStableTimezone()).toBe('Asia/Jerusalem');
+    });
+
+    it('rejects invalid STABLE_TIMEZONE values', () => {
+      expect(() => getStableTimezone({ get: () => 'Not/AZone' })).toThrow(
+        'Invalid STABLE_TIMEZONE "Not/AZone"',
+      );
+    });
+
     it('adds days across month boundaries', () => {
       expect(addDaysToDateStr('2025-01-31', 1)).toBe('2025-02-01');
     });

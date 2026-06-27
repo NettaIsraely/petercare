@@ -23,10 +23,13 @@ export function timeRangesOverlap(
 }
 
 export function normalizeRideDate(date: string | Date): string {
-  if (date instanceof Date) {
-    return date.toISOString().split('T')[0];
+  if (typeof date === 'string') {
+    return date.split('T')[0];
   }
-  return date.split('T')[0];
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function formatTime(time: string): string {

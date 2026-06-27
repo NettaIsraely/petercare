@@ -5,8 +5,8 @@ import { DateTime } from 'luxon';
 import { FeedingsService } from './feedings.service';
 import {
   addDaysToDateStr,
-  DEFAULT_STABLE_TIMEZONE,
   getLocalDateString,
+  getStableTimezone,
   isLocalHour,
 } from '../common/timezone.util';
 
@@ -54,10 +54,7 @@ export class FeedingsSchedulerService implements OnModuleInit {
   }
 
   private getStableTimezone(): string {
-    return (
-      this.configService.get<string>('STABLE_TIMEZONE') ??
-      DEFAULT_STABLE_TIMEZONE
-    );
+    return getStableTimezone(this.configService);
   }
 
   private async ensureRollingWindow(): Promise<void> {

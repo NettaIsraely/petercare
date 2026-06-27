@@ -1,16 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 import { DateTime } from 'luxon';
 import { MoreThanOrEqual, Repository } from 'typeorm';
 import { Feeding, FeedingStatus, ShiftType } from '../feedings/entities/feeding.entity';
 import { User } from '../users/entities/user.entity';
 import {
+  DEFAULT_STABLE_TIMEZONE,
   formatScheduleDate,
   getLocalDateString,
+  getStableTimezone,
   localTimeOnDateToUtc,
-  resolveUserTimezone,
 } from '../common/timezone.util';
 import {
   feedingReminderMessage,
@@ -30,11 +32,12 @@ function isTimeOnlyString(value: string): boolean {
 
 export function resolveFeedingAlertUtc(
   feeding: Pick<Feeding, 'schedule_date' | 'shift_type'>,
-  assignee: Pick<User, 'morning_alert_time' | 'evening_alert_time' | 'timezone'>,
+  assignee: Pick<User, 'morning_alert_time' | 'evening_alert_time'>,
   customNotificationTime?: string,
+  stableTimezone: string = DEFAULT_STABLE_TIMEZONE,
 ): DateTime {
   const scheduleDate = formatScheduleDate(feeding.schedule_date);
-  const timezone = resolveUserTimezone(assignee.timezone);
+  const timezone = stableTimezone;
 
   if (customNotificationTime) {
     if (isTimeOnlyString(customNotificationTime)) {
@@ -66,6 +69,7 @@ export class FeedingNotificationsService {
     private readonly notificationPreferences: NotificationPreferencesService,
     @InjectRepository(Feeding)
     private readonly feedingRepository: Repository<Feeding>,
+    private readonly configService: ConfigService,
   ) {}
 
   async notifyAssigneeChange(
@@ -110,7 +114,13 @@ export class FeedingNotificationsService {
     }
 
     const nowUtc = DateTime.utc();
-    const alertUtc = resolveFeedingAlertUtc(feeding, assignee, customNotificationTime);
+    const stableTz = getStableTimezone(this.configService);
+    const alertUtc = resolveFeedingAlertUtc(
+      feeding,
+      assignee,
+      customNotificationTime,
+      stableTz,
+    );
     const computedDelay = Math.max(0, alertUtc.toMillis() - nowUtc.toMillis());
 
     this.logger.debug(
@@ -145,8 +155,8 @@ export class FeedingNotificationsService {
   }
 
   async rescheduleFeedingRemindersForUser(user: User): Promise<void> {
-    const timezone = resolveUserTimezone(user.timezone);
-    const todayLocalDate = getLocalDateString(DateTime.utc(), timezone);
+    const stableTz = getStableTimezone(this.configService);
+    const todayLocalDate = getLocalDateString(DateTime.utc(), stableTz);
 
     const feedings = await this.feedingRepository.find({
       where: {

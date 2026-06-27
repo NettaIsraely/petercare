@@ -1,10 +1,28 @@
+import { DateTime } from 'luxon';
 import { ShiftType } from '../types/feeding';
+import { APP_TIMEZONE } from '../constants/timezone';
 
-export function toDateString(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+// Schedule dates and shift times are barn wall clock in APP_TIMEZONE, not device local.
+
+function nowInAppTimezone(): DateTime {
+  return DateTime.now().setZone(APP_TIMEZONE);
+}
+
+function toIsoDateInAppTimezone(date?: Date): string {
+  const instant = date ? DateTime.fromJSDate(date) : DateTime.now();
+  const isoDate = instant.setZone(APP_TIMEZONE).toISODate();
+  if (!isoDate) {
+    throw new Error(`Unable to format date in ${APP_TIMEZONE}`);
+  }
+  return isoDate;
+}
+
+function dateTimeFromScheduleDate(dateStr: string): DateTime {
+  return DateTime.fromISO(normalizeDateString(dateStr), { zone: APP_TIMEZONE });
+}
+
+export function toDateString(date?: Date): string {
+  return toIsoDateInAppTimezone(date);
 }
 
 export function normalizeDateString(value: string | Date): string {
@@ -24,16 +42,17 @@ export function formatUserFacingDate(value: string | Date): string {
 }
 
 export function isToday(value: string | Date): boolean {
-  return normalizeDateString(value) === toDateString(new Date());
+  return normalizeDateString(value) === toIsoDateInAppTimezone();
 }
 
 export function getRollingWeekDateStrings(anchorDate: string): string[] {
-  const anchor = new Date(`${normalizeDateString(anchorDate)}T00:00:00`);
+  const anchor = dateTimeFromScheduleDate(anchorDate);
   const days: string[] = [];
   for (let i = 0; i < 7; i += 1) {
-    const date = new Date(anchor);
-    date.setDate(anchor.getDate() + i);
-    days.push(toDateString(date));
+    const isoDate = anchor.plus({ days: i }).toISODate();
+    if (isoDate) {
+      days.push(isoDate);
+    }
   }
   return days;
 }
@@ -43,26 +62,22 @@ export function getWeekRangeLabel(dates: string[]): string {
     return '';
   }
 
-  const start = new Date(`${dates[0]}T00:00:00`);
-  const end = new Date(`${dates[dates.length - 1]}T00:00:00`);
+  const start = dateTimeFromScheduleDate(dates[0]);
+  const end = dateTimeFromScheduleDate(dates[dates.length - 1]);
 
-  const startLabel = start.toLocaleDateString('he-IL', {
-    day: '2-digit',
-    month: '2-digit',
-  });
-  const endLabel = end.toLocaleDateString('he-IL', {
-    day: '2-digit',
-    month: '2-digit',
-    year: start.getFullYear() !== end.getFullYear() ? 'numeric' : undefined,
-  });
+  const startLabel = start.toFormat('dd/MM');
+  const endLabel =
+    start.year !== end.year ? end.toFormat('dd/MM/yyyy') : end.toFormat('dd/MM');
 
   return `${startLabel} – ${endLabel}`;
 }
 
 export function shiftDateByWeeks(dateStr: string, weeks: number): string {
-  const date = new Date(`${normalizeDateString(dateStr)}T00:00:00`);
-  date.setDate(date.getDate() + weeks * 7);
-  return toDateString(date);
+  const isoDate = dateTimeFromScheduleDate(dateStr).plus({ weeks }).toISODate();
+  if (!isoDate) {
+    throw new Error(`Unable to shift date ${dateStr}`);
+  }
+  return isoDate;
 }
 
 export function formatHourLabel(hour: number): string {
@@ -72,12 +87,13 @@ export function formatHourLabel(hour: number): string {
 }
 
 export function getNext14DayStrings(): string[] {
+  const today = nowInAppTimezone().startOf('day');
   const days: string[] = [];
-  const today = new Date();
-  for (let i = 0; i < 14; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + i);
-    days.push(toDateString(date));
+  for (let i = 0; i < 14; i += 1) {
+    const isoDate = today.plus({ days: i }).toISODate();
+    if (isoDate) {
+      days.push(isoDate);
+    }
   }
   return days;
 }
@@ -88,12 +104,13 @@ export function isWithinNext14Days(value: string | Date): boolean {
 }
 
 export function getNext7DayStrings(): string[] {
+  const today = nowInAppTimezone().startOf('day');
   const days: string[] = [];
-  const today = new Date();
-  for (let i = 0; i < 7; i++) {
-    const date = new Date(today);
-    date.setDate(today.getDate() + i);
-    days.push(toDateString(date));
+  for (let i = 0; i < 7; i += 1) {
+    const isoDate = today.plus({ days: i }).toISODate();
+    if (isoDate) {
+      days.push(isoDate);
+    }
   }
   return days;
 }
@@ -104,16 +121,14 @@ export function isWithinNext7Days(value: string | Date): boolean {
 }
 
 export function isOnOrAfterToday(value: string | Date): boolean {
-  return normalizeDateString(value) >= toDateString(new Date());
+  return normalizeDateString(value) >= toIsoDateInAppTimezone();
 }
 
 export function formatWeekDayHeader(dateStr: string): { dayName: string; dateLabel: string } {
   const normalized = normalizeDateString(dateStr);
-  const today = toDateString(new Date());
-  const tomorrowDate = new Date();
-  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-  const tomorrow = toDateString(tomorrowDate);
-  const date = new Date(`${normalized}T00:00:00`);
+  const today = toIsoDateInAppTimezone();
+  const tomorrow = nowInAppTimezone().plus({ days: 1 }).toISODate() ?? today;
+  const date = dateTimeFromScheduleDate(normalized);
 
   let dayName: string;
   if (normalized === today) {
@@ -121,7 +136,7 @@ export function formatWeekDayHeader(dateStr: string): { dayName: string; dateLab
   } else if (normalized === tomorrow) {
     dayName = 'Tomorrow';
   } else {
-    dayName = date.toLocaleDateString(undefined, { weekday: 'long' });
+    dayName = date.toFormat('cccc');
   }
 
   const dateLabel = formatUserFacingDate(normalized);
@@ -159,8 +174,8 @@ export function isPastShiftDeadline(
 
   const deadlineTime = getShiftDeadlineTime(shiftType, morningTime, eveningTime);
   const datePart = normalizeDateString(scheduleDate);
-  const deadline = new Date(`${datePart}T${deadlineTime}`);
-  return Date.now() > deadline.getTime();
+  const deadline = DateTime.fromISO(`${datePart}T${deadlineTime}`, { zone: APP_TIMEZONE });
+  return DateTime.now().toMillis() > deadline.toMillis();
 }
 
 export function formatTimeLabel(timeStr: string): string {

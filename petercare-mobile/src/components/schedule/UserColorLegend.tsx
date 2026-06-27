@@ -13,6 +13,8 @@ function getFirstName(name: string): string {
 }
 
 export default function UserColorLegend({ users, currentUserId }: UserColorLegendProps) {
+  const legendUsers = users.filter((user) => user.role !== 'GUEST');
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Color key</Text>
@@ -23,7 +25,7 @@ export default function UserColorLegend({ users, currentUserId }: UserColorLegen
           />
           <Text style={styles.chipLabel}>Unassigned</Text>
         </View>
-        {users.map((user) => (
+        {legendUsers.map((user) => (
           <View key={user.id} style={styles.chip}>
             <View
               style={[styles.swatch, { backgroundColor: resolveUserColor(user) }]}

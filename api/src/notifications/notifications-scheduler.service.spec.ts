@@ -144,3 +144,80 @@ describe('NotificationsSchedulerService incomplete alerts', () => {
     );
   });
 });
+
+describe('NotificationsSchedulerService task deadline reminders', () => {
+  let service: NotificationsSchedulerService;
+  let taskRepository: { find: jest.Mock; save: jest.Mock };
+  let queueAdd: jest.Mock;
+
+  beforeEach(async () => {
+    taskRepository = {
+      find: jest.fn(),
+      save: jest.fn(async (task: Task) => task),
+    };
+    queueAdd = jest.fn();
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        NotificationsSchedulerService,
+        {
+          provide: getRepositoryToken(Feeding),
+          useValue: { find: jest.fn().mockResolvedValue([]), save: jest.fn() },
+        },
+        {
+          provide: getRepositoryToken(Task),
+          useValue: taskRepository,
+        },
+        {
+          provide: getRepositoryToken(User),
+          useValue: { find: jest.fn().mockResolvedValue([]) },
+        },
+        {
+          provide: FeedingNotificationsService,
+          useValue: { notifyUsers: jest.fn() },
+        },
+        {
+          provide: NotificationPreferencesService,
+          useValue: {
+            filterEligibleUserIds: jest.fn(async (ids: string[]) => ids),
+          },
+        },
+        {
+          provide: getQueueToken('notifications'),
+          useValue: { add: queueAdd },
+        },
+        {
+          provide: ConfigService,
+          useValue: { get: jest.fn(() => 'Asia/Jerusalem') },
+        },
+      ],
+    }).compile();
+
+    service = module.get(NotificationsSchedulerService);
+  });
+
+  it('sends reminder at 22:00 stable time regardless of assignee timezone', async () => {
+    const nowUtc = DateTime.fromISO('2026-06-19T19:00:00.000Z', { zone: 'utc' });
+    taskRepository.find.mockResolvedValueOnce([
+      {
+        id: 'task-1',
+        name: 'Farrier',
+        deadline: new Date('2026-06-20T00:00:00.000Z'),
+        is_complete: false,
+        deadline_reminder_sent_at: null,
+        assigned_user: { id: 'assignee-1', timezone: 'Europe/London' },
+      },
+    ]);
+
+    await (service as unknown as { processTaskDeadlineReminders: (now: DateTime) => Promise<void> })
+      .processTaskDeadlineReminders(nowUtc);
+
+    expect(queueAdd).toHaveBeenCalledWith(
+      'task-deadline-reminder',
+      expect.objectContaining({
+        userId: 'assignee-1',
+        message: expect.stringContaining('Farrier'),
+      }),
+    );
+  });
+});

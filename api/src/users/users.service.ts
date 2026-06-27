@@ -234,13 +234,6 @@ export class UsersService implements OnModuleInit {
       return true;
     }
 
-    if (
-      updateUserDto.timezone !== undefined &&
-      updateUserDto.timezone !== existing.timezone
-    ) {
-      return true;
-    }
-
     return false;
   }
 

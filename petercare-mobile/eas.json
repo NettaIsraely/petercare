@@ -16,6 +16,7 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://petercare.onrender.com",
+        "EXPO_PUBLIC_STABLE_TIMEZONE": "Asia/Jerusalem",
         "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyDkgLr9rV4PnM3L971kbj1KQanqm0tPvDY",
         "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "peter-care.firebaseapp.com",
         "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "peter-care",
@@ -28,6 +29,7 @@
       "environment": "production",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://petercare.onrender.com",
+        "EXPO_PUBLIC_STABLE_TIMEZONE": "Asia/Jerusalem",
         "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyDkgLr9rV4PnM3L971kbj1KQanqm0tPvDY",
         "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "peter-care.firebaseapp.com",
         "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "peter-care",

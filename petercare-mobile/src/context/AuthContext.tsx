@@ -18,7 +18,7 @@ import {
   setUnauthorizedHandler,
 } from '../services/authService';
 import { AuthUser } from '../types/auth';
-import { registerPushToken, syncUserTimezone } from '../services/pushNotificationService';
+import { registerPushToken } from '../services/pushNotificationService';
 
 interface AuthContextValue {
   user: AuthUser | null;
@@ -79,7 +79,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     await setToken(token);
     setUser(decodedUser);
-    void syncUserTimezone(decodedUser.userId);
     void registerPushToken(decodedUser.userId);
   }, []);
 
@@ -99,7 +98,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const refreshedUser = await refreshSession();
           if (isMounted && refreshedUser) {
-            void syncUserTimezone(refreshedUser.userId);
             void registerPushToken(refreshedUser.userId);
           }
         } catch (error) {
@@ -107,7 +105,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             axios.isAxiosError(error) && error.response?.status === 401;
           if (isMounted && !is401) {
             setUser(session);
-            void syncUserTimezone(session.userId);
             void registerPushToken(session.userId);
           }
         }

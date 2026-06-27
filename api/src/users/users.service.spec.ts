@@ -239,7 +239,7 @@ describe('UsersService', () => {
     );
   });
 
-  it('reschedules feeding reminders when timezone changes', async () => {
+  it('does not reschedule feeding reminders when timezone changes', async () => {
     userRepository.findOne.mockResolvedValue(owner);
     userRepository.preload.mockResolvedValue({
       ...owner,
@@ -252,12 +252,7 @@ describe('UsersService', () => {
 
     await service.update('owner-id', { timezone: 'Europe/London' });
 
-    expect(feedingNotifications.rescheduleFeedingRemindersForUser).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: 'owner-id',
-        timezone: 'Europe/London',
-      }),
-    );
+    expect(feedingNotifications.rescheduleFeedingRemindersForUser).not.toHaveBeenCalled();
   });
 
   it('does not reschedule feeding reminders when unrelated profile fields change', async () => {

@@ -7,6 +7,7 @@ export class UpdateUserDto {
     morning_alert_time?: string;
     evening_alert_time?: string;
     expo_push_token?: string;
+    /** @deprecated Ignored for scheduling; barn timezone is always used. */
     timezone?: string;
     profile_color?: UserProfileColor;
 

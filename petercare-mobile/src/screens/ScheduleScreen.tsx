@@ -189,7 +189,7 @@ export default function ScheduleScreen() {
             onSelectDate={setSelectedDate}
             selectedDateEvents={selectedDateEvents}
             weekEvents={weekEvents}
-            users={raw.users}
+            users={raw.assignableUsers}
             onEventPress={handleEventPress}
             currentUserId={currentUserId}
             alertTimes={alertTimes}
@@ -199,7 +199,7 @@ export default function ScheduleScreen() {
             sections={listSections}
             onEventPress={handleEventPress}
             currentUserId={currentUserId}
-            users={raw.users}
+            users={raw.assignableUsers}
             alertTimes={alertTimes}
           />
         )}

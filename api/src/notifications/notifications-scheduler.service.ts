@@ -17,12 +17,11 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import {
   addDaysToDateStr,
-  DEFAULT_STABLE_TIMEZONE,
   formatScheduleDate,
   getLocalDateString,
+  getStableTimezone,
   isLocalHour,
   isLocalTime,
-  resolveUserTimezone,
 } from '../common/timezone.util';
 import {
   feedingIncompleteAssigneePromptMessage,
@@ -76,10 +75,7 @@ export class NotificationsSchedulerService {
   }
 
   private getStableTimezone(): string {
-    return (
-      this.configService.get<string>('STABLE_TIMEZONE') ??
-      DEFAULT_STABLE_TIMEZONE
-    );
+    return getStableTimezone(this.configService);
   }
 
   private async processUnassignedNightBeforeAlerts(nowUtc: DateTime): Promise<void> {
@@ -260,13 +256,13 @@ export class NotificationsSchedulerService {
         continue;
       }
 
-      const assigneeTz = resolveUserTimezone(task.assigned_user.timezone);
-      if (!isLocalHour(nowUtc, assigneeTz, 22)) {
+      const stableTz = this.getStableTimezone();
+      if (!isLocalHour(nowUtc, stableTz, 22)) {
         continue;
       }
 
       const tomorrowLocal = addDaysToDateStr(
-        getLocalDateString(nowUtc, assigneeTz),
+        getLocalDateString(nowUtc, stableTz),
         1,
       );
       const deadlineDate = formatScheduleDate(task.deadline);

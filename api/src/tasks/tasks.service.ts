@@ -15,12 +15,13 @@ import {
   assertGuestCannotMutate,
 } from '../common/event-permissions';
 import { EventNotificationsService } from '../notifications/event-notifications.service';
+import { formatScheduleDate } from '../common/timezone.util';
 
 function normalizeDate(value: Date | string | undefined): string | null {
   if (!value) {
     return null;
   }
-  return new Date(value).toISOString().split('T')[0];
+  return formatScheduleDate(value);
 }
 
 @Injectable()

@@ -90,3 +90,18 @@ export function resolveUserTimezone(timezone?: string | null): string {
   }
   return DEFAULT_TIMEZONE;
 }
+
+export function getStableTimezone(config?: {
+  get: (key: string) => string | undefined;
+}): string {
+  const configured = config?.get('STABLE_TIMEZONE')?.trim();
+  const timezone = configured || DEFAULT_STABLE_TIMEZONE;
+
+  if (!isValidTimezone(timezone)) {
+    throw new Error(
+      `Invalid STABLE_TIMEZONE "${timezone}"; expected a valid IANA timezone identifier.`,
+    );
+  }
+
+  return timezone;
+}
