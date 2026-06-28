@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { TimelineEvent } from '../../types/events';
-import { toDateString } from '../../utils/dateHelpers';
+import { formatWeekDayHeader } from '../../utils/dateHelpers';
 import CompactEventBlock from './CompactEventBlock';
 
 const DAY_COLUMN_WIDTH = 108;
@@ -17,20 +17,6 @@ interface WeekDayColumnsProps {
   };
 }
 
-function formatDayHeader(dateStr: string): { dayName: string; dateLabel: string } {
-  const date = new Date(`${dateStr}T00:00:00`);
-  const today = toDateString(new Date());
-  const dayName =
-    dateStr === today
-      ? 'Today'
-      : date.toLocaleDateString(undefined, { weekday: 'short' });
-  const dateLabel = date.toLocaleDateString(undefined, {
-    month: 'numeric',
-    day: 'numeric',
-  });
-  return { dayName, dateLabel };
-}
-
 export default function WeekDayColumns({
   weekDates,
   weekEvents,
@@ -42,7 +28,7 @@ export default function WeekDayColumns({
     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
       <View style={styles.columnsRow}>
         {weekDates.map((date) => {
-          const { dayName, dateLabel } = formatDayHeader(date);
+          const { dayName, dateLabel } = formatWeekDayHeader(date);
           const dayEvents = weekEvents[date] ?? [];
 
           return (

@@ -1,19 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { CreateTreatmentDto } from './dto/create-treatment.dto';
 import { UpdateTreatmentDto } from './dto/update-treatment.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Treatment } from './entities/treatment.entity';
 import { Repository } from 'typeorm';
-import { DateTime } from 'luxon';
 import { Horse } from 'src/horses/entities/horse.entity';
 import { User } from '../users/entities/user.entity';
 import { SHOEING_TREATMENT_NAME } from './treatment.constants';
-import {
-  formatScheduleDate,
-  getLocalDateString,
-  getStableTimezone,
-} from '../common/timezone.util';
+import { formatScheduleDate } from '../common/timezone.util';
 import {
   AuthUser,
   assertAssignableUser,
@@ -34,7 +28,6 @@ export class TreatmentsService {
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
     private readonly eventNotifications: EventNotificationsService,
-    private readonly configService: ConfigService,
   ) {}
 
   async create(createTreatmentDto: CreateTreatmentDto, authUser: AuthUser): Promise<Treatment> {
@@ -122,7 +115,9 @@ export class TreatmentsService {
       }
 
       const full = await this.findOne(saved.id);
-      await this.eventNotifications.notifyEventModified(authUser, 'treatment', full);
+      if (wasIncomplete) {
+        await this.eventNotifications.notifyEventModified(authUser, 'treatment', full);
+      }
       return full;
     }
 
@@ -158,55 +153,24 @@ export class TreatmentsService {
     return full;
   }
 
-  async syncDueShoeingDates(nowUtc: DateTime): Promise<number> {
-    const stableTz = getStableTimezone(this.configService);
-    const todayLocal = getLocalDateString(nowUtc, stableTz);
-
-    const dueTreatments = (
-      await this.treatmentRepository
-        .createQueryBuilder('treatment')
-        .leftJoinAndSelect('treatment.horses', 'horses')
-        .where('treatment.name = :name', { name: SHOEING_TREATMENT_NAME })
-        .andWhere('treatment.is_complete = :complete', { complete: true })
-        .andWhere('treatment.date = :today', { today: todayLocal })
-        .getMany()
-    ).filter((treatment) => formatScheduleDate(treatment.date) === todayLocal);
-
-    const horseIds = this.collectHorseIds(...dueTreatments);
-    if (horseIds.length > 0) {
-      await this.recomputeLastShoeingDatesForHorses(horseIds, nowUtc);
-    }
-    return dueTreatments.length;
-  }
-
-  async recomputeLastShoeingDatesForHorses(
-    horseIds: string[],
-    nowUtc: DateTime = DateTime.utc(),
-  ): Promise<void> {
+  async recomputeLastShoeingDatesForHorses(horseIds: string[]): Promise<void> {
     const uniqueHorseIds = [...new Set(horseIds)];
     for (const horseId of uniqueHorseIds) {
-      await this.recomputeLastShoeingDateForHorse(horseId, nowUtc);
+      await this.recomputeLastShoeingDateForHorse(horseId);
     }
   }
 
-  async recomputeLastShoeingDateForHorse(
-    horseId: string,
-    nowUtc: DateTime = DateTime.utc(),
-  ): Promise<void> {
+  async recomputeLastShoeingDateForHorse(horseId: string): Promise<void> {
     const horse = await this.horseRepository.findOne({ where: { id: horseId } });
     if (!horse) {
       return;
     }
-
-    const stableTz = getStableTimezone(this.configService);
-    const todayLocal = getLocalDateString(nowUtc, stableTz);
 
     const latestShoeing = await this.treatmentRepository
       .createQueryBuilder('treatment')
       .innerJoin('treatment.horses', 'horse', 'horse.id = :horseId', { horseId })
       .where('treatment.name = :name', { name: SHOEING_TREATMENT_NAME })
       .andWhere('treatment.is_complete = :complete', { complete: true })
-      .andWhere('treatment.date <= :today', { today: todayLocal })
       .orderBy('treatment.date', 'DESC')
       .addOrderBy('treatment.created_at', 'DESC')
       .getOne();

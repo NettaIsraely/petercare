@@ -112,7 +112,7 @@ export class NotificationsSchedulerService {
         feeding.schedule_date,
       );
 
-      await this.feedingNotifications.notifyUsers(
+      const queuedCount = await this.feedingNotifications.notifyUsers(
         recipientIds,
         'unassigned-night-alert',
         message,
@@ -122,6 +122,10 @@ export class NotificationsSchedulerService {
           shiftType: feeding.shift_type,
         },
       );
+
+      if (queuedCount === 0) {
+        continue;
+      }
 
       feeding.unassigned_night_alert_sent_at = nowUtc.toJSDate();
       await this.feedingRepository.save(feeding);
@@ -161,7 +165,7 @@ export class NotificationsSchedulerService {
         continue;
       }
 
-      await this.feedingNotifications.notifyUsers(
+      const queuedCount = await this.feedingNotifications.notifyUsers(
         [feeding.assigned_user.id],
         'feeding-incomplete-assignee-alert',
         feedingIncompleteAssigneePromptMessage(feeding.shift_type),
@@ -171,6 +175,10 @@ export class NotificationsSchedulerService {
           shiftType: feeding.shift_type,
         },
       );
+
+      if (queuedCount === 0) {
+        continue;
+      }
 
       feeding.incomplete_assignee_alert_sent_at = nowUtc.toJSDate();
       await this.feedingRepository.save(feeding);
@@ -219,7 +227,7 @@ export class NotificationsSchedulerService {
           )
         : feedingIncompleteBroadcastUnassignedMessage(feeding.shift_type);
 
-      await this.feedingNotifications.notifyUsers(
+      const queuedCount = await this.feedingNotifications.notifyUsers(
         recipientIds,
         'feeding-incomplete-broadcast-alert',
         message,
@@ -229,6 +237,10 @@ export class NotificationsSchedulerService {
           shiftType: feeding.shift_type,
         },
       );
+
+      if (queuedCount === 0) {
+        continue;
+      }
 
       feeding.incomplete_broadcast_alert_sent_at = nowUtc.toJSDate();
       await this.feedingRepository.save(feeding);

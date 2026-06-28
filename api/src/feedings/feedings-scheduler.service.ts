@@ -29,7 +29,7 @@ export class FeedingsSchedulerService implements OnModuleInit {
     }
   }
 
-  @Cron('5 * * * *')
+  @Cron('0 * * * *')
   async handleDailyShiftCreation(): Promise<void> {
     try {
       const stableTz = this.getStableTimezone();

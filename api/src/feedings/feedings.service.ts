@@ -216,6 +216,16 @@ export class FeedingsService {
       }
     }
 
+    const isIncompleteOnly =
+      wasComplete &&
+      allowedFields.feeding_status === FeedingStatus.ASSIGNED &&
+      allowedFields.assigned_user_id === undefined &&
+      allowedFields.notification_time === undefined;
+
+    if (isIncompleteOnly && existing.assigned_user?.id) {
+      updateData.assigned_user = { id: existing.assigned_user.id };
+    }
+
     const feeding = await this.feedingRepository.preload(updateData);
 
     if (!feeding) {
@@ -228,7 +238,11 @@ export class FeedingsService {
       !feeding.assigned_user?.id &&
       feeding.feeding_status === FeedingStatus.ASSIGNED
     ) {
-      feeding.feeding_status = FeedingStatus.UNASSIGNED;
+      if (existing.assigned_user?.id) {
+        feeding.assigned_user = { id: existing.assigned_user.id } as User;
+      } else {
+        feeding.feeding_status = FeedingStatus.UNASSIGNED;
+      }
     }
 
     const savedFeeding = await this.feedingRepository.save(feeding);

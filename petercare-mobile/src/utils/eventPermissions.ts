@@ -92,7 +92,7 @@ export function canPerformAction(
         event.data.assigned_user.id !== userId
       );
     case 'complete':
-      if (role === 'OWNER') {
+      if (role === 'OWNER' || role === 'CAREGIVER') {
         if (event.kind === 'feeding') {
           return (
             event.data.feeding_status !== 'COMPLETE' &&
@@ -106,23 +106,6 @@ export function canPerformAction(
           return !event.data.is_complete;
         }
         return false;
-      }
-      if (event.kind === 'feeding') {
-        return (
-          event.data.feeding_status !== 'COMPLETE' &&
-          event.data.feeding_status !== 'UNASSIGNED' &&
-          event.data.assigned_user?.id === userId
-        );
-      }
-      if (event.kind === 'task') {
-        return (
-          !!event.data.assigned_user &&
-          event.data.assigned_user.id === userId &&
-          !event.data.is_complete
-        );
-      }
-      if (event.kind === 'treatment') {
-        return event.data.user?.id === userId && !event.data.is_complete;
       }
       return false;
     default:

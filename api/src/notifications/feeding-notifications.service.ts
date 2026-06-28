@@ -182,7 +182,7 @@ export class FeedingNotificationsService {
     jobName: string,
     message: string,
     data: Record<string, unknown>,
-  ): Promise<void> {
+  ): Promise<number> {
     const eligibleIds = await this.notificationPreferences.filterEligibleUserIds(
       userIds,
       jobName,
@@ -195,6 +195,8 @@ export class FeedingNotificationsService {
         data,
       });
     }
+
+    return eligibleIds.length;
   }
 }
 

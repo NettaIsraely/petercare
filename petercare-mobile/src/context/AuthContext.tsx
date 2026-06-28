@@ -103,7 +103,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (error) {
           const is401 =
             axios.isAxiosError(error) && error.response?.status === 401;
-          if (isMounted && !is401) {
+          if (isMounted && is401) {
+            await clearToken();
+            setUser(null);
+          } else if (isMounted && !is401) {
             setUser(session);
             void registerPushToken(session.userId);
           }

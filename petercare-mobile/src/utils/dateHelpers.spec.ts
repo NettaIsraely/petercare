@@ -5,6 +5,7 @@ import {
   isOnOrAfterToday,
   isPastShiftDeadline,
   isToday,
+  recenterStaleSelectedDate,
   toDateString,
 } from './dateHelpers';
 
@@ -60,5 +61,14 @@ describe('dateHelpers (APP_TIMEZONE)', () => {
 
   it('uses configured app timezone constant', () => {
     expect(DEFAULT_APP_TIMEZONE).toBe('Asia/Jerusalem');
+  });
+
+  it('recenters stale selected dates to today in barn timezone', () => {
+    Settings.now = () => FIXED_NOW_MS;
+    const today = toDateString();
+
+    expect(recenterStaleSelectedDate('2026-06-18', new Date(FIXED_NOW_MS))).toBe(today);
+    expect(recenterStaleSelectedDate(today, new Date(FIXED_NOW_MS))).toBe(today);
+    expect(recenterStaleSelectedDate('2026-06-21', new Date(FIXED_NOW_MS))).toBe('2026-06-21');
   });
 });

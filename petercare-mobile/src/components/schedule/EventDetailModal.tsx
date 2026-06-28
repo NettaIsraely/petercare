@@ -23,8 +23,8 @@ import {
   formatUserFacingDate,
 } from '../../utils/dateHelpers';
 import { isCompletingKey } from '../../utils/completionKeys';
-import { eventHasComments, getEventComments } from '../../utils/scheduleHelpers';
-import { canEditEvent, canPerformAction, canDeleteEvent, canJoinRide } from '../../utils/eventPermissions';
+import { eventHasComments, getEventComments, isEventCompleted } from '../../utils/scheduleHelpers';
+import { canEditEvent, canToggleComplete, canDeleteEvent, canJoinRide, canPerformAction } from '../../utils/eventPermissions';
 
 interface EventDetailModalProps {
   visible: boolean;
@@ -153,7 +153,7 @@ export default function EventDetailModal({
       return;
     }
     setNotificationTime(getDefaultAlertTime(event, alertTimes));
-  }, [visible, event, alertTimes]);
+  }, [visible, event?.data.id, event?.kind]);
 
   if (!event) {
     return null;
@@ -162,7 +162,8 @@ export default function EventDetailModal({
   const showVolunteer = canPerformAction(userRole, 'volunteer', event, currentUserId);
   const showTakeOver = onTakeOver && canPerformAction(userRole, 'takeOver', event, currentUserId);
   const showClaim = canPerformAction(userRole, 'claim', event, currentUserId);
-  const showComplete = canPerformAction(userRole, 'complete', event, currentUserId);
+  const showToggleComplete = canToggleComplete(userRole, event, currentUserId);
+  const eventIsComplete = isEventCompleted(event);
   const showJoin = onJoin && canJoinRide(userRole, event, currentUserId);
   const showEdit = onEdit && canEditEvent(userRole, event, currentUserId);
   const showDelete = onDelete && canDeleteEvent(userRole, event);
@@ -279,7 +280,7 @@ export default function EventDetailModal({
               </TouchableOpacity>
             )}
 
-            {showComplete && event.kind === 'feeding' && (
+            {showToggleComplete && event.kind === 'feeding' && (
               <TouchableOpacity
                 style={styles.primaryButton}
                 onPress={() => onMarkComplete(event)}
@@ -288,12 +289,14 @@ export default function EventDetailModal({
                 {isCompleting ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.primaryButtonText}>Mark Feeding Complete</Text>
+                  <Text style={styles.primaryButtonText}>
+                    {eventIsComplete ? 'Mark Feeding Incomplete' : 'Mark Feeding Complete'}
+                  </Text>
                 )}
               </TouchableOpacity>
             )}
 
-            {showComplete && event.kind === 'task' && (
+            {showToggleComplete && event.kind === 'task' && (
               <TouchableOpacity
                 style={styles.primaryButton}
                 onPress={() => onMarkComplete(event)}
@@ -302,12 +305,14 @@ export default function EventDetailModal({
                 {isCompleting ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.primaryButtonText}>Mark Task Complete</Text>
+                  <Text style={styles.primaryButtonText}>
+                    {eventIsComplete ? 'Mark Task Incomplete' : 'Mark Task Complete'}
+                  </Text>
                 )}
               </TouchableOpacity>
             )}
 
-            {showComplete && event.kind === 'treatment' && (
+            {showToggleComplete && event.kind === 'treatment' && (
               <TouchableOpacity
                 style={styles.primaryButton}
                 onPress={() => onMarkComplete(event)}
@@ -316,7 +321,9 @@ export default function EventDetailModal({
                 {isCompleting ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.primaryButtonText}>Mark Treatment Complete</Text>
+                  <Text style={styles.primaryButtonText}>
+                    {eventIsComplete ? 'Mark Treatment Incomplete' : 'Mark Treatment Complete'}
+                  </Text>
                 )}
               </TouchableOpacity>
             )}

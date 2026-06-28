@@ -124,34 +124,18 @@ export function assertCanCompleteEvent(
 ): void {
   assertGuestCannotMutate(user);
 
-  if (user.role === UserRole.OWNER) {
-    return;
+  if (user.role !== UserRole.OWNER && user.role !== UserRole.CAREGIVER) {
+    throw new ForbiddenException('You do not have permission to complete this event');
   }
 
-  switch (eventKind) {
-    case 'feeding': {
-      const feeding = entity as Feeding;
-      if (feeding.assigned_user?.id !== user.userId) {
-        throw new ForbiddenException('You can only complete feedings assigned to you');
-      }
-      return;
+  if (eventKind === 'feeding') {
+    const feeding = entity as Feeding;
+    if (
+      feeding.feeding_status === FeedingStatus.UNASSIGNED ||
+      !feeding.assigned_user?.id
+    ) {
+      throw new ForbiddenException('Cannot complete an unassigned feeding shift');
     }
-    case 'task': {
-      const task = entity as Task;
-      if (task.assigned_user?.id !== user.userId) {
-        throw new ForbiddenException('You can only complete tasks assigned to you');
-      }
-      return;
-    }
-    case 'treatment': {
-      const treatment = entity as Treatment;
-      if (treatment.user?.id !== user.userId) {
-        throw new ForbiddenException('You can only complete treatments assigned to you');
-      }
-      return;
-    }
-    default:
-      throw new ForbiddenException('This event type cannot be marked complete');
   }
 }
 

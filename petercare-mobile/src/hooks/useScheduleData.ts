@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { withApiAction } from '../api/apiActionContext';
 import { useAuth } from '../context/AuthContext';
@@ -22,10 +23,16 @@ import {
   getEventsForDate,
   getEventsForWeek,
 } from '../utils/scheduleHelpers';
-import { toDateString, normalizeDateString, getNext14DayStrings } from '../utils/dateHelpers';
+import {
+  toDateString,
+  normalizeDateString,
+  getNext14DayStrings,
+  recenterStaleSelectedDate,
+} from '../utils/dateHelpers';
 import { orderUsersForAssignment } from '../utils/assignableUsers';
 import { completingKey } from '../utils/completionKeys';
 import { confirmFeedingCompletionIfNeeded } from '../utils/feedingCompletionHelpers';
+import { isEventCompleted } from '../utils/scheduleHelpers';
 import { isExpectedRideSchedulingError } from '../utils/rideConflictHelpers';
 
 interface RawScheduleData {
@@ -189,9 +196,26 @@ export function useScheduleData() {
 
   useFocusEffect(
     useCallback(() => {
+      setSelectedDate((prev) => recenterStaleSelectedDate(prev));
       refresh();
     }, [refresh])
   );
+
+  useEffect(() => {
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      if (nextState !== 'active') {
+        return;
+      }
+
+      setSelectedDate((prev) => recenterStaleSelectedDate(prev));
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   const volunteerForFeeding = useCallback(
     async (feedingId: string, notificationTime?: string) => {
@@ -239,13 +263,15 @@ export function useScheduleData() {
     [refresh]
   );
 
-  const markEventComplete = useCallback(
+  const toggleEventComplete = useCallback(
     async (event: TimelineEvent) => {
       if (event.kind !== 'feeding' && event.kind !== 'task' && event.kind !== 'treatment') {
         return;
       }
 
-      if (event.kind === 'feeding') {
+      const isComplete = isEventCompleted(event);
+
+      if (!isComplete && event.kind === 'feeding') {
         const confirmed = await confirmFeedingCompletionIfNeeded(event.data);
         if (!confirmed) {
           return;
@@ -256,15 +282,25 @@ export function useScheduleData() {
       setCompletingIds((prev) => new Set(prev).add(key));
       try {
         if (event.kind === 'feeding') {
-          await feedingService.markFeedingComplete(event.data.id);
+          if (isComplete) {
+            await feedingService.markFeedingIncomplete(event.data.id);
+          } else {
+            await feedingService.markFeedingComplete(event.data.id);
+          }
         } else if (event.kind === 'task') {
-          await taskService.markTaskComplete(event.data.id);
+          if (isComplete) {
+            await taskService.updateTask(event.data.id, { is_complete: false });
+          } else {
+            await taskService.markTaskComplete(event.data.id);
+          }
+        } else if (isComplete) {
+          await treatmentService.updateTreatment(event.data.id, { is_complete: false });
         } else {
           await treatmentService.markTreatmentComplete(event.data.id);
         }
         await refresh(true);
       } catch (error) {
-        console.error(`Failed to mark ${event.kind} complete:`, error);
+        console.error(`Failed to toggle ${event.kind} completion:`, error);
       } finally {
         setCompletingIds((prev) => {
           const next = new Set(prev);
@@ -465,7 +501,7 @@ export function useScheduleData() {
     takeOverFeeding,
     volunteerForFeedings,
     claimTask,
-    markEventComplete,
+    toggleEventComplete,
     availableUnassignedFeedings,
     createTask,
     updateTask,

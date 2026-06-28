@@ -1,8 +1,10 @@
+import { DateTime } from 'luxon';
+import { APP_TIMEZONE } from '../constants/timezone';
 import { Feeding } from '../types/feeding';
 import { Horse } from '../types/horse';
 import { Ride } from '../types/ride';
 import { Task } from '../types/task';
-import { normalizeDateString, toDateString } from './dateHelpers';
+import { normalizeDateString } from './dateHelpers';
 
 export interface WeekRange {
   start: string;
@@ -29,53 +31,40 @@ export interface PersonalChecklist {
   summary: PersonalChecklistSummary;
 }
 
-function formatWeekLabel(start: Date, end: Date): string {
-  const startLabel = start.toLocaleDateString('he-IL', {
-    day: '2-digit',
-    month: '2-digit',
-  });
-  const endLabel = end.toLocaleDateString('he-IL', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
+function formatWeekLabel(start: DateTime, end: DateTime): string {
+  const startLabel = start.toFormat('dd/MM');
+  const endLabel = start.year !== end.year ? end.toFormat('dd/MM/yyyy') : end.toFormat('dd/MM');
   return `${startLabel} – ${endLabel}`;
 }
 
-export function getCurrentWeekRange(referenceDate = new Date()): WeekRange {
-  const date = new Date(referenceDate);
-  date.setHours(0, 0, 0, 0);
+function startOfWeekInAppTimezone(referenceDate?: Date): DateTime {
+  const instant = referenceDate ? DateTime.fromJSDate(referenceDate) : DateTime.now();
+  const local = instant.setZone(APP_TIMEZONE).startOf('day');
+  const daysFromMonday = local.weekday - 1;
+  return local.minus({ days: daysFromMonday });
+}
 
-  const dayOfWeek = date.getDay();
-  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-
-  const startDate = new Date(date);
-  startDate.setDate(date.getDate() - daysFromMonday);
-
-  const endDate = new Date(startDate);
-  endDate.setDate(startDate.getDate() + 6);
+export function getCurrentWeekRange(referenceDate?: Date): WeekRange {
+  const startDate = startOfWeekInAppTimezone(referenceDate);
+  const endDate = startDate.plus({ days: 6 });
 
   return {
-    start: toDateString(startDate),
-    end: toDateString(endDate),
+    start: startDate.toISODate() ?? '',
+    end: endDate.toISODate() ?? '',
     label: formatWeekLabel(startDate, endDate),
   };
 }
 
 export function getWeekRangeForOffset(
   weekOffset: number,
-  referenceDate = new Date()
+  referenceDate?: Date
 ): WeekRange {
-  const currentWeek = getCurrentWeekRange(referenceDate);
-  const startDate = new Date(`${currentWeek.start}T00:00:00`);
-  startDate.setDate(startDate.getDate() + weekOffset * 7);
-
-  const endDate = new Date(startDate);
-  endDate.setDate(startDate.getDate() + 6);
+  const startDate = startOfWeekInAppTimezone(referenceDate).plus({ weeks: weekOffset });
+  const endDate = startDate.plus({ days: 6 });
 
   return {
-    start: toDateString(startDate),
-    end: toDateString(endDate),
+    start: startDate.toISODate() ?? '',
+    end: endDate.toISODate() ?? '',
     label: formatWeekLabel(startDate, endDate),
   };
 }

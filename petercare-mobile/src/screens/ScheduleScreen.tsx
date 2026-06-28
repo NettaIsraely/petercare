@@ -64,7 +64,7 @@ export default function ScheduleScreen() {
     takeOverFeeding,
     volunteerForFeedings,
     claimTask,
-    markEventComplete,
+    toggleEventComplete,
     availableUnassignedFeedings,
     createTask,
     updateTask,
@@ -99,8 +99,8 @@ export default function ScheduleScreen() {
     handleCloseDetail();
   };
 
-  const handleMarkComplete = async (event: TimelineEvent) => {
-    await markEventComplete(event);
+  const handleToggleComplete = async (event: TimelineEvent) => {
+    await toggleEventComplete(event);
     handleCloseDetail();
   };
 
@@ -223,7 +223,7 @@ export default function ScheduleScreen() {
         onVolunteer={handleVolunteer}
         onTakeOver={handleTakeOver}
         onClaim={handleClaim}
-        onMarkComplete={handleMarkComplete}
+        onMarkComplete={handleToggleComplete}
         onEdit={handleEdit}
         onJoin={handleJoin}
         onDelete={handleDelete}

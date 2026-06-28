@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -75,6 +75,13 @@ export default function InsightsWeekPager({
     },
     [setWeekOffset]
   );
+
+  useEffect(() => {
+    listRef.current?.scrollToIndex({
+      index: offsetToIndex(weekOffset),
+      animated: false,
+    });
+  }, [weekOffset, pageWidth]);
 
   const handleMomentumScrollEnd = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {

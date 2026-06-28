@@ -27,7 +27,7 @@ describe('NotificationsSchedulerService incomplete alerts', () => {
       find: jest.fn(),
       save: jest.fn(async (feeding: Feeding) => feeding),
     };
-    notifyUsers = jest.fn();
+    notifyUsers = jest.fn().mockResolvedValue(1);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -142,6 +142,27 @@ describe('NotificationsSchedulerService incomplete alerts', () => {
       expect.stringContaining('still unassigned'),
       expect.objectContaining({ type: 'feeding-incomplete-broadcast' }),
     );
+  });
+
+  it('does not stamp assignee alert when no notifications are queued', async () => {
+    const nowUtc = DateTime.fromISO('2026-06-19T06:00:00.000Z', { zone: 'utc' });
+    notifyUsers.mockResolvedValueOnce(0);
+    feedingRepository.find.mockResolvedValueOnce([
+      {
+        id: 'feeding-1',
+        schedule_date: '2026-06-19',
+        shift_type: ShiftType.MORNING,
+        feeding_status: FeedingStatus.ASSIGNED,
+        assigned_user: { id: 'assignee-1', name: 'Jane Smith' },
+        incomplete_assignee_alert_sent_at: null,
+      },
+    ]);
+
+    await (service as unknown as { processIncompleteAssigneeAlerts: (now: DateTime) => Promise<void> })
+      .processIncompleteAssigneeAlerts(nowUtc);
+
+    expect(notifyUsers).toHaveBeenCalled();
+    expect(feedingRepository.save).not.toHaveBeenCalled();
   });
 });
 

@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import {
   assertAssignableUser,
+  assertCanCompleteEvent,
   assertCanDeleteEvent,
   assertCanEditEvent,
   assertCanTakeOverFeeding,
@@ -154,5 +155,42 @@ describe('event-permissions', () => {
     } as any;
 
     await expect(assertAssignableUser(userRepo, 'caregiver-id')).resolves.toBeUndefined();
+  });
+
+  it('allows caregivers to complete tasks and treatments assigned to others', () => {
+    const task = { assigned_user: { id: 'other-id' } } as any;
+    const treatment = { user: { id: 'other-id' } } as any;
+
+    expect(() => assertCanCompleteEvent(caregiver, 'task', task)).not.toThrow();
+    expect(() => assertCanCompleteEvent(caregiver, 'treatment', treatment)).not.toThrow();
+  });
+
+  it('allows caregivers to complete feedings assigned to others', () => {
+    const feeding = {
+      feeding_status: 'ASSIGNED',
+      assigned_user: { id: 'other-id' },
+    } as any;
+
+    expect(() => assertCanCompleteEvent(caregiver, 'feeding', feeding)).not.toThrow();
+  });
+
+  it('blocks completing unassigned feedings for owners and caregivers', () => {
+    const unassigned = {
+      feeding_status: 'UNASSIGNED',
+      assigned_user: null,
+    } as any;
+
+    expect(() => assertCanCompleteEvent(owner, 'feeding', unassigned)).toThrow(
+      ForbiddenException,
+    );
+    expect(() => assertCanCompleteEvent(caregiver, 'feeding', unassigned)).toThrow(
+      ForbiddenException,
+    );
+  });
+
+  it('blocks guests from completing events', () => {
+    const task = { assigned_user: { id: 'other-id' } } as any;
+
+    expect(() => assertCanCompleteEvent(guest, 'task', task)).toThrow(ForbiddenException);
   });
 });

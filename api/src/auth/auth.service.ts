@@ -95,7 +95,7 @@ export class AuthService {
             token: resetToken,
         });
 
-        this.logger.log(`Password reset email queued for ${user.email}`);
+        this.logger.log('Password reset email queued');
 
         return { message: 'If that email exists, a reset link has been sent.' };
     }

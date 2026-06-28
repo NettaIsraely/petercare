@@ -1,7 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ConfigService } from '@nestjs/config';
-import { DateTime } from 'luxon';
 import { TreatmentsService } from './treatments.service';
 import { Treatment } from './entities/treatment.entity';
 import { Horse } from 'src/horses/entities/horse.entity';
@@ -9,15 +7,9 @@ import { User } from '../users/entities/user.entity';
 import { UserRole } from '../users/entities/user.entity';
 import { SHOEING_TREATMENT_NAME } from './treatment.constants';
 import { EventNotificationsService } from '../notifications/event-notifications.service';
-import { DEFAULT_STABLE_TIMEZONE, getLocalDateString } from '../common/timezone.util';
-
 const eventNotificationsMock = {
   notifyEventModified: jest.fn(),
   notifyRideJoined: jest.fn(),
-};
-
-const configServiceMock = {
-  get: jest.fn(),
 };
 
 const authUser = {
@@ -117,7 +109,6 @@ describe('TreatmentsService', () => {
     horseRepository.findOne.mockReset();
     horseRepository.save.mockReset();
     incompleteShoeing.is_complete = false;
-    configServiceMock.get.mockReturnValue(undefined);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -126,7 +117,6 @@ describe('TreatmentsService', () => {
         { provide: getRepositoryToken(Horse), useValue: horseRepository },
         { provide: getRepositoryToken(User), useValue: { findOne: jest.fn() } },
         { provide: EventNotificationsService, useValue: eventNotificationsMock },
-        { provide: ConfigService, useValue: configServiceMock },
       ],
     }).compile();
 
@@ -223,7 +213,7 @@ describe('TreatmentsService', () => {
     expect(horseRepository.save).not.toHaveBeenCalled();
   });
 
-  it('clears last_shoeing_date when completing a future Shoeing treatment', async () => {
+  it('updates last_shoeing_date when completing a future Shoeing treatment', async () => {
     const futureShoeing = {
       ...incompleteShoeing,
       id: 'treatment-future',
@@ -242,13 +232,13 @@ describe('TreatmentsService', () => {
       }
       return Promise.resolve(null);
     });
-    queryBuilderMock.getOne.mockResolvedValue(null);
+    queryBuilderMock.getOne.mockResolvedValue({ date: futureShoeingDate });
 
     await service.update('treatment-future', { is_complete: true }, authUser);
 
     expect(horseRepository.save).toHaveBeenCalledTimes(2);
     expect(horseRepository.save).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'horse-1', last_shoeing_date: null }),
+      expect.objectContaining({ id: 'horse-1', last_shoeing_date: futureShoeingDate }),
     );
   });
 
@@ -330,7 +320,7 @@ describe('TreatmentsService', () => {
     );
   });
 
-  it('excludes future date and falls back when a completed Shoeing is moved to the future', async () => {
+  it('uses future date as last_shoeing_date when a completed Shoeing is moved to the future', async () => {
     const completedShoeing = { ...incompleteShoeing, is_complete: true, date: shoeingDate };
     const updatedShoeing = { ...completedShoeing, date: futureShoeingDate };
 
@@ -346,7 +336,7 @@ describe('TreatmentsService', () => {
       }
       return Promise.resolve(null);
     });
-    queryBuilderMock.getOne.mockResolvedValue(null);
+    queryBuilderMock.getOne.mockResolvedValue({ date: futureShoeingDate });
 
     await service.update(
       'treatment-1',
@@ -355,7 +345,7 @@ describe('TreatmentsService', () => {
     );
 
     expect(horseRepository.save).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'horse-1', last_shoeing_date: null }),
+      expect.objectContaining({ id: 'horse-1', last_shoeing_date: futureShoeingDate }),
     );
   });
 
@@ -398,46 +388,14 @@ describe('TreatmentsService', () => {
     expect(horseRepository.save).toHaveBeenCalledTimes(2);
   });
 
-  it('syncs due completed Shoeing treatments for today via recompute', async () => {
-    const nowUtc = DateTime.utc(2026, 6, 27, 12, 0, 0);
-    const todayLocal = getLocalDateString(nowUtc, DEFAULT_STABLE_TIMEZONE);
-    const dueTreatment = {
-      ...incompleteShoeing,
-      is_complete: true,
-      date: todayLocal,
-    };
+  it('does not notify when re-completing an already complete treatment', async () => {
+    const alreadyComplete = { ...incompleteShoeing, is_complete: true };
 
-    queryBuilderMock.getMany.mockResolvedValue([dueTreatment]);
-    const recomputeSpy = jest
-      .spyOn(service, 'recomputeLastShoeingDatesForHorses')
-      .mockResolvedValue(undefined);
+    mockTreatmentFindOneSequence(alreadyComplete, alreadyComplete);
+    treatmentRepository.save.mockResolvedValue(alreadyComplete);
 
-    const syncedCount = await service.syncDueShoeingDates(nowUtc);
+    await service.update('treatment-1', { is_complete: true }, authUser);
 
-    expect(syncedCount).toBe(1);
-    expect(queryBuilderMock.where).toHaveBeenCalledWith('treatment.name = :name', {
-      name: SHOEING_TREATMENT_NAME,
-    });
-    expect(queryBuilderMock.andWhere).toHaveBeenCalledWith('treatment.is_complete = :complete', {
-      complete: true,
-    });
-    expect(recomputeSpy).toHaveBeenCalledWith(['horse-1', 'horse-2'], expect.any(Object));
-
-    recomputeSpy.mockRestore();
-  });
-
-  it('returns zero and skips recompute when no due Shoeing treatments exist', async () => {
-    const nowUtc = DateTime.utc(2026, 6, 27, 12, 0, 0);
-    queryBuilderMock.getMany.mockResolvedValue([]);
-    const recomputeSpy = jest
-      .spyOn(service, 'recomputeLastShoeingDatesForHorses')
-      .mockResolvedValue(undefined);
-
-    const syncedCount = await service.syncDueShoeingDates(nowUtc);
-
-    expect(syncedCount).toBe(0);
-    expect(recomputeSpy).not.toHaveBeenCalled();
-
-    recomputeSpy.mockRestore();
+    expect(eventNotificationsMock.notifyEventModified).not.toHaveBeenCalled();
   });
 });

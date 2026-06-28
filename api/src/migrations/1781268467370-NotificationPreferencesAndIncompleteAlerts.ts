@@ -20,7 +20,9 @@ export class NotificationPreferencesAndIncompleteAlerts1781268467370
           WHERE table_name = 'feedings' AND column_name = 'incomplete_alert_sent_at'
         ) THEN
           UPDATE "feedings"
-          SET "incomplete_broadcast_alert_sent_at" = "incomplete_alert_sent_at"
+          SET
+            "incomplete_broadcast_alert_sent_at" = "incomplete_alert_sent_at",
+            "incomplete_assignee_alert_sent_at" = "incomplete_alert_sent_at"
           WHERE "incomplete_alert_sent_at" IS NOT NULL
             AND "incomplete_broadcast_alert_sent_at" IS NULL;
 

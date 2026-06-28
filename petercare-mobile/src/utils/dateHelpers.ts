@@ -45,6 +45,11 @@ export function isToday(value: string | Date): boolean {
   return normalizeDateString(value) === toIsoDateInAppTimezone();
 }
 
+export function recenterStaleSelectedDate(selectedDate: string, referenceDate?: Date): string {
+  const today = toDateString(referenceDate);
+  return selectedDate < today ? today : selectedDate;
+}
+
 export function getRollingWeekDateStrings(anchorDate: string): string[] {
   const anchor = dateTimeFromScheduleDate(anchorDate);
   const days: string[] = [];
