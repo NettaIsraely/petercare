@@ -33,3 +33,29 @@ export interface UpdateRidePayload {
   additional_riders_ids?: string[];
   comments?: string;
 }
+
+export function filterAdditionalRiderIds(
+  primaryRiderId: string,
+  additionalRiderIds: string[],
+): string[] {
+  return additionalRiderIds.filter((id) => id !== primaryRiderId);
+}
+
+export function getDisplayAdditionalRiders(ride: Ride): UserSummary[] {
+  return (ride.additional_riders ?? []).filter(
+    (rider) => rider.id !== ride.primary_rider.id,
+  );
+}
+
+export function getOtherRideRiderNames(ride: Ride, currentUserId?: string): string[] {
+  const names: string[] = [];
+  if (ride.primary_rider.id !== currentUserId) {
+    names.push(ride.primary_rider.name);
+  }
+  for (const rider of getDisplayAdditionalRiders(ride)) {
+    if (rider.id !== currentUserId) {
+      names.push(rider.name);
+    }
+  }
+  return names;
+}

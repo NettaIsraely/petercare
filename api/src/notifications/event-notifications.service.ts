@@ -6,7 +6,9 @@ import { Treatment } from '../treatments/entities/treatment.entity';
 import { AuthUser, EventKind } from '../common/event-permissions';
 import {
   eventModifiedMessage,
+  getEventScheduleDateString,
   rideJoinedMessage,
+  rideRemovedMessage,
 } from './notification-messages';
 import { FeedingNotificationsService } from './feeding-notifications.service';
 
@@ -52,6 +54,12 @@ function isRideParticipant(ride: Ride, userId: string): boolean {
   return ride.additional_riders?.some((rider) => rider.id === userId) ?? false;
 }
 
+export function getRemovedRideParticipantIds(existing: Ride, saved: Ride): string[] {
+  const before = new Set(getEventStakeholderIds('ride', existing));
+  const after = new Set(getEventStakeholderIds('ride', saved));
+  return [...before].filter((userId) => !after.has(userId));
+}
+
 export function detectRideJoin(
   existing: Ride,
   saved: Ride,
@@ -81,7 +89,8 @@ export class EventNotificationsService {
       return;
     }
 
-    const message = eventModifiedMessage(editor.name);
+    const message = eventModifiedMessage(editor.name, eventKind, entity);
+    const scheduleDate = getEventScheduleDateString(eventKind, entity);
 
     await this.feedingNotifications.notifyUsers(
       stakeholders,
@@ -91,8 +100,54 @@ export class EventNotificationsService {
         type: 'event-modified',
         eventKind,
         eventId: entity.id,
+        ...(scheduleDate ? { scheduleDate } : {}),
       },
     );
+  }
+
+  async notifyRideUpdated(
+    editor: AuthUser,
+    existing: Ride,
+    saved: Ride,
+  ): Promise<void> {
+    const removedParticipantIds = getRemovedRideParticipantIds(existing, saved).filter(
+      (userId) => userId !== editor.userId,
+    );
+
+    if (removedParticipantIds.length > 0) {
+      const message = rideRemovedMessage(editor.name, saved.date);
+      const scheduleDate = getEventScheduleDateString('ride', saved);
+
+      await this.feedingNotifications.notifyUsers(
+        removedParticipantIds,
+        'event-modified-alert',
+        message,
+        {
+          type: 'ride-removed',
+          eventKind: 'ride',
+          eventId: saved.id,
+          ...(scheduleDate ? { scheduleDate } : {}),
+        },
+      );
+    }
+
+    const joined = detectRideJoin(existing, saved, editor.userId);
+
+    if (joined) {
+      await this.notifyRideJoined(editor, saved);
+      await this.notifyEventModified(editor, 'ride', saved, {
+        excludeUserIds: [
+          editor.userId,
+          ...(saved.primary_rider?.id ? [saved.primary_rider.id] : []),
+          ...removedParticipantIds,
+        ],
+      });
+      return;
+    }
+
+    await this.notifyEventModified(editor, 'ride', saved, {
+      excludeUserIds: [editor.userId, ...removedParticipantIds],
+    });
   }
 
   async notifyRideJoined(

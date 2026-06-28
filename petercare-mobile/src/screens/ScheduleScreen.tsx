@@ -48,6 +48,10 @@ export default function ScheduleScreen() {
     selectedDate,
     setSelectedDate,
     selectedDateEvents,
+    weekOffset,
+    setWeekOffset,
+    weekAnchor,
+    resetWeekToToday,
     weekEvents,
     alertTimes,
     loading,
@@ -188,6 +192,10 @@ export default function ScheduleScreen() {
             selectedDate={selectedDate}
             onSelectDate={setSelectedDate}
             selectedDateEvents={selectedDateEvents}
+            weekOffset={weekOffset}
+            weekAnchor={weekAnchor}
+            onWeekOffsetChange={setWeekOffset}
+            onJumpToToday={resetWeekToToday}
             weekEvents={weekEvents}
             users={raw.assignableUsers}
             onEventPress={handleEventPress}

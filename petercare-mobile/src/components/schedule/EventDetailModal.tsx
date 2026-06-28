@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { X } from 'lucide-react-native';
+import { getDisplayAdditionalRiders } from '../../types/ride';
 import { TimelineEvent } from '../../types/events';
 import { UserRole } from '../../types/auth';
 import { HorseColor } from '../../types/horse';
@@ -71,15 +72,17 @@ function getDetailLines(event: TimelineEvent): string[] {
           : 'Unassigned',
         `Complete: ${event.data.is_complete ? 'Yes' : 'No'}`,
       ].filter(Boolean);
-    case 'ride':
+    case 'ride': {
+      const additionalRiders = getDisplayAdditionalRiders(event.data);
       return [
         `Date: ${formatUserFacingDate(event.data.date)}`,
         `Time: ${formatTimeLabel(event.data.start_time)} – ${formatTimeLabel(event.data.end_time)}`,
         `Primary rider: ${event.data.primary_rider.name}`,
-        event.data.additional_riders?.length
-          ? `Additional riders: ${event.data.additional_riders.map((r) => r.name).join(', ')}`
+        additionalRiders.length
+          ? `Additional riders: ${additionalRiders.map((r) => r.name).join(', ')}`
           : '',
       ].filter(Boolean);
+    }
     case 'treatment':
       return [
         `Date: ${formatUserFacingDate(event.data.date)}`,

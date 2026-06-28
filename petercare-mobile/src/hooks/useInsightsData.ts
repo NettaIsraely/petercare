@@ -1,4 +1,5 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { withApiAction } from '../api/apiActionContext';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +11,7 @@ import { Feeding } from '../types/feeding';
 import { Horse } from '../types/horse';
 import { Ride } from '../types/ride';
 import { Task } from '../types/task';
+import { toDateString } from '../utils/dateHelpers';
 import {
   computeHorseRideCounts,
   computePersonalChecklist,
@@ -43,6 +45,7 @@ export function useInsightsData() {
   const [cachedData, setCachedData] = useState<CachedInsightsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const appTodayRef = useRef(toDateString());
 
   const weekRange = useMemo<WeekRange>(
     () => getWeekRangeForOffset(weekOffset),
@@ -67,6 +70,14 @@ export function useInsightsData() {
       weekRange
     );
   }, [cachedData, user, weekRange]);
+
+  const syncCalendarWeek = useCallback(() => {
+    const today = toDateString();
+    if (appTodayRef.current !== today) {
+      appTodayRef.current = today;
+      setWeekOffset(0);
+    }
+  }, []);
 
   const refresh = useCallback(
     async (isPullRefresh = false) => {
@@ -105,14 +116,38 @@ export function useInsightsData() {
   );
 
   const goToCurrentWeek = useCallback(() => {
+    appTodayRef.current = toDateString();
     setWeekOffset(0);
   }, []);
 
   useFocusEffect(
     useCallback(() => {
+      syncCalendarWeek();
       refresh();
-    }, [refresh])
+
+      const intervalId = setInterval(syncCalendarWeek, 60_000);
+
+      return () => {
+        clearInterval(intervalId);
+      };
+    }, [refresh, syncCalendarWeek])
   );
+
+  useEffect(() => {
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      if (nextState !== 'active') {
+        return;
+      }
+
+      syncCalendarWeek();
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      subscription.remove();
+    };
+  }, [syncCalendarWeek]);
 
   return {
     weekOffset,

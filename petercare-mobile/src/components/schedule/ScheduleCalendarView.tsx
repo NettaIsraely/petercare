@@ -15,6 +15,10 @@ interface ScheduleCalendarViewProps {
   selectedDate: string;
   onSelectDate: (date: string) => void;
   selectedDateEvents: TimelineEvent[];
+  weekOffset: number;
+  weekAnchor: string;
+  onWeekOffsetChange: (offset: number) => void;
+  onJumpToToday: () => void;
   weekEvents: Record<string, TimelineEvent[]>;
   users: UserSummary[];
   onEventPress: (event: TimelineEvent) => void;
@@ -32,6 +36,10 @@ export default function ScheduleCalendarView({
   selectedDate,
   onSelectDate,
   selectedDateEvents,
+  weekOffset,
+  weekAnchor,
+  onWeekOffsetChange,
+  onJumpToToday,
   weekEvents,
   users,
   onEventPress,
@@ -47,8 +55,10 @@ export default function ScheduleCalendarView({
 
       {calendarViewMode === 'weekly' ? (
         <ScheduleWeeklyView
-          selectedDate={selectedDate}
-          onSelectDate={onSelectDate}
+          weekOffset={weekOffset}
+          weekAnchor={weekAnchor}
+          onWeekOffsetChange={onWeekOffsetChange}
+          onJumpToToday={onJumpToToday}
           weekEvents={weekEvents}
           onEventPress={onEventPress}
           currentUserId={currentUserId}

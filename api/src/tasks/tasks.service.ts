@@ -80,6 +80,8 @@ export class TasksService {
       assertCanEditEvent(authUser, 'task', existing);
     }
 
+    const wasIncomplete = !existing.is_complete;
+
     const { assigned_user_id, ...rest } = updateTaskDto;
     const updateData: Record<string, unknown> = { id, ...rest };
 
@@ -106,7 +108,9 @@ export class TasksService {
 
     const saved = await this.tasksRepository.save(task);
     const full = await this.findOne(saved.id);
-    await this.eventNotifications.notifyEventModified(authUser, 'task', full);
+    if (!isCompleteOnly || wasIncomplete) {
+      await this.eventNotifications.notifyEventModified(authUser, 'task', full);
+    }
     return full;
   }
 

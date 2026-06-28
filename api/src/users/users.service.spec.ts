@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UsersService } from './users.service';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { User, UserProfileColor, UserRole } from './entities/user.entity';
 import { FeedingNotificationsService } from '../notifications/feeding-notifications.service';
 
@@ -269,6 +270,30 @@ describe('UsersService', () => {
     await service.update('owner-id', { name: 'Updated Owner' });
 
     expect(feedingNotifications.rescheduleFeedingRemindersForUser).not.toHaveBeenCalled();
+  });
+
+  it('ignores password reset fields on profile update', async () => {
+    userRepository.findOne.mockResolvedValue(owner);
+    userRepository.preload = jest.fn().mockImplementation((data) =>
+      Promise.resolve({ ...owner, ...data }),
+    );
+    userRepository.save.mockImplementation(async (value) => value as User);
+
+    await service.update('owner-id', {
+      name: 'Updated Owner',
+      reset_password_token: '123456',
+      reset_password_expires: new Date('2099-01-01'),
+    } as unknown as UpdateUserDto);
+
+    expect(userRepository.preload).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        reset_password_token: expect.anything(),
+        reset_password_expires: expect.anything(),
+      }),
+    );
+    expect(userRepository.preload).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Updated Owner' }),
+    );
   });
 
   it('rejects an invalid profile color update', async () => {

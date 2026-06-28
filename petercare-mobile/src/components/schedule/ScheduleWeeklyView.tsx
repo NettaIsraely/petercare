@@ -2,19 +2,15 @@ import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { TimelineEvent } from '../../types/events';
-import {
-  getRollingWeekDateStrings,
-  getWeekRangeLabel,
-  isToday,
-  shiftDateByWeeks,
-  toDateString,
-} from '../../utils/dateHelpers';
+import { getRollingWeekDateStrings, getWeekRangeLabel, MIN_WEEK_OFFSET, MAX_WEEK_OFFSET } from '../../utils/dateHelpers';
 import WeekDayColumns from './WeekDayColumns';
 import JumpToTodayButton from '../shared/JumpToTodayButton';
 
 interface ScheduleWeeklyViewProps {
-  selectedDate: string;
-  onSelectDate: (date: string) => void;
+  weekOffset: number;
+  weekAnchor: string;
+  onWeekOffsetChange: (offset: number) => void;
+  onJumpToToday: () => void;
   weekEvents: Record<string, TimelineEvent[]>;
   onEventPress: (event: TimelineEvent) => void;
   currentUserId?: string;
@@ -25,29 +21,33 @@ interface ScheduleWeeklyViewProps {
 }
 
 export default function ScheduleWeeklyView({
-  selectedDate,
-  onSelectDate,
+  weekOffset,
+  weekAnchor,
+  onWeekOffsetChange,
+  onJumpToToday,
   weekEvents,
   onEventPress,
   currentUserId,
   alertTimes,
 }: ScheduleWeeklyViewProps) {
   const weekDates = useMemo(
-    () => getRollingWeekDateStrings(selectedDate),
-    [selectedDate]
+    () => getRollingWeekDateStrings(weekAnchor),
+    [weekAnchor]
   );
   const weekLabel = useMemo(() => getWeekRangeLabel(weekDates), [weekDates]);
 
   const handlePrevWeek = () => {
-    onSelectDate(shiftDateByWeeks(selectedDate, -1));
+    if (weekOffset <= MIN_WEEK_OFFSET) {
+      return;
+    }
+    onWeekOffsetChange(weekOffset - 1);
   };
 
   const handleNextWeek = () => {
-    onSelectDate(shiftDateByWeeks(selectedDate, 1));
-  };
-
-  const handleJumpToToday = () => {
-    onSelectDate(toDateString(new Date()));
+    if (weekOffset >= MAX_WEEK_OFFSET) {
+      return;
+    }
+    onWeekOffsetChange(weekOffset + 1);
   };
 
   return (
@@ -56,18 +56,22 @@ export default function ScheduleWeeklyView({
         <TouchableOpacity
           style={styles.navButton}
           onPress={handlePrevWeek}
+          disabled={weekOffset <= MIN_WEEK_OFFSET}
           accessibilityRole="button"
           accessibilityLabel="Previous week"
         >
-          <ChevronLeft size={20} color="#3498DB" />
+          <ChevronLeft
+            size={20}
+            color={weekOffset <= MIN_WEEK_OFFSET ? '#BDC3C7' : '#3498DB'}
+          />
         </TouchableOpacity>
         <View style={styles.navCenter}>
           <Text style={styles.weekLabel}>{weekLabel}</Text>
-          {!isToday(selectedDate) ? (
+          {weekOffset !== 0 ? (
             <JumpToTodayButton
               label="Today"
               variant="compact-pill"
-              onPress={handleJumpToToday}
+              onPress={onJumpToToday}
               style={styles.todayButton}
             />
           ) : null}
@@ -75,10 +79,14 @@ export default function ScheduleWeeklyView({
         <TouchableOpacity
           style={styles.navButton}
           onPress={handleNextWeek}
+          disabled={weekOffset >= MAX_WEEK_OFFSET}
           accessibilityRole="button"
           accessibilityLabel="Next week"
         >
-          <ChevronRight size={20} color="#3498DB" />
+          <ChevronRight
+            size={20}
+            color={weekOffset >= MAX_WEEK_OFFSET ? '#BDC3C7' : '#3498DB'}
+          />
         </TouchableOpacity>
       </View>
 

@@ -24,6 +24,7 @@ import HorseFormModal from '../components/horses/HorseFormModal';
 import TaskFormModal from '../components/tasks/TaskFormModal';
 import EventDetailModal from '../components/schedule/EventDetailModal';
 import { canCreateEvents } from '../utils/eventPermissions';
+import { confirmEventDelete } from '../utils/eventDeleteHelpers';
 
 type HorsesListNavigationProp = NativeStackNavigationProp<
   HorsesStackParamList,
@@ -49,6 +50,7 @@ export default function HorsesScreen() {
     creating: taskCreating,
     updating: taskUpdating,
     claimingId,
+    deletingId,
     completingIds,
     refresh: refreshTasks,
     createTask,
@@ -56,6 +58,7 @@ export default function HorsesScreen() {
     claimTask,
     toggleTaskComplete,
     markEventComplete,
+    deleteEvent,
     currentUserId,
   } = useTasksData();
 
@@ -121,6 +124,16 @@ export default function HorsesScreen() {
     handleCloseDetail();
   };
 
+  const handleDelete = async (event: TimelineEvent) => {
+    const confirmed = await confirmEventDelete(event);
+    if (!confirmed) {
+      return;
+    }
+
+    await deleteEvent(event);
+    handleCloseDetail();
+  };
+
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
@@ -181,6 +194,8 @@ export default function HorsesScreen() {
         onClaim={handleClaim}
         onMarkComplete={handleMarkComplete}
         onEdit={handleEdit}
+        onDelete={handleDelete}
+        deletingId={deletingId}
       />
 
       <TaskFormModal

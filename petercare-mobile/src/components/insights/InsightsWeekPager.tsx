@@ -92,6 +92,16 @@ export default function InsightsWeekPager({
     [pageWidth, setWeekOffset]
   );
 
+  const handleScrollToIndexFailed = useCallback(
+    (info: { index: number }) => {
+      listRef.current?.scrollToOffset({
+        offset: info.index * pageWidth,
+        animated: false,
+      });
+    },
+    [pageWidth]
+  );
+
   const handlePrevWeek = () => {
     if (weekOffset <= MIN_WEEK_OFFSET) {
       return;
@@ -208,6 +218,7 @@ export default function InsightsWeekPager({
         initialScrollIndex={CENTER_INDEX}
         getItemLayout={getItemLayout}
         onMomentumScrollEnd={handleMomentumScrollEnd}
+        onScrollToIndexFailed={handleScrollToIndexFailed}
         style={styles.pager}
       />
     </View>

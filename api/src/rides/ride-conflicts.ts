@@ -89,6 +89,24 @@ export function dedupeConflictEntries(entries: ConflictEntry[]): ConflictEntry[]
   });
 }
 
+export function normalizeAdditionalRiderIds(
+  primaryRiderId: string,
+  additionalRiderIds?: string[],
+): string[] {
+  if (!additionalRiderIds?.length) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  return additionalRiderIds.filter((id) => {
+    if (!id || id === primaryRiderId || seen.has(id)) {
+      return false;
+    }
+    seen.add(id);
+    return true;
+  });
+}
+
 export function buildEffectiveRideConflictParams(
   existing: {
     date: string | Date;
@@ -108,11 +126,14 @@ export function buildEffectiveRideConflictParams(
   },
   rideId: string,
 ): RideConflictParams {
+  const primaryRiderId = updateDto.primary_rider_id ?? existing.primary_rider.id;
+  const additionalRiderIds =
+    updateDto.additional_riders_ids ??
+    existing.additional_riders?.map((rider) => rider.id) ??
+    [];
   const riderIds = [
-    updateDto.primary_rider_id ?? existing.primary_rider.id,
-    ...(updateDto.additional_riders_ids ??
-      existing.additional_riders?.map((rider) => rider.id) ??
-      []),
+    primaryRiderId,
+    ...normalizeAdditionalRiderIds(primaryRiderId, additionalRiderIds),
   ];
 
   return {
@@ -120,7 +141,7 @@ export function buildEffectiveRideConflictParams(
     start_time: updateDto.start_time ?? existing.start_time,
     end_time: updateDto.end_time ?? existing.end_time,
     horseIds: updateDto.horses ?? existing.horses.map((horse) => horse.id),
-    riderIds: [...new Set(riderIds)],
+    riderIds,
     excludeRideId: rideId,
   };
 }
@@ -135,7 +156,7 @@ export function buildCreateRideConflictParams(dto: {
 }): RideConflictParams {
   const riderIds = [
     dto.primary_rider_id,
-    ...(dto.additional_riders_ids ?? []),
+    ...normalizeAdditionalRiderIds(dto.primary_rider_id, dto.additional_riders_ids),
   ];
 
   return {
@@ -143,6 +164,6 @@ export function buildCreateRideConflictParams(dto: {
     start_time: dto.start_time,
     end_time: dto.end_time,
     horseIds: dto.horses,
-    riderIds: [...new Set(riderIds)],
+    riderIds,
   };
 }

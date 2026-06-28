@@ -7,6 +7,9 @@ import {
   isFirebaseConfigured,
 } from '../config/firebase.web';
 import { AppStackParamList } from '../navigation/types';
+import {
+  navigateFromNotificationData,
+} from '../utils/notificationNavigation';
 import * as userService from './userService';
 
 const SERVICE_WORKER_PATH = '/firebase-messaging-sw.js';
@@ -65,29 +68,6 @@ async function getServiceWorkerRegistration(): Promise<ServiceWorkerRegistration
     console.warn('Failed to register Firebase service worker:', error);
     return null;
   }
-}
-
-function navigateFromNotificationData(
-  navigationRef: RefObject<NavigationContainerRef<AppStackParamList> | null>,
-  data: Record<string, unknown>,
-): void {
-  if (data.type === 'role-request') {
-    navigationRef.current?.navigate('OwnerDashboard');
-  } else if (data.type === 'role-request-resolved') {
-    navigationRef.current?.navigate('ProfileSettings');
-  }
-}
-
-function getNotificationPath(data: Record<string, unknown>): string {
-  if (data.type === 'role-request') {
-    return '/owner';
-  }
-
-  if (data.type === 'role-request-resolved') {
-    return '/profile';
-  }
-
-  return '/';
 }
 
 export async function registerWebPushToken(userId: string): Promise<void> {

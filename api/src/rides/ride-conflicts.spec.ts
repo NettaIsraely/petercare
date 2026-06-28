@@ -3,6 +3,7 @@ import {
   buildCreateRideConflictParams,
   buildEffectiveRideConflictParams,
   dedupeConflictEntries,
+  normalizeAdditionalRiderIds,
   formatTimeRange,
   timeRangesOverlap,
 } from './ride-conflicts';
@@ -70,6 +71,18 @@ describe('ride-conflicts', () => {
       ]);
 
       expect(deduped).toHaveLength(2);
+    });
+  });
+
+  describe('normalizeAdditionalRiderIds', () => {
+    it('removes primary rider and duplicate ids', () => {
+      expect(
+        normalizeAdditionalRiderIds('rider-b', ['rider-a', 'rider-b', 'rider-a', 'rider-c']),
+      ).toEqual(['rider-a', 'rider-c']);
+    });
+
+    it('returns empty array when only primary rider is provided', () => {
+      expect(normalizeAdditionalRiderIds('rider-a', ['rider-a'])).toEqual([]);
     });
   });
 

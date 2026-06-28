@@ -42,6 +42,7 @@ interface RawData {
 export function useMyDayData() {
   const { user } = useAuth();
   const [myWeek, setMyWeek] = useState<MyWeekData>(EMPTY_MY_WEEK);
+  const [rawData, setRawData] = useState<RawData | null>(null);
   const [horses, setHorses] = useState<Horse[]>([]);
   const [assignableUsers, setAssignableUsers] = useState<UserSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,6 +62,7 @@ export function useMyDayData() {
     (raw: RawData) => {
       if (!user) {
         setMyWeek(EMPTY_MY_WEEK);
+        setRawData(null);
         return;
       }
 
@@ -68,6 +70,7 @@ export function useMyDayData() {
       setAlertTimes(times);
       setHorses(raw.horses);
       setAssignableUsers(raw.assignableUsers);
+      setRawData(raw);
       setMyWeek(
         computeMyWeek(user.userId, raw.feedings, raw.tasks, raw.rides, raw.treatments, times)
       );
@@ -284,6 +287,52 @@ export function useMyDayData() {
     [refresh]
   );
 
+  const findTimelineEvent = useCallback(
+    (kind: TimelineEvent['kind'], id: string): TimelineEvent | null => {
+      for (const section of myWeek.daySections) {
+        const match = section.events.find(
+          (event) => event.kind === kind && event.data.id === id,
+        );
+        if (match) {
+          return match;
+        }
+      }
+
+      if (kind === 'task') {
+        const openTask = myWeek.openTasks.find((task) => task.id === id);
+        if (openTask) {
+          return { kind: 'task', data: openTask, sortMinutes: 0 };
+        }
+      }
+
+      if (!rawData) {
+        return null;
+      }
+
+      switch (kind) {
+        case 'feeding': {
+          const feeding = rawData.feedings.find((item) => item.id === id);
+          return feeding ? { kind: 'feeding', data: feeding, sortMinutes: 0 } : null;
+        }
+        case 'task': {
+          const task = rawData.tasks.find((item) => item.id === id);
+          return task ? { kind: 'task', data: task, sortMinutes: 0 } : null;
+        }
+        case 'ride': {
+          const ride = rawData.rides.find((item) => item.id === id);
+          return ride ? { kind: 'ride', data: ride, sortMinutes: 0 } : null;
+        }
+        case 'treatment': {
+          const treatment = rawData.treatments.find((item) => item.id === id);
+          return treatment ? { kind: 'treatment', data: treatment, sortMinutes: 0 } : null;
+        }
+        default:
+          return null;
+      }
+    },
+    [myWeek, rawData],
+  );
+
   return {
     myWeek,
     horses,
@@ -303,5 +352,6 @@ export function useMyDayData() {
     updateTreatment,
     deleteEvent,
     deletingId,
+    findTimelineEvent,
   };
 }

@@ -7,6 +7,7 @@ import { FeedingNotificationsService } from './feeding-notifications.service';
 import {
   EventNotificationsService,
   getEventStakeholderIds,
+  getRemovedRideParticipantIds,
 } from './event-notifications.service';
 
 describe('EventNotificationsService', () => {
@@ -57,11 +58,12 @@ describe('EventNotificationsService', () => {
     expect(notifyUsers).toHaveBeenCalledWith(
       ['primary-1', 'additional-1', 'additional-2'],
       'event-modified-alert',
-      'Alex made changes to this event.',
+      'Alex made changes to your ride on 20/06/2026.',
       {
         type: 'event-modified',
         eventKind: 'ride',
         eventId: 'ride-1',
+        scheduleDate: '2026-06-20',
       },
     );
   });
@@ -78,7 +80,7 @@ describe('EventNotificationsService', () => {
     expect(notifyUsers).toHaveBeenCalledWith(
       ['additional-1', 'additional-2'],
       'event-modified-alert',
-      'Alex made changes to this event.',
+      'Alex made changes to your ride on 20/06/2026.',
       expect.objectContaining({ eventKind: 'ride', eventId: 'ride-1' }),
     );
   });
@@ -95,7 +97,7 @@ describe('EventNotificationsService', () => {
     expect(notifyUsers).toHaveBeenCalledWith(
       ['primary-1', 'additional-2'],
       'event-modified-alert',
-      'Alex made changes to this event.',
+      'Alex made changes to your ride on 20/06/2026.',
       expect.objectContaining({ eventKind: 'ride', eventId: 'ride-1' }),
     );
   });
@@ -127,6 +129,8 @@ describe('EventNotificationsService', () => {
   it('notifies assignee when editor is different user', async () => {
     const task = {
       id: 'task-1',
+      name: 'Clean stalls',
+      deadline: '2026-06-25',
       assigned_user: { id: 'assignee-1' },
     } as Task;
 
@@ -135,8 +139,36 @@ describe('EventNotificationsService', () => {
     expect(notifyUsers).toHaveBeenCalledWith(
       ['assignee-1'],
       'event-modified-alert',
-      'Alex made changes to this event.',
-      expect.objectContaining({ eventKind: 'task', eventId: 'task-1' }),
+      'Alex made changes to your task \'Clean stalls\' on 25/06/2026.',
+      expect.objectContaining({
+        eventKind: 'task',
+        eventId: 'task-1',
+        scheduleDate: '2026-06-25',
+      }),
+    );
+  });
+
+  it('notifies removed ride participants when editor updates the ride', async () => {
+    const existing = makeRide({
+      primary_rider: { id: 'rider-a' },
+      additional_riders: [{ id: 'rider-b' }],
+    });
+    const saved = makeRide({
+      primary_rider: { id: 'rider-b' },
+      additional_riders: [],
+    });
+
+    await service.notifyRideUpdated({ ...editor, userId: 'rider-b' }, existing, saved);
+
+    expect(notifyUsers).toHaveBeenCalledWith(
+      ['rider-a'],
+      'event-modified-alert',
+      'Alex removed you from the ride on 20/06/2026.',
+      expect.objectContaining({
+        type: 'ride-removed',
+        eventKind: 'ride',
+        eventId: 'ride-1',
+      }),
     );
   });
 });
@@ -153,5 +185,20 @@ describe('getEventStakeholderIds', () => {
       'additional-1',
       'additional-2',
     ]);
+  });
+});
+
+describe('getRemovedRideParticipantIds', () => {
+  it('returns riders who were removed from the ride', () => {
+    const existing = {
+      primary_rider: { id: 'rider-a' },
+      additional_riders: [{ id: 'rider-b' }],
+    } as Ride;
+    const saved = {
+      primary_rider: { id: 'rider-b' },
+      additional_riders: [],
+    } as Ride;
+
+    expect(getRemovedRideParticipantIds(existing, saved)).toEqual(['rider-a']);
   });
 });

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { withApiAction } from '../api/apiActionContext';
@@ -28,6 +28,8 @@ import {
   normalizeDateString,
   getNext14DayStrings,
   recenterStaleSelectedDate,
+  getRollingWeekAnchor,
+  clampWeekOffset,
 } from '../utils/dateHelpers';
 import { orderUsersForAssignment } from '../utils/assignableUsers';
 import { completingKey } from '../utils/completionKeys';
@@ -66,6 +68,9 @@ export function useScheduleData() {
     assignableUsers: [],
   });
   const [selectedDate, setSelectedDate] = useState(toDateString(new Date()));
+  const [weekOffset, setWeekOffsetState] = useState(0);
+  const [appToday, setAppToday] = useState(() => toDateString());
+  const appTodayRef = useRef(toDateString());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [volunteeringId, setVolunteeringId] = useState<string | null>(null);
@@ -140,18 +145,44 @@ export function useScheduleData() {
     [raw, selectedDate]
   );
 
+  const weekAnchor = useMemo(
+    () => getRollingWeekAnchor(weekOffset),
+    [weekOffset, appToday]
+  );
+
   const weekEvents = useMemo(
     () =>
       getEventsForWeek(
-        selectedDate,
+        weekAnchor,
         raw.feedings,
         raw.tasks,
         raw.rides,
         raw.treatments,
         raw.profile
       ),
-    [raw, selectedDate]
+    [raw, weekAnchor]
   );
+
+  const syncCalendarDay = useCallback(() => {
+    const today = toDateString();
+    if (appTodayRef.current !== today) {
+      appTodayRef.current = today;
+      setAppToday(today);
+      setWeekOffsetState(0);
+    }
+    setSelectedDate((prev) => recenterStaleSelectedDate(prev));
+  }, []);
+
+  const setWeekOffset = useCallback((offset: number) => {
+    setWeekOffsetState(clampWeekOffset(offset));
+  }, []);
+
+  const resetWeekToToday = useCallback(() => {
+    const today = toDateString();
+    appTodayRef.current = today;
+    setWeekOffsetState(0);
+    setAppToday(today);
+  }, []);
 
   const refresh = useCallback(
     async (isPullRefresh = false) => {
@@ -196,9 +227,15 @@ export function useScheduleData() {
 
   useFocusEffect(
     useCallback(() => {
-      setSelectedDate((prev) => recenterStaleSelectedDate(prev));
+      syncCalendarDay();
       refresh();
-    }, [refresh])
+
+      const intervalId = setInterval(syncCalendarDay, 60_000);
+
+      return () => {
+        clearInterval(intervalId);
+      };
+    }, [refresh, syncCalendarDay])
   );
 
   useEffect(() => {
@@ -207,7 +244,7 @@ export function useScheduleData() {
         return;
       }
 
-      setSelectedDate((prev) => recenterStaleSelectedDate(prev));
+      syncCalendarDay();
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
@@ -215,7 +252,7 @@ export function useScheduleData() {
     return () => {
       subscription.remove();
     };
-  }, []);
+  }, [syncCalendarDay]);
 
   const volunteerForFeeding = useCallback(
     async (feedingId: string, notificationTime?: string) => {
@@ -485,6 +522,10 @@ export function useScheduleData() {
     selectedDate,
     setSelectedDate,
     selectedDateEvents,
+    weekOffset,
+    setWeekOffset,
+    weekAnchor,
+    resetWeekToToday,
     weekEvents,
     alertTimes,
     loading,

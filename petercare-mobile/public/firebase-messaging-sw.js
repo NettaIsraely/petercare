@@ -21,6 +21,17 @@ function getNotificationPath(data) {
     return '/profile';
   }
 
+  if (
+    (data.type === 'event-modified' || data.type === 'ride-joined') &&
+    data.eventKind &&
+    data.eventId
+  ) {
+    const params = new URLSearchParams();
+    params.set('eventKind', String(data.eventKind));
+    params.set('eventId', String(data.eventId));
+    return `/home?${params.toString()}`;
+  }
+
   return '/';
 }
 

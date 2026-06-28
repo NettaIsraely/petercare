@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { X } from 'lucide-react-native';
-import { Ride, UpdateRidePayload } from '../../types/ride';
+import { Ride, UpdateRidePayload, filterAdditionalRiderIds } from '../../types/ride';
 import {
   PREDEFINED_TREATMENT_NAMES,
   PredefinedTreatmentName,
@@ -134,7 +134,12 @@ export default function EditEventModal({
       setRideEnd(formatTimeForInput(ride.end_time) || '10:00');
       setPrimaryRiderId(ride.primary_rider.id);
       setSelectedHorseIds(ride.horses.map((h) => h.id));
-      setAdditionalRiderIds(ride.additional_riders?.map((r) => r.id) ?? []);
+      setAdditionalRiderIds(
+        filterAdditionalRiderIds(
+          ride.primary_rider.id,
+          ride.additional_riders?.map((r) => r.id) ?? [],
+        ),
+      );
       setRideComments(ride.comments ?? '');
     }
 
@@ -152,7 +157,7 @@ export default function EditEventModal({
       setTreatmentUserId(treatment.user.id);
       setTreatmentIsComplete(treatment.is_complete ?? false);
     }
-  }, [visible, kind, ride, treatment]);
+  }, [visible, kind, ride?.id, treatment?.id]);
 
   const toggleHorse = (horseId: string) => {
     setSelectedHorseIds((prev) =>
@@ -195,15 +200,20 @@ export default function EditEventModal({
           setError('End time must be after start time.');
           return;
         }
-        await onSubmitRide(ride.id, {
+        const normalizedAdditionalRiderIds = filterAdditionalRiderIds(
+          primaryRiderId,
+          additionalRiderIds,
+        );
+        const ridePayload = {
           date: rideDate.trim(),
           start_time: startTime,
           end_time: endTime,
           primary_rider_id: primaryRiderId,
           horses: selectedHorseIds,
-          additional_riders_ids: additionalRiderIds,
+          additional_riders_ids: normalizedAdditionalRiderIds,
           comments: rideComments.trim() || undefined,
-        });
+        };
+        await onSubmitRide(ride.id, ridePayload);
       } else if (kind === 'treatment' && treatment) {
         const resolvedTreatmentName = treatmentNamePreset ?? treatmentCustomName.trim();
         if (!resolvedTreatmentName) {
@@ -274,7 +284,14 @@ export default function EditEventModal({
                   label="Primary Rider"
                   options={userOptions}
                   selectedId={primaryRiderId}
-                  onSelect={(id) => setPrimaryRiderId(id ?? '')}
+                  onSelect={(id) => {
+                    const nextPrimary = id ?? '';
+                    if (!nextPrimary || nextPrimary === primaryRiderId) {
+                      return;
+                    }
+                    setPrimaryRiderId(nextPrimary);
+                    setAdditionalRiderIds([]);
+                  }}
                 />
                 {rideConflict && <RideSchedulingConflictBanner conflicts={rideConflict} />}
                 <View style={styles.field}>

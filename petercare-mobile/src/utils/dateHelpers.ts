@@ -62,6 +62,17 @@ export function getRollingWeekDateStrings(anchorDate: string): string[] {
   return days;
 }
 
+export function getRollingWeekAnchor(weekOffset: number, referenceDate?: Date): string {
+  return shiftDateByWeeks(toDateString(referenceDate), weekOffset);
+}
+
+export const MIN_WEEK_OFFSET = -52;
+export const MAX_WEEK_OFFSET = 52;
+
+export function clampWeekOffset(offset: number): number {
+  return Math.max(MIN_WEEK_OFFSET, Math.min(MAX_WEEK_OFFSET, offset));
+}
+
 export function getWeekRangeLabel(dates: string[]): string {
   if (dates.length === 0) {
     return '';
@@ -185,6 +196,9 @@ export function isPastShiftDeadline(
 
 export function formatTimeLabel(timeStr: string): string {
   const minutes = parseTimeToMinutes(timeStr);
+  if (!Number.isFinite(minutes)) {
+    return '';
+  }
   const hours24 = Math.floor(minutes / 60);
   const mins = minutes % 60;
   const period = hours24 >= 12 ? 'PM' : 'AM';
@@ -247,6 +261,7 @@ export function isValidTimeInput(input: string): boolean {
   return HH_MM_PATTERN.test(input.trim());
 }
 
+// Picker-only helpers: HH:MM is barn wall-clock digits, not a timezone-aware instant.
 export function timeStringToDate(time: string): Date {
   const normalized = formatTimeForInput(time) || '08:00';
   const [hours, minutes] = normalized.split(':').map((part) => parseInt(part, 10));

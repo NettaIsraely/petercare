@@ -179,6 +179,29 @@ export class UsersService implements OnModuleInit {
     });
   }
 
+  async setPasswordResetToken(
+    userId: string,
+    token: string,
+    expires: Date,
+  ): Promise<void> {
+    await this.userRepository.update(userId, {
+      reset_password_token: token,
+      reset_password_expires: expires,
+    });
+  }
+
+  async clearPasswordResetAndSetPassword(
+    userId: string,
+    newPassword: string,
+  ): Promise<void> {
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.userRepository.update(userId, {
+      password_hash: passwordHash,
+      reset_password_token: null,
+      reset_password_expires: null,
+    });
+  }
+
   async update(id: string, updateUserDto: UpdateUserDto): Promise<PublicUser> {
     if (updateUserDto.timezone !== undefined && !isValidTimezone(updateUserDto.timezone)) {
       throw new BadRequestException('Invalid IANA timezone identifier.');
@@ -197,6 +220,8 @@ export class UsersService implements OnModuleInit {
     }
 
     const updateData: Record<string, unknown> = { id, ...updateUserDto };
+    delete updateData.reset_password_token;
+    delete updateData.reset_password_expires;
 
     if (updateUserDto.password) {
       updateData.password_hash = await bcrypt.hash(updateUserDto.password, 10);

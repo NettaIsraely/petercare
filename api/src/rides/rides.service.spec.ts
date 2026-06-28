@@ -4,12 +4,14 @@ import { BadRequestException, ConflictException } from '@nestjs/common';
 import { RidesService } from './rides.service';
 import { Ride } from './entities/ride.entity';
 import { User } from '../users/entities/user.entity';
+import { User } from '../users/entities/user.entity';
 import { UserRole } from '../users/entities/user.entity';
 import { EventNotificationsService } from '../notifications/event-notifications.service';
 
 const eventNotificationsMock = {
   notifyEventModified: jest.fn(),
   notifyRideJoined: jest.fn(),
+  notifyRideUpdated: jest.fn(),
 };
 
 const authUser = {
@@ -35,37 +37,45 @@ describe('RidesService', () => {
   let riderConflictRows: { name: string; start_time: string; end_time: string }[];
   let saveMock: jest.Mock;
   let createMock: jest.Mock;
-  let preloadMock: jest.Mock;
   let queryMock: jest.Mock;
   let findOneMock: jest.Mock;
+  let entityFindOneMock: jest.Mock;
 
   beforeEach(async () => {
     horseConflictRows = [];
     riderConflictRows = [];
     saveMock = jest.fn().mockImplementation((ride) => Promise.resolve({ id: 'ride-new', ...ride }));
     createMock = jest.fn().mockImplementation((_, data) => data);
-    preloadMock = jest.fn().mockResolvedValue({ id: 'ride-1', comments: 'Updated' });
     queryMock = jest.fn().mockResolvedValue(undefined);
     findOneMock = jest.fn();
+    entityFindOneMock = jest.fn();
 
     let queryBuilderCall = 0;
-    const createQueryBuilder = jest.fn(() => {
-      queryBuilderCall += 1;
-      if (queryBuilderCall === 1) {
-        return createQueryBuilderMock(horseConflictRows);
+    const createQueryBuilder = jest.fn((entity?: unknown) => {
+      if (entity === Ride) {
+        queryBuilderCall += 1;
+        if (queryBuilderCall === 1) {
+          return createQueryBuilderMock(horseConflictRows);
+        }
+        if (queryBuilderCall === 2 || queryBuilderCall === 3) {
+          return createQueryBuilderMock(riderConflictRows);
+        }
+        return createQueryBuilderMock([]);
       }
-      if (queryBuilderCall === 2 || queryBuilderCall === 3) {
-        return createQueryBuilderMock(riderConflictRows);
-      }
-      return createQueryBuilderMock([]);
+
+      return {
+        relation: jest.fn().mockReturnThis(),
+        of: jest.fn().mockReturnThis(),
+        addAndRemove: jest.fn().mockResolvedValue(undefined),
+      };
     });
 
     const entityManager = {
       create: createMock,
       save: saveMock,
-      preload: preloadMock,
       query: queryMock,
       createQueryBuilder,
+      findOne: entityFindOneMock,
     };
 
     const dataSource = {
@@ -205,10 +215,22 @@ describe('RidesService', () => {
     };
 
     beforeEach(() => {
-      findOneMock.mockResolvedValue({
+      const savedRide = {
         ...existingRide,
         comments: 'Updated',
+      };
+
+      findOneMock.mockImplementation(async () => savedRide);
+      entityFindOneMock.mockImplementation(async (entity: unknown) => {
+        if (entity === User) {
+          return { id: 'rider-b', name: 'User B' };
+        }
+        return {
+          ...existingRide,
+          comments: 'Updated',
+        };
       });
+      saveMock.mockImplementation(async (ride) => ride);
     });
 
     it('allows comment-only updates without conflicts', async () => {
@@ -232,6 +254,45 @@ describe('RidesService', () => {
           authUser,
         ),
       ).rejects.toThrow(ConflictException);
+    });
+
+    it('swaps primary rider and removes primary from additional riders', async () => {
+      const rideInTransaction = {
+        ...existingRide,
+        primary_rider: { id: 'rider-a', name: 'User A' },
+        additional_riders: [{ id: 'rider-b', name: 'User B' }],
+      };
+
+      entityFindOneMock.mockImplementation(async (entity: unknown, options?: { where?: { id?: string } }) => {
+        if (entity === User) {
+          return { id: options?.where?.id ?? 'rider-b', name: 'User B' };
+        }
+        return rideInTransaction;
+      });
+      saveMock.mockImplementation(async (ride) => ride);
+      findOneMock
+        .mockResolvedValueOnce(rideInTransaction)
+        .mockResolvedValueOnce({
+          ...rideInTransaction,
+          primary_rider: { id: 'rider-b', name: 'User B' },
+          additional_riders: [{ id: 'rider-a', name: 'User A' }],
+        });
+
+      await service.update(
+        'ride-1',
+        {
+          primary_rider_id: 'rider-b',
+          additional_riders_ids: ['rider-b', 'rider-a'],
+        },
+        authUser,
+      );
+
+      expect(saveMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          primary_rider: expect.objectContaining({ id: 'rider-b' }),
+        }),
+      );
+      expect(eventNotificationsMock.notifyRideUpdated).toHaveBeenCalled();
     });
   });
 });

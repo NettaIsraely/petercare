@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   ScrollView,
@@ -6,8 +6,11 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
+import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useAuth } from '../context/AuthContext';
 import { useMyDayData } from '../hooks/useMyDayData';
+import { MainTabParamList } from '../navigation/types';
 import { TimelineEvent } from '../types/events';
 import { Task } from '../types/task';
 import { Feeding } from '../types/feeding';
@@ -24,8 +27,13 @@ import EditEventModal from '../components/schedule/EditEventModal';
 import JoinRideModal from '../components/schedule/JoinRideModal';
 import { confirmEventDelete } from '../utils/eventDeleteHelpers';
 
+type HomeScreenRouteProp = RouteProp<MainTabParamList, 'Home'>;
+type HomeScreenNavigationProp = BottomTabNavigationProp<MainTabParamList, 'Home'>;
+
 export default function HomeScreen() {
   const { user } = useAuth();
+  const route = useRoute<HomeScreenRouteProp>();
+  const navigation = useNavigation<HomeScreenNavigationProp>();
   const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null);
   const [detailVisible, setDetailVisible] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
@@ -53,7 +61,24 @@ export default function HomeScreen() {
     updateTreatment,
     deleteEvent,
     deletingId,
+    findTimelineEvent,
   } = useMyDayData();
+
+  useEffect(() => {
+    const eventKind = route.params?.eventKind;
+    const eventId = route.params?.eventId;
+    if (!eventKind || !eventId || loading) {
+      return;
+    }
+
+    const event = findTimelineEvent(eventKind, eventId);
+    if (event) {
+      setSelectedEvent(event);
+      setDetailVisible(true);
+    }
+
+    navigation.setParams({ eventKind: undefined, eventId: undefined });
+  }, [route.params?.eventKind, route.params?.eventId, loading, findTimelineEvent, navigation]);
 
   const handleEventPress = (event: TimelineEvent) => {
     setSelectedEvent(event);

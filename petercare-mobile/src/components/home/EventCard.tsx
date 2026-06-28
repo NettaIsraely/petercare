@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Check, ClipboardList, MessageSquare } from 'lucide-react-native';
+import { getDisplayAdditionalRiders, getOtherRideRiderNames } from '../../types/ride';
 import { TimelineEvent } from '../../types/events';
 import { UserSummary } from '../../types/user';
 import { getEventCardStyle } from '../../utils/userColors';
@@ -43,6 +44,7 @@ interface EventCardProps {
   };
   currentUserId?: string;
   showAssignee?: boolean;
+  showOtherRideRiders?: boolean;
   users?: UserSummary[];
   completed?: boolean;
   showCommentsMarker?: boolean;
@@ -111,6 +113,7 @@ export default function EventCard({
   alertTimes,
   currentUserId,
   showAssignee = false,
+  showOtherRideRiders = false,
   users,
   completed = false,
   showCommentsMarker = true,
@@ -127,7 +130,11 @@ export default function EventCard({
   });
   const assigneeName = showAssignee ? getAssigneeName(event) : undefined;
   const additionalRiders =
-    showAssignee && event.kind === 'ride' ? event.data.additional_riders ?? [] : [];
+    showAssignee && event.kind === 'ride' ? getDisplayAdditionalRiders(event.data) : [];
+  const otherRideRiderNames =
+    showOtherRideRiders && event.kind === 'ride' && currentUserId
+      ? getOtherRideRiderNames(event.data, currentUserId)
+      : [];
   const titleWeight = showAssignee
     ? isCurrentUser
       ? '700'
@@ -166,6 +173,11 @@ export default function EventCard({
         ) : null}
         {additionalRiders.length > 0 ? (
           <AdditionalRiderDots riders={additionalRiders} />
+        ) : null}
+        {otherRideRiderNames.length > 0 ? (
+          <Text style={[styles.assignee, completed && styles.completedSubtitle]}>
+            {otherRideRiderNames.join(', ')}
+          </Text>
         ) : null}
       </View>
       {hasComments && (

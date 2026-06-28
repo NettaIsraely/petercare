@@ -19,6 +19,7 @@ export function useTasksData() {
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [claimingId, setClaimingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
   const hasLoadedRef = useRef(false);
 
@@ -149,6 +150,24 @@ export function useTasksData() {
     [toggleTaskComplete]
   );
 
+  const deleteEvent = useCallback(
+    async (event: TimelineEvent) => {
+      if (event.kind !== 'task') {
+        return;
+      }
+      setDeletingId(event.data.id);
+      try {
+        await taskService.deleteTask(event.data.id);
+        await refresh({ silent: true });
+      } catch (error) {
+        console.error('Failed to delete task:', error);
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [refresh]
+  );
+
   return {
     tasks,
     assignableUsers,
@@ -157,6 +176,7 @@ export function useTasksData() {
     creating,
     updating,
     claimingId,
+    deletingId,
     completingIds,
     refresh: (isPullRefresh = false) => refresh(isPullRefresh ? { pull: true } : undefined),
     createTask,
@@ -164,6 +184,7 @@ export function useTasksData() {
     claimTask,
     toggleTaskComplete,
     markEventComplete,
+    deleteEvent,
     currentUserId: user?.userId,
   };
 }

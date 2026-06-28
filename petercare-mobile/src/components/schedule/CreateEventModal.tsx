@@ -14,7 +14,7 @@ import { CreateEventCategory } from '../../types/events';
 import { Feeding } from '../../types/feeding';
 import { UserRole } from '../../types/auth';
 import { CreateTaskPayload } from '../../types/task';
-import { CreateRidePayload } from '../../types/ride';
+import { CreateRidePayload, filterAdditionalRiderIds } from '../../types/ride';
 import {
   CreateTreatmentPayload,
   PREDEFINED_TREATMENT_NAMES,
@@ -286,8 +286,10 @@ export default function CreateEventModal({
           end_time: endTime,
           primary_rider_id: primaryRiderId,
           horses: selectedHorseIds,
-          additional_riders_ids:
-            additionalRiderIds.length > 0 ? additionalRiderIds : undefined,
+          additional_riders_ids: (() => {
+            const normalized = filterAdditionalRiderIds(primaryRiderId, additionalRiderIds);
+            return normalized.length > 0 ? normalized : undefined;
+          })(),
           comments: rideComments.trim() || undefined,
         });
       } else if (category === 'treatment') {
@@ -486,7 +488,15 @@ export default function CreateEventModal({
                   label="Primary Rider"
                   options={userOptions}
                   selectedId={primaryRiderId}
-                  onSelect={(id) => setPrimaryRiderId(id ?? '')}
+                  onSelect={(id) => {
+                    const nextPrimary = id ?? '';
+                    setPrimaryRiderId(nextPrimary);
+                    if (nextPrimary) {
+                      setAdditionalRiderIds((prev) =>
+                        prev.filter((riderId) => riderId !== nextPrimary),
+                      );
+                    }
+                  }}
                 />
                 {rideConflict && <RideSchedulingConflictBanner conflicts={rideConflict} />}
                 <View style={styles.field}>

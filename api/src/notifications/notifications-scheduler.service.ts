@@ -112,7 +112,7 @@ export class NotificationsSchedulerService {
         feeding.schedule_date,
       );
 
-      const queuedCount = await this.feedingNotifications.notifyUsers(
+      await this.feedingNotifications.notifyUsers(
         recipientIds,
         'unassigned-night-alert',
         message,
@@ -122,10 +122,6 @@ export class NotificationsSchedulerService {
           shiftType: feeding.shift_type,
         },
       );
-
-      if (queuedCount === 0) {
-        continue;
-      }
 
       feeding.unassigned_night_alert_sent_at = nowUtc.toJSDate();
       await this.feedingRepository.save(feeding);
@@ -165,7 +161,7 @@ export class NotificationsSchedulerService {
         continue;
       }
 
-      const queuedCount = await this.feedingNotifications.notifyUsers(
+      await this.feedingNotifications.notifyUsers(
         [feeding.assigned_user.id],
         'feeding-incomplete-assignee-alert',
         feedingIncompleteAssigneePromptMessage(feeding.shift_type),
@@ -175,10 +171,6 @@ export class NotificationsSchedulerService {
           shiftType: feeding.shift_type,
         },
       );
-
-      if (queuedCount === 0) {
-        continue;
-      }
 
       feeding.incomplete_assignee_alert_sent_at = nowUtc.toJSDate();
       await this.feedingRepository.save(feeding);
@@ -227,7 +219,7 @@ export class NotificationsSchedulerService {
           )
         : feedingIncompleteBroadcastUnassignedMessage(feeding.shift_type);
 
-      const queuedCount = await this.feedingNotifications.notifyUsers(
+      await this.feedingNotifications.notifyUsers(
         recipientIds,
         'feeding-incomplete-broadcast-alert',
         message,
@@ -237,10 +229,6 @@ export class NotificationsSchedulerService {
           shiftType: feeding.shift_type,
         },
       );
-
-      if (queuedCount === 0) {
-        continue;
-      }
 
       feeding.incomplete_broadcast_alert_sent_at = nowUtc.toJSDate();
       await this.feedingRepository.save(feeding);
@@ -288,18 +276,16 @@ export class NotificationsSchedulerService {
         'task-deadline-reminder',
       );
 
-      if (eligibleIds.length === 0) {
-        continue;
+      if (eligibleIds.length > 0) {
+        await this.notificationQueue.add('task-deadline-reminder', {
+          userId: task.assigned_user.id,
+          message: taskDeadlineReminderMessage(task.name),
+          data: {
+            type: 'task-deadline-reminder',
+            taskId: task.id,
+          },
+        });
       }
-
-      await this.notificationQueue.add('task-deadline-reminder', {
-        userId: task.assigned_user.id,
-        message: taskDeadlineReminderMessage(task.name),
-        data: {
-          type: 'task-deadline-reminder',
-          taskId: task.id,
-        },
-      });
 
       task.deadline_reminder_sent_at = nowUtc.toJSDate();
       await this.taskRepository.save(task);

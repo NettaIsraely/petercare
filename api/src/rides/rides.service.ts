@@ -24,10 +24,10 @@ import {
   buildEffectiveRideConflictParams,
   ConflictEntry,
   dedupeConflictEntries,
+  normalizeAdditionalRiderIds,
   RideConflictParams,
 } from './ride-conflicts';
 import {
-  detectRideJoin,
   EventNotificationsService,
 } from '../notifications/event-notifications.service';
 
@@ -55,30 +55,35 @@ export class RidesService {
       await this.acquireSchedulingLocks(manager, conflictParams);
       await this.assertNoSchedulingConflicts(manager, conflictParams);
 
+      const additionalRiderIds = normalizeAdditionalRiderIds(
+        createRideDto.primary_rider_id,
+        createRideDto.additional_riders_ids,
+      );
+
       const newRide = manager.create(Ride, {
         date: createRideDto.date,
         start_time: createRideDto.start_time,
         end_time: createRideDto.end_time,
         primary_rider: { id: createRideDto.primary_rider_id },
-        additional_riders: createRideDto.additional_riders_ids
-          ? createRideDto.additional_riders_ids.map((id) => ({ id }))
-          : [],
+        additional_riders: additionalRiderIds.map((id) => ({ id })),
         horses: createRideDto.horses.map((id) => ({ id })),
         comments: createRideDto.comments,
       });
 
-      return manager.save(newRide);
+      return this.presentRide(await manager.save(newRide));
     });
   }
 
   async findAll(): Promise<Ride[]> {
-    return await this.ridesRepository.find({
+    const rides = await this.ridesRepository.find({
       relations: {
         primary_rider: true,
         additional_riders: true,
         horses: true,
       },
     });
+
+    return rides.map((ride) => this.presentRide(ride));
   }
 
   async findOne(id: string): Promise<Ride> {
@@ -95,7 +100,28 @@ export class RidesService {
       throw new NotFoundException(`Ride with ID ${id} not found`);
     }
 
-    return ride;
+    return this.presentRide(ride);
+  }
+
+  private presentRide(ride: Ride): Ride {
+    const primaryId = ride.primary_rider?.id;
+    if (!primaryId || !ride.additional_riders?.length) {
+      return ride;
+    }
+
+    const allowedAdditionalIds = new Set(
+      normalizeAdditionalRiderIds(
+        primaryId,
+        ride.additional_riders.map((rider) => rider.id),
+      ),
+    );
+
+    return {
+      ...ride,
+      additional_riders: ride.additional_riders.filter((rider) =>
+        allowedAdditionalIds.has(rider.id),
+      ),
+    };
   }
 
   async update(id: string, updateRideDto: UpdateRideDto, authUser: AuthUser): Promise<Ride> {
@@ -109,45 +135,107 @@ export class RidesService {
       await assertAssignableUsers(this.userRepository, updateRideDto.additional_riders_ids);
     }
 
-    const conflictParams = buildEffectiveRideConflictParams(existing, updateRideDto, id);
+    const effectivePrimaryRiderId =
+      updateRideDto.primary_rider_id ?? existing.primary_rider.id;
+    const normalizedAdditionalRiderIds =
+      updateRideDto.additional_riders_ids !== undefined
+        ? normalizeAdditionalRiderIds(
+            effectivePrimaryRiderId,
+            updateRideDto.additional_riders_ids,
+          )
+        : undefined;
+
+    const normalizedUpdateDto: UpdateRideDto = {
+      ...updateRideDto,
+      ...(normalizedAdditionalRiderIds !== undefined
+        ? { additional_riders_ids: normalizedAdditionalRiderIds }
+        : {}),
+    };
+
+    const conflictParams = buildEffectiveRideConflictParams(
+      existing,
+      normalizedUpdateDto,
+      id,
+    );
 
     return this.dataSource.transaction(async (manager) => {
       this.assertValidTimeRange(conflictParams.start_time, conflictParams.end_time);
       await this.acquireSchedulingLocks(manager, conflictParams);
       await this.assertNoSchedulingConflicts(manager, conflictParams);
 
-      const updateData: Record<string, unknown> = { id, ...updateRideDto };
-      if (updateRideDto.primary_rider_id) {
-        updateData.primary_rider = { id: updateRideDto.primary_rider_id };
-      }
-      if (updateRideDto.additional_riders_ids) {
-        updateData.additional_riders = updateRideDto.additional_riders_ids.map((rid) => ({
-          id: rid,
-        }));
-      }
-      if (updateRideDto.horses) {
-        updateData.horses = updateRideDto.horses.map((horseId) => ({ id: horseId }));
-      }
-
-      const ride = await manager.preload(Ride, updateData);
+      const ride = await manager.findOne(Ride, {
+        where: { id },
+        relations: {
+          primary_rider: true,
+          additional_riders: true,
+          horses: true,
+        },
+      });
 
       if (!ride) {
         throw new NotFoundException(`Ride with ID ${id} not found`);
       }
 
-      return manager.save(ride);
-    }).then(async (savedRide) => {
-      const saved = await this.findOne(savedRide.id);
-      const joined = detectRideJoin(existing, saved, authUser.userId);
-
-      if (joined) {
-        await this.eventNotifications.notifyRideJoined(authUser, saved);
-        await this.eventNotifications.notifyEventModified(authUser, 'ride', saved, {
-          excludeUserIds: saved.primary_rider?.id ? [saved.primary_rider.id] : [],
-        });
-      } else {
-        await this.eventNotifications.notifyEventModified(authUser, 'ride', saved);
+      if (normalizedUpdateDto.date !== undefined) {
+        ride.date = new Date(normalizedUpdateDto.date);
       }
+      if (normalizedUpdateDto.start_time !== undefined) {
+        ride.start_time = normalizedUpdateDto.start_time;
+      }
+      if (normalizedUpdateDto.end_time !== undefined) {
+        ride.end_time = normalizedUpdateDto.end_time;
+      }
+      if (normalizedUpdateDto.comments !== undefined) {
+        ride.comments = normalizedUpdateDto.comments;
+      }
+      if (normalizedUpdateDto.horses !== undefined) {
+        ride.horses = normalizedUpdateDto.horses.map((horseId) => ({
+          id: horseId,
+        })) as Ride['horses'];
+      }
+
+      if (normalizedUpdateDto.primary_rider_id !== undefined) {
+        const primaryRider = await manager.findOne(User, {
+          where: { id: normalizedUpdateDto.primary_rider_id },
+        });
+        if (!primaryRider) {
+          throw new NotFoundException(
+            `User with ID ${normalizedUpdateDto.primary_rider_id} not found`,
+          );
+        }
+        ride.primary_rider = primaryRider;
+      }
+
+      await manager.save(ride);
+
+      if (normalizedAdditionalRiderIds !== undefined) {
+        const currentAdditionalIds =
+          ride.additional_riders?.map((rider) => ({ id: rider.id })) ?? [];
+        const nextAdditionalIds = normalizedAdditionalRiderIds.map((rid) => ({ id: rid }));
+
+        await manager
+          .createQueryBuilder()
+          .relation(Ride, 'additional_riders')
+          .of(ride.id)
+          .addAndRemove(nextAdditionalIds, currentAdditionalIds);
+      }
+
+      return manager.findOne(Ride, {
+        where: { id },
+        relations: {
+          primary_rider: true,
+          additional_riders: true,
+          horses: true,
+        },
+      });
+    }).then(async (savedRide) => {
+      if (!savedRide) {
+        throw new NotFoundException(`Ride with ID ${id} not found`);
+      }
+
+      const saved = await this.findOne(savedRide.id);
+
+      await this.eventNotifications.notifyRideUpdated(authUser, existing, saved);
 
       return saved;
     });

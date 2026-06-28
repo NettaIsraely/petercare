@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Pressable, Text, StyleSheet } from 'react-native';
 import { Check, MessageSquare } from 'lucide-react-native';
-import { TimelineEvent } from '../../types/events';
+import { getDisplayAdditionalRiders } from '../../types/ride';
 import { getEventCardStyle } from '../../utils/userColors';
 import {
   getAssigneeName,
@@ -81,7 +81,7 @@ export default function CompactEventBlock({
     isCurrentUser,
   });
   const assigneeName = getAssigneeName(event);
-  const additionalRiders = event.kind === 'ride' ? event.data.additional_riders ?? [] : [];
+  const additionalRiders = event.kind === 'ride' ? getDisplayAdditionalRiders(event.data) : [];
   const subtitle = getCompactSubtitle(event, alertTimes);
   const titleWeight = isCurrentUser ? '700' : '500';
   const hasComments = eventHasComments(event);

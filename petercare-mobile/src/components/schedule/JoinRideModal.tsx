@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { X } from 'lucide-react-native';
-import { Ride, UpdateRidePayload } from '../../types/ride';
+import { Ride, UpdateRidePayload, filterAdditionalRiderIds, getDisplayAdditionalRiders } from '../../types/ride';
 import { Horse } from '../../types/horse';
 import TimePickerField from '../common/TimePickerField';
 import {
@@ -101,9 +101,11 @@ export default function JoinRideModal({
     }
 
     const existingAdditionalIds = ride.additional_riders?.map((r) => r.id) ?? [];
-    const additionalRiderIds = existingAdditionalIds.includes(currentUserId)
-      ? existingAdditionalIds
-      : [...existingAdditionalIds, currentUserId];
+    const additionalRiderIds = filterAdditionalRiderIds(ride.primary_rider.id, [
+      ...(existingAdditionalIds.includes(currentUserId)
+        ? existingAdditionalIds
+        : [...existingAdditionalIds, currentUserId]),
+    ]);
 
     try {
       await onSubmit(ride.id, {
@@ -137,7 +139,7 @@ export default function JoinRideModal({
   }
 
   const conflictHorseNames = rideConflict ? getConflictHorseNames(rideConflict) : new Set<string>();
-  const additionalRiderNames = ride.additional_riders?.map((r) => r.name).join(', ');
+  const additionalRiderNames = getDisplayAdditionalRiders(ride).map((r) => r.name).join(', ');
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>

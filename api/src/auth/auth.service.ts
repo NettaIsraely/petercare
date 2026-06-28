@@ -82,11 +82,7 @@ export class AuthService {
         const expireDate = new Date();
         expireDate.setHours(expireDate.getHours() + 1);
 
-        // 4. Save to the database
-        await this.usersService.update(user.id, {
-            reset_password_token: resetToken,
-            reset_password_expires: expireDate,
-        });
+        await this.usersService.setPasswordResetToken(user.id, resetToken, expireDate);
 
         // 5. Hand the heavy lifting off to your background worker
         await this.notificationQueue.add('password-reset-email', {
@@ -111,12 +107,7 @@ export class AuthService {
             throw new BadRequestException('Invalid or expired password reset token');
         }
 
-        // Save the new password and completely wipe the reset token data
-        await this.usersService.update(user.id, {
-            password: newPassword,
-            reset_password_token: null,
-            reset_password_expires: null,
-        });
+        await this.usersService.clearPasswordResetAndSetPassword(user.id, newPassword);
 
         return { message: 'Password has been successfully reset.' };
     }

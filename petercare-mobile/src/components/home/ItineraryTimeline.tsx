@@ -62,6 +62,8 @@ export default function ItineraryTimeline({
               <EventCard
                 key={`${event.kind}-${event.data.id}`}
                 event={event}
+                currentUserId={currentUserId}
+                showOtherRideRiders={event.kind === 'ride'}
                 showCheckbox={canToggle}
                 checked={completed}
                 completed={completed}

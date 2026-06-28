@@ -25,7 +25,14 @@ describe('TasksService', () => {
     role: UserRole.CAREGIVER,
   };
 
+  const ownerAuth = {
+    userId: 'owner-id',
+    name: 'Owner',
+    role: UserRole.OWNER,
+  };
+
   beforeEach(async () => {
+    jest.clearAllMocks();
     userRepository = {
       findOne: jest.fn(),
     };
@@ -93,5 +100,66 @@ describe('TasksService', () => {
         assigned_user: { id: 'owner-id' },
       }),
     );
+  });
+
+  it('calls notifyEventModified when assignee completes their own task', async () => {
+    const existingTask = {
+      id: 'task-1',
+      name: 'Task',
+      is_complete: false,
+      assigned_user: { id: 'caregiver-id' },
+    } as Task;
+    const completedTask = { ...existingTask, is_complete: true };
+
+    tasksRepository.findOne.mockResolvedValueOnce(existingTask).mockResolvedValueOnce(completedTask);
+    tasksRepository.preload.mockResolvedValue(completedTask);
+    tasksRepository.save.mockResolvedValue(completedTask);
+
+    await service.update('task-1', { is_complete: true }, caregiverAuth);
+
+    expect(eventNotificationsMock.notifyEventModified).toHaveBeenCalledWith(
+      caregiverAuth,
+      'task',
+      completedTask,
+    );
+  });
+
+  it('notifies assignee when someone else completes their task', async () => {
+    const existingTask = {
+      id: 'task-1',
+      name: 'Task',
+      is_complete: false,
+      assigned_user: { id: 'caregiver-id' },
+    } as Task;
+    const completedTask = { ...existingTask, is_complete: true };
+
+    tasksRepository.findOne.mockResolvedValueOnce(existingTask).mockResolvedValueOnce(completedTask);
+    tasksRepository.preload.mockResolvedValue(completedTask);
+    tasksRepository.save.mockResolvedValue(completedTask);
+
+    await service.update('task-1', { is_complete: true }, ownerAuth);
+
+    expect(eventNotificationsMock.notifyEventModified).toHaveBeenCalledWith(
+      ownerAuth,
+      'task',
+      completedTask,
+    );
+  });
+
+  it('does not notify when re-completing an already complete task', async () => {
+    const alreadyComplete = {
+      id: 'task-1',
+      name: 'Task',
+      is_complete: true,
+      assigned_user: { id: 'caregiver-id' },
+    } as Task;
+
+    tasksRepository.findOne.mockResolvedValueOnce(alreadyComplete).mockResolvedValueOnce(alreadyComplete);
+    tasksRepository.preload.mockResolvedValue(alreadyComplete);
+    tasksRepository.save.mockResolvedValue(alreadyComplete);
+
+    await service.update('task-1', { is_complete: true }, ownerAuth);
+
+    expect(eventNotificationsMock.notifyEventModified).not.toHaveBeenCalled();
   });
 });

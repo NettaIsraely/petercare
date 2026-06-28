@@ -1,5 +1,11 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { HorseColor } from '../types/horse';
+import type { TimelineEvent } from '../types/events';
+
+export type HomeScreenParams = {
+  eventKind?: TimelineEvent['kind'];
+  eventId?: string;
+} | undefined;
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -16,7 +22,7 @@ export type HorsesStackParamList = {
   };
 };
 export type MainTabParamList = {
-  Home: undefined;
+  Home: HomeScreenParams;
   Schedule: undefined;
   Horses: NavigatorScreenParams<HorsesStackParamList>;
   Insights: undefined;

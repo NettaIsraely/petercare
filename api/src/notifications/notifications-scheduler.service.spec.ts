@@ -144,25 +144,29 @@ describe('NotificationsSchedulerService incomplete alerts', () => {
     );
   });
 
-  it('does not stamp assignee alert when no notifications are queued', async () => {
+  it('stamps assignee alert even when no notifications are queued', async () => {
     const nowUtc = DateTime.fromISO('2026-06-19T06:00:00.000Z', { zone: 'utc' });
     notifyUsers.mockResolvedValueOnce(0);
-    feedingRepository.find.mockResolvedValueOnce([
-      {
-        id: 'feeding-1',
-        schedule_date: '2026-06-19',
-        shift_type: ShiftType.MORNING,
-        feeding_status: FeedingStatus.ASSIGNED,
-        assigned_user: { id: 'assignee-1', name: 'Jane Smith' },
-        incomplete_assignee_alert_sent_at: null,
-      },
-    ]);
+    const feeding = {
+      id: 'feeding-1',
+      schedule_date: '2026-06-19',
+      shift_type: ShiftType.MORNING,
+      feeding_status: FeedingStatus.ASSIGNED,
+      assigned_user: { id: 'assignee-1', name: 'Jane Smith' },
+      incomplete_assignee_alert_sent_at: null,
+    };
+    feedingRepository.find.mockResolvedValueOnce([feeding]);
 
     await (service as unknown as { processIncompleteAssigneeAlerts: (now: DateTime) => Promise<void> })
       .processIncompleteAssigneeAlerts(nowUtc);
 
     expect(notifyUsers).toHaveBeenCalled();
-    expect(feedingRepository.save).not.toHaveBeenCalled();
+    expect(feedingRepository.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'feeding-1',
+        incomplete_assignee_alert_sent_at: expect.any(Date),
+      }),
+    );
   });
 });
 
@@ -170,6 +174,7 @@ describe('NotificationsSchedulerService task deadline reminders', () => {
   let service: NotificationsSchedulerService;
   let taskRepository: { find: jest.Mock; save: jest.Mock };
   let queueAdd: jest.Mock;
+  let filterEligibleUserIds: jest.Mock;
 
   beforeEach(async () => {
     taskRepository = {
@@ -177,6 +182,7 @@ describe('NotificationsSchedulerService task deadline reminders', () => {
       save: jest.fn(async (task: Task) => task),
     };
     queueAdd = jest.fn();
+    filterEligibleUserIds = jest.fn(async (ids: string[]) => ids);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -200,7 +206,7 @@ describe('NotificationsSchedulerService task deadline reminders', () => {
         {
           provide: NotificationPreferencesService,
           useValue: {
-            filterEligibleUserIds: jest.fn(async (ids: string[]) => ids),
+            filterEligibleUserIds,
           },
         },
         {
@@ -238,6 +244,31 @@ describe('NotificationsSchedulerService task deadline reminders', () => {
       expect.objectContaining({
         userId: 'assignee-1',
         message: expect.stringContaining('Farrier'),
+      }),
+    );
+  });
+
+  it('stamps deadline reminder even when assignee opted out of notifications', async () => {
+    const nowUtc = DateTime.fromISO('2026-06-19T19:00:00.000Z', { zone: 'utc' });
+    filterEligibleUserIds.mockResolvedValueOnce([]);
+    const task = {
+      id: 'task-1',
+      name: 'Farrier',
+      deadline: new Date('2026-06-20T00:00:00.000Z'),
+      is_complete: false,
+      deadline_reminder_sent_at: null,
+      assigned_user: { id: 'assignee-1', timezone: 'Europe/London' },
+    };
+    taskRepository.find.mockResolvedValueOnce([task]);
+
+    await (service as unknown as { processTaskDeadlineReminders: (now: DateTime) => Promise<void> })
+      .processTaskDeadlineReminders(nowUtc);
+
+    expect(queueAdd).not.toHaveBeenCalled();
+    expect(taskRepository.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'task-1',
+        deadline_reminder_sent_at: expect.any(Date),
       }),
     );
   });
